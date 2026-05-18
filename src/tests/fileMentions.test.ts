@@ -155,3 +155,118 @@ test("scanFileMentionItems applies parent and nested ignore files", () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("scanFileMentionItems applies git info exclude at the repository root", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.mkdirSync(path.join(root, ".git", "info"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".git", "info", "exclude"), "secret.txt\n");
+    fs.writeFileSync(path.join(root, "secret.txt"), "");
+    fs.writeFileSync(path.join(root, "visible.txt"), "");
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      ["visible.txt"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems applies .ignore files outside git repositories", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.writeFileSync(path.join(root, ".ignore"), "ignored.txt\n");
+    fs.writeFileSync(path.join(root, "ignored.txt"), "");
+    fs.writeFileSync(path.join(root, "visible.txt"), "");
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      [".ignore", "visible.txt"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems honors gitignore negation patterns", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.mkdirSync(path.join(root, ".git"));
+    fs.writeFileSync(path.join(root, ".gitignore"), "*.log\n!important.log\n");
+    fs.writeFileSync(path.join(root, "debug.log"), "");
+    fs.writeFileSync(path.join(root, "important.log"), "");
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      [".gitignore", "important.log"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems includes hidden entries except the .git directory", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.mkdirSync(path.join(root, ".git"));
+    fs.writeFileSync(path.join(root, ".env"), "");
+    fs.mkdirSync(path.join(root, ".config"));
+    fs.writeFileSync(path.join(root, ".config", "settings.json"), "");
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      [".config/", ".config/settings.json", ".env"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems sees files created after an earlier scan", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    assert.deepEqual(scanFileMentionItems(root), []);
+
+    fs.writeFileSync(path.join(root, "index.html"), "");
+
+    assert.deepEqual(scanFileMentionItems(root), [{ path: "index.html", type: "file" }]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems follows symlinked files", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.writeFileSync(path.join(root, "source.txt"), "");
+    try {
+      fs.symlinkSync(path.join(root, "source.txt"), path.join(root, "alias.txt"));
+    } catch {
+      t.skip("symlink creation is not available in this environment");
+      return;
+    }
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      ["alias.txt", "source.txt"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("filterFileMentionItems returns newly scanned files for @ mention queries", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    fs.writeFileSync(path.join(root, "index.html"), "");
+    const items = scanFileMentionItems(root);
+
+    assert.deepEqual(
+      filterFileMentionItems(items, "index").map((item) => item.path),
+      ["index.html"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

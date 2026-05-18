@@ -139,6 +139,7 @@ export const PromptInput = React.memo(function PromptInput({
   const [modelDropdownStep, setModelDropdownStep] = useState<ModelDropdownStep | null>(null);
   const [modelDropdownIndex, setModelDropdownIndex] = useState(0);
   const [pendingModel, setPendingModel] = useState<string | null>(null);
+  const [fileMentionItems, setFileMentionItems] = useState<FileMentionItem[]>(() => scanFileMentionItems(projectRoot));
   const [fileMentionIndex, setFileMentionIndex] = useState(0);
   const [dismissedFileMentionKey, setDismissedFileMentionKey] = useState<string | null>(null);
   const [historyCursor, setHistoryCursor] = useState(-1);
@@ -146,9 +147,11 @@ export const PromptInput = React.memo(function PromptInput({
   const [hasTerminalFocus, setHasTerminalFocus] = useState(true);
   const lastCtrlDAt = React.useRef<number>(0);
   const undoRedoRef = React.useRef(createPromptUndoRedoState());
+  const wasBusyRef = React.useRef(busy);
+  const hadFileMentionTokenRef = React.useRef(false);
 
-  const fileMentionItems = React.useMemo(() => scanFileMentionItems(projectRoot), [projectRoot]);
   const fileMentionToken = getCurrentFileMentionToken(buffer);
+  const hasFileMentionToken = fileMentionToken !== null;
   const fileMentionKey = fileMentionToken ? `${fileMentionToken.start}:${fileMentionToken.query}` : null;
   const fileMentionMatches = React.useMemo(
     () => (fileMentionToken ? filterFileMentionItems(fileMentionItems, fileMentionToken.query) : []),
@@ -184,6 +187,28 @@ export const PromptInput = React.memo(function PromptInput({
   useTerminalFocusReporting(stdout, !disabled);
   useTerminalExtendedKeys(stdout, !disabled);
   useHiddenTerminalCursor(stdout, !disabled);
+
+  const refreshFileMentionItems = React.useCallback(() => {
+    setFileMentionItems(scanFileMentionItems(projectRoot));
+  }, [projectRoot]);
+
+  useEffect(() => {
+    refreshFileMentionItems();
+  }, [refreshFileMentionItems]);
+
+  useEffect(() => {
+    if (wasBusyRef.current && !busy) {
+      refreshFileMentionItems();
+    }
+    wasBusyRef.current = busy;
+  }, [busy, refreshFileMentionItems]);
+
+  useEffect(() => {
+    if (hasFileMentionToken && !hadFileMentionTokenRef.current) {
+      refreshFileMentionItems();
+    }
+    hadFileMentionTokenRef.current = hasFileMentionToken;
+  }, [hasFileMentionToken, refreshFileMentionItems]);
 
   useEffect(() => {
     if (!showMenu) {
@@ -928,6 +953,21 @@ export const PromptInput = React.memo(function PromptInput({
           activeIndex={fileMentionIndex}
           activeColor="#229ac3"
           maxVisible={8}
+          renderItem={(item, isActive) => (
+            <Box flexDirection="row" paddingX={1} gap={1}>
+              <Text color={isActive ? "#229ac3" : undefined}>{isActive ? "> " : "  "}</Text>
+              <Box flexGrow={1}>
+                <Text color={isActive ? "#229ac3" : undefined} wrap="truncate-end" bold={isActive}>
+                  {item.label}
+                </Text>
+              </Box>
+              {item.description ? (
+                <Box width={10} flexShrink={0}>
+                  <Text dimColor>{item.description}</Text>
+                </Box>
+              ) : null}
+            </Box>
+          )}
         />
       ) : null}
       <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
