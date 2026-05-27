@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { GitFileHistory } from "../common/file-history";
+import { clearSessionState } from "../common/state";
 import { type SessionMessage } from "../session";
 import { SessionManager } from "../session";
 
@@ -1255,6 +1256,75 @@ test("replySession /continue runs trailing pending tool calls before requesting 
     userMessages.some((message) => message.content === "/continue"),
     false
   );
+});
+
+test("replySession rebuilds snippet state from persisted read history before editing", async () => {
+  const workspace = createTempDir("deepcode-rebuild-snippet-workspace-");
+  const home = createTempDir("deepcode-rebuild-snippet-home-");
+  setHomeDir(home);
+
+  const filePath = path.join(workspace, "note.txt");
+  fs.writeFileSync(filePath, "alpha\nbeta\n", "utf8");
+
+  const responses = [
+    createToolCallResponse(
+      [
+        {
+          id: "call-edit",
+          type: "function",
+          function: {
+            name: "edit",
+            arguments: JSON.stringify({
+              snippet_id: "full_file_5",
+              file_path: filePath,
+              old_string: "beta",
+              new_string: "gamma",
+            }),
+          },
+        },
+      ],
+      { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    ),
+    createChatResponse("done", { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }),
+  ];
+  const manager = createMockedClientSessionManager(workspace, responses);
+  const originalActivateSession = manager.activateSession.bind(manager);
+  (manager as any).activateSession = async () => {};
+
+  const sessionId = await manager.createSession({ text: "first prompt" });
+  const readToolMessage = (manager as any).buildToolMessage(
+    sessionId,
+    "call-read",
+    JSON.stringify({
+      ok: true,
+      name: "read",
+      output: "     1\talpha\n     2\tbeta\n",
+      metadata: {
+        snippet: {
+          id: "full_file_5",
+          filePath,
+          startLine: 1,
+          endLine: 3,
+        },
+      },
+    }),
+    { name: "read", arguments: JSON.stringify({ file_path: filePath }) }
+  ) as SessionMessage;
+  (manager as any).appendSessionMessage(sessionId, readToolMessage);
+
+  clearSessionState(sessionId);
+  (manager as any).activateSession = originalActivateSession;
+
+  await manager.replySession(sessionId, { text: "change beta" });
+
+  assert.equal(fs.readFileSync(filePath, "utf8"), "alpha\ngamma\n");
+  const editToolMessage = manager.listSessionMessages(sessionId).find((message) => {
+    const params = message.messageParams as { tool_call_id?: string } | null;
+    return message.role === "tool" && params?.tool_call_id === "call-edit";
+  });
+  assert.ok(editToolMessage);
+  assert.match(editToolMessage.content ?? "", /"ok":true|"ok": true/);
+  assert.doesNotMatch(editToolMessage.content ?? "", /Unknown snippet_id/);
 });
 
 test("activateSession pauses for permission when a tool call requires ask", async () => {
@@ -2708,6 +2778,13 @@ class APIUserAbortError extends Error {}
 function createChatResponse(content: string, usage: Record<string, unknown>): unknown {
   return {
     choices: [{ message: { content } }],
+    usage,
+  };
+}
+
+function createToolCallResponse(toolCalls: unknown[], usage: Record<string, unknown>): unknown {
+  return {
+    choices: [{ message: { content: "", tool_calls: toolCalls } }],
     usage,
   };
 }

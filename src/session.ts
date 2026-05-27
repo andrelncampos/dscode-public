@@ -31,7 +31,7 @@ import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
 import { GitFileHistory } from "./common/file-history";
-import { getSnippet } from "./common/state";
+import { clearSessionState, getSnippet, rebuildSessionStateFromHistory } from "./common/state";
 import {
   appendProjectPermissionAllows,
   buildPermissionToolExecution,
@@ -45,7 +45,6 @@ import {
   type UserToolPermission,
 } from "./common/permissions";
 import { clearSessionWorkingDir } from "./tools/bash-handler";
-import { clearSessionState } from "./common/state";
 
 export type { PermissionScope } from "./settings";
 export type {
@@ -1143,6 +1142,7 @@ ${skillMd}
     const { client, model, baseURL, thinkingEnabled, reasoningEffort, debugLogEnabled, notify, env } =
       this.createOpenAIClient();
     const now = new Date().toISOString();
+    rebuildSessionStateFromHistory(sessionId, this.listSessionMessages(sessionId));
 
     if (!client) {
       this.updateSessionEntry(sessionId, (entry) => ({
@@ -2547,6 +2547,12 @@ ${skillMd}
       return typeof args.explanation === "string" ? args.explanation.trim() : "";
     } else if (toolName === "write") {
       return typeof args.file_path === "string" ? args.file_path.trim() : "";
+    } else if (toolName === "edit") {
+      const filePath = typeof args.file_path === "string" ? args.file_path.trim() : "";
+      if (filePath) {
+        return filePath;
+      }
+      return typeof args.snippet_id === "string" ? args.snippet_id.trim() : "";
     }
 
     const firstKey = Object.keys(args)[0];

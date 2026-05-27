@@ -15,7 +15,6 @@ import {
   getSnippet,
   hasSnippetOutdatedFileVersion,
   isAbsoluteFilePath,
-  isFullFileView,
   normalizeFilePath,
   recordFileState,
 } from "../common/state";
@@ -69,7 +68,7 @@ type CorrectedEditStrings = {
 
 const editSchema = z.strictObject({
   file_path: z.string().optional(),
-  snippet_id: z.string().optional(),
+  snippet_id: z.string().min(1, "snippet_id is required."),
   old_string: z.string(),
   new_string: z.string(),
   replace_all: semanticBoolean(false).optional(),
@@ -94,19 +93,19 @@ export async function handleEditTool(
     args,
     context,
     async (input) => {
-      const snippetId = input.snippet_id?.trim() ?? "";
-      const snippet = snippetId ? getSnippet(context.sessionId, snippetId) : null;
+      const snippetId = input.snippet_id.trim();
+      const snippet = getSnippet(context.sessionId, snippetId);
 
       let filePath = input.file_path?.trim() ?? "";
-      if (!filePath && !snippet) {
+      if (!snippet) {
         return {
           ok: false,
           name: "edit",
-          error: 'Missing required "file_path" string or "snippet_id" string.',
+          error: `Unknown snippet_id: ${snippetId}`,
         };
       }
 
-      if (!filePath && snippet) {
+      if (!filePath) {
         filePath = snippet.filePath;
       }
 
@@ -119,15 +118,7 @@ export async function handleEditTool(
         };
       }
 
-      if (snippetId && !snippet) {
-        return {
-          ok: false,
-          name: "edit",
-          error: `Unknown snippet_id: ${snippetId}`,
-        };
-      }
-
-      if (snippet && snippet.filePath !== filePath) {
+      if (snippet.filePath !== filePath) {
         return {
           ok: false,
           name: "edit",
@@ -188,14 +179,6 @@ export async function handleEditTool(
         };
       }
 
-      if (!snippet && !isFullFileView(fileState)) {
-        return {
-          ok: false,
-          name: "edit",
-          error: "File was only partially read. Use snippet_id or read the full file before editing.",
-        };
-      }
-
       if (hasFileChangedSinceState(filePath, fileState)) {
         return {
           ok: false,
@@ -211,7 +194,7 @@ export async function handleEditTool(
         const newString = input.new_string;
         const replaceAll = input.replace_all ?? false;
         const lineIndex = buildLineIndex(raw);
-        const scope = buildSearchScope(filePath, raw, lineIndex, snippet ?? null);
+        const scope = buildSearchScope(filePath, raw, lineIndex, snippet);
         let matches = findOccurrences(raw, oldString, scope);
         let matchedVia: "exact" | "line_leading_tab_correction" | "loose_escape" | "llm_escape_correction" = "exact";
         let replacementOldString = oldString;
@@ -346,7 +329,7 @@ export async function handleEditTool(
             replaced_count: replacedCount,
             matched_via: matchedVia,
             cache_refreshed: true,
-            read_scope_type: snippet ? "snippet" : "full",
+            read_scope_type: snippet.scopeType,
             encoding: freshMetadata.encoding,
             line_endings: freshMetadata.lineEndings,
             diff_preview: diffPreview,

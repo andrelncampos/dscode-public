@@ -15,8 +15,20 @@ export type FileMentionToken = {
   quoted: boolean;
 };
 
-const DEFAULT_MAX_ITEMS = 2000;
+const DEFAULT_MAX_ITEMS = 20000;
 const DEFAULT_MAX_DEPTH = 8;
+const DEFAULT_NOISY_DIR_NAMES = [
+  ".git",
+  ".next",
+  ".pytest_cache",
+  ".ruff_cache",
+  "__pycache__",
+  "build",
+  "dist",
+  "node_modules",
+  "out",
+  "target",
+];
 
 type IgnoreMatcher = {
   base: string;
@@ -104,7 +116,8 @@ export function scanFileMentionItems(root: string, maxItems = DEFAULT_MAX_ITEMS)
   if (rootRealPath) {
     visitedDirectories.add(rootRealPath);
   }
-  visit(root, 0, loadAncestorIgnoreMatchers(root, gitRoot));
+  const initialMatchers = [...loadDefaultIgnoreMatchers(root, gitRoot), ...loadAncestorIgnoreMatchers(root, gitRoot)];
+  visit(root, 0, initialMatchers);
   return items;
 }
 
@@ -160,6 +173,33 @@ function loadDirectoryIgnoreMatchers(directory: string, gitRoot: string | null):
     matchers.push(ignoreMatcher);
   }
   return matchers;
+}
+
+function loadDefaultIgnoreMatchers(root: string, gitRoot: string | null): IgnoreMatcher[] {
+  if (hasApplicableGitignore(root, gitRoot)) {
+    return [];
+  }
+  const patterns = DEFAULT_NOISY_DIR_NAMES.map((name) => `${name}/`);
+  return [{ base: root, matcher: ignore().add(patterns) }];
+}
+
+function hasApplicableGitignore(root: string, gitRoot: string | null): boolean {
+  if (!gitRoot) {
+    return false;
+  }
+
+  const resolvedGitRoot = path.resolve(gitRoot);
+  let current = path.resolve(root);
+  while (isPathInsideOrEqual(current, resolvedGitRoot)) {
+    if (fs.existsSync(path.join(current, ".gitignore"))) {
+      return true;
+    }
+    if (current === resolvedGitRoot) {
+      break;
+    }
+    current = path.dirname(current);
+  }
+  return false;
 }
 
 function loadAncestorIgnoreMatchers(root: string, gitRoot: string | null): IgnoreMatcher[] {

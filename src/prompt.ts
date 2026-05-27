@@ -493,18 +493,17 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
         parameters: {
           type: "object",
           properties: {
-            file_path: {
-              type: "string",
-              description: "Absolute path to file. Optional when snippet_id is provided.",
-            },
             snippet_id: {
               type: "string",
-              description:
-                "Snippet id returned by the Read or Edit tool to scope the search range after a partial read.",
+              description: "Required Read/Edit snippet_id.",
+            },
+            file_path: {
+              type: "string",
+              description: "Optional absolute path guard; must match snippet_id's file.",
             },
             old_string: {
               type: "string",
-              description: "Exact text to replace inside the file or snippet scope",
+              description: "Exact text to replace inside snippet_id's scope",
             },
             new_string: {
               type: "string",
@@ -520,7 +519,7 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
               description: "Expected number of matches, especially useful as a safety check with replace_all",
             },
           },
-          required: ["old_string", "new_string"],
+          required: ["snippet_id", "old_string", "new_string"],
           additionalProperties: false,
         },
       },

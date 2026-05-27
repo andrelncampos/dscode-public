@@ -86,13 +86,57 @@ test("scanFileMentionItems returns relative slash-separated files and directorie
   try {
     fs.mkdirSync(path.join(root, "src"));
     fs.writeFileSync(path.join(root, "src", "index.ts"), "");
-    fs.mkdirSync(path.join(root, "node_modules"));
-    fs.writeFileSync(path.join(root, "node_modules", "ignored.js"), "");
+    fs.mkdirSync(path.join(root, "vendor"));
+    fs.writeFileSync(path.join(root, "vendor", "dep.js"), "");
 
     assert.deepEqual(
       scanFileMentionItems(root).map((item) => item.path),
-      ["node_modules/", "node_modules/ignored.js", "src/", "src/index.ts"]
+      ["src/", "src/index.ts", "vendor/", "vendor/dep.js"]
     );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems applies default noisy-directory ignores when no gitignore is applicable", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    for (const directory of [
+      ".next",
+      ".pytest_cache",
+      ".ruff_cache",
+      "__pycache__",
+      "build",
+      "dist",
+      "node_modules",
+      "out",
+      "target",
+    ]) {
+      fs.mkdirSync(path.join(root, directory));
+      fs.writeFileSync(path.join(root, directory, "ignored.txt"), "");
+    }
+    fs.mkdirSync(path.join(root, ".config"));
+    fs.writeFileSync(path.join(root, ".config", "settings.json"), "");
+    fs.mkdirSync(path.join(root, "src"));
+    fs.writeFileSync(path.join(root, "src", "index.ts"), "");
+
+    assert.deepEqual(
+      scanFileMentionItems(root).map((item) => item.path),
+      [".config/", ".config/settings.json", "src/", "src/index.ts"]
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scanFileMentionItems default max item cap is above 2000", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-file-mentions-"));
+  try {
+    for (let index = 0; index < 2001; index++) {
+      fs.writeFileSync(path.join(root, `file-${index.toString().padStart(4, "0")}.txt`), "");
+    }
+
+    assert.equal(scanFileMentionItems(root).length, 2001);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
