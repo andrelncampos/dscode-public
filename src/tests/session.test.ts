@@ -108,6 +108,49 @@ test("SessionManager preserves structured system content when building OpenAI me
   ]);
 });
 
+test("SessionManager appends failed background log tail as XML", () => {
+  const workspace = createTempDir("deepcode-background-log-workspace-");
+  const home = createTempDir("deepcode-background-log-home-");
+  setHomeDir(home);
+  const outputPath = path.join(workspace, "background.log");
+  fs.writeFileSync(outputPath, ["before", "failure <line> & one", "failure line two"].join("\n"), "utf8");
+  let systemMessage: SessionMessage | null = null;
+  const manager = new SessionManager({
+    projectRoot: workspace,
+    createOpenAIClient: () => ({
+      client: null,
+      model: "test-model",
+      thinkingEnabled: false,
+    }),
+    getResolvedSettings: () => ({ model: "test-model" }),
+    renderMarkdown: (text) => text,
+    onAssistantMessage: (message) => {
+      systemMessage = message;
+    },
+  });
+
+  (manager as any).addBackgroundProcessCompletionMessage("session-background-fail", {
+    command: "npm test",
+    outputPath,
+    ok: false,
+    exitCode: 1,
+    signal: null,
+    startedAtMs: 0,
+    completedAtMs: 1200,
+  });
+
+  assert.ok(systemMessage);
+  const message = systemMessage as SessionMessage;
+  assert.equal(message.role, "system");
+  const content = message.content ?? "";
+  assert.match(content, /Background command "npm test" failed with exit code 1/);
+  assert.match(content, new RegExp(`<background_task_failure_log path="${escapeRegExp(outputPath)}">`));
+  assert.match(content, /failure <line> & one[\s\S]*failure line two/);
+  assert.doesNotMatch(content, /failure &lt;line&gt; &amp; one/);
+  assert.doesNotMatch(content, /<output_path>/);
+  assert.doesNotMatch(content, /<tail>/);
+});
+
 test("SessionManager filters image content for non-multimodal models", () => {
   const manager = new SessionManager({
     projectRoot: process.cwd(),
@@ -497,6 +540,67 @@ rl.on("line", (line) => {
   manager.dispose();
 
   assert.deepEqual(manager.getMcpStatus(), []);
+});
+
+test("SessionManager dispose kills live processes without timeout controls", (t) => {
+  if (process.platform === "win32") {
+    t.skip("process group kill assertion is non-Windows specific");
+    return;
+  }
+
+  const workspace = createTempDir("deepcode-dispose-process-workspace-");
+  const home = createTempDir("deepcode-dispose-process-home-");
+  setHomeDir(home);
+  const manager = createSessionManager(workspace, "machine-id-dispose-process");
+  const sessionId = createSessionAndMessages(manager, "session-dispose-process", "Dispose process session");
+  const originalKill = process.kill;
+  const killed: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
+
+  try {
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      killed.push({ pid, signal });
+      return true;
+    }) as typeof process.kill;
+
+    (manager as any).addSessionProcess(sessionId, 1234, "python3 -m http.server 8080");
+    manager.dispose();
+  } finally {
+    process.kill = originalKill;
+  }
+
+  assert.deepEqual(killed, [{ pid: -1234, signal: "SIGKILL" }]);
+});
+
+test("SessionManager deleteSession ignores persisted processes that are not live", (t) => {
+  if (process.platform === "win32") {
+    t.skip("process group kill assertion is non-Windows specific");
+    return;
+  }
+
+  const workspace = createTempDir("deepcode-delete-stale-process-workspace-");
+  const home = createTempDir("deepcode-delete-stale-process-home-");
+  setHomeDir(home);
+  const manager = createSessionManager(workspace, "machine-id-delete-stale-process");
+  const sessionId = createSessionAndMessages(manager, "session-delete-stale-process", "Delete stale process session");
+  (manager as any).updateSessionEntry(sessionId, (entry: any) => ({
+    ...entry,
+    processes: new Map([["1234", { startTime: new Date().toISOString(), command: "stale process" }]]),
+  }));
+  const originalKill = process.kill;
+  const killed: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
+
+  try {
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      killed.push({ pid, signal });
+      return true;
+    }) as typeof process.kill;
+
+    assert.equal(manager.deleteSession(sessionId), true);
+  } finally {
+    process.kill = originalKill;
+  }
+
+  assert.deepEqual(killed, []);
 });
 
 test("SessionManager refreshes cached MCP tool definitions after server crash", async () => {

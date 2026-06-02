@@ -1,4 +1,8 @@
 import { spawn } from "child_process";
+import { randomUUID } from "crypto";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import { DEFAULT_BASH_TIMEOUT_MS, clampBashTimeoutMs } from "../common/bash-timeout";
 import { killProcessTree } from "../common/process-tree";
 import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "./executor";
@@ -13,6 +17,8 @@ import {
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
+const BACKGROUND_OUTPUT_DIR = path.join(os.tmpdir(), "deepcode-background");
+const TRAILING_BACKGROUND_OPERATOR_PATTERN = /(^|[^\\&])\s*&\s*$/;
 const sessionWorkingDirs = new Map<string, string>();
 
 export function clearSessionWorkingDir(sessionId: string): void {
@@ -40,7 +46,9 @@ export async function handleBashTool(
   args: Record<string, unknown>,
   context: ToolExecutionContext
 ): Promise<ToolExecutionResult> {
-  const command = typeof args.command === "string" ? args.command : "";
+  const rawCommand = typeof args.command === "string" ? args.command : "";
+  const runInBackground = isTrue(args.run_in_background);
+  const command = runInBackground ? stripTrailingBackgroundOperator(rawCommand) : rawCommand;
   if (!command.trim()) {
     return {
       ok: false,
@@ -51,6 +59,10 @@ export async function handleBashTool(
 
   const startCwd = getSessionCwd(context.sessionId, context.projectRoot);
   const { shellPath, shellArgs, marker } = buildShellCommand(command);
+
+  if (runInBackground) {
+    return startBackgroundShellCommand(shellPath, shellArgs, startCwd, command, marker, context);
+  }
 
   const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, context);
   const result = buildToolCommandResult(
@@ -73,6 +85,14 @@ export async function handleBashTool(
   }
 
   return formatResult(result, "bash");
+}
+
+function isTrue(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
+function stripTrailingBackgroundOperator(command: string): string {
+  return command.replace(TRAILING_BACKGROUND_OPERATOR_PATTERN, "$1").trimEnd();
 }
 
 function getSessionCwd(sessionId: string, fallback: string): string {
@@ -233,6 +253,143 @@ async function executeShellCommand(
       });
     });
   });
+}
+
+function startBackgroundShellCommand(
+  shellPath: string,
+  shellArgs: string[],
+  cwd: string,
+  command: string,
+  marker: string,
+  context: ToolExecutionContext
+): ToolExecutionResult {
+  fs.mkdirSync(BACKGROUND_OUTPUT_DIR, { recursive: true });
+  const taskId = `bash-${randomUUID()}`;
+  const outputPath = path.join(BACKGROUND_OUTPUT_DIR, `${taskId}.log`);
+  const startedAtMs = Date.now();
+  const detached = process.platform !== "win32";
+  const configuredEnv = context.createOpenAIClient?.().env ?? {};
+  const child = spawn(shellPath, shellArgs, {
+    cwd,
+    env: buildShellEnv(shellPath, configuredEnv),
+    detached,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const pid = child.pid;
+  const processId = typeof pid === "number" ? pid : -1;
+  const stopCommand = typeof pid === "number" ? buildStopBackgroundProcessCommand(pid) : null;
+
+  let stdout = "";
+  let stderr = "";
+  let error: string | undefined;
+
+  const appendOutputFile = (chunk: string | Buffer) => {
+    try {
+      fs.appendFileSync(outputPath, chunk);
+    } catch {
+      // Keep the background process running even if temp-file writes fail.
+    }
+  };
+
+  if (typeof pid === "number") {
+    context.onProcessStart?.(pid, command);
+  }
+
+  child.stdout?.on("data", (chunk: string | Buffer) => {
+    stdout = appendChunk(stdout, chunk);
+    appendOutputFile(chunk);
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    if (typeof pid === "number") {
+      context.onProcessStdout?.(pid, text);
+    }
+  });
+  child.stderr?.on("data", (chunk: string | Buffer) => {
+    stderr = appendChunk(stderr, chunk);
+    appendOutputFile(chunk);
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    if (typeof pid === "number") {
+      context.onProcessStdout?.(pid, text);
+    }
+  });
+
+  child.on("error", (spawnError) => {
+    error = spawnError.message;
+  });
+
+  child.on("close", (code, signal) => {
+    const markerResult = stripMarker(stdout, marker);
+    const finalOutput = joinOutput(markerResult.output, stderr);
+    const result = buildToolCommandResult(
+      stdout,
+      stderr,
+      marker,
+      typeof code === "number" ? code : null,
+      signal ?? null,
+      shellPath,
+      cwd
+    );
+    updateSessionCwd(context.sessionId, cwd, result.cwd);
+    writeFinalBackgroundOutput(outputPath, finalOutput);
+    if (typeof pid === "number") {
+      context.onProcessExit?.(pid);
+    }
+    const ok = !error && result.exitCode === 0 && result.signal === null;
+    context.onBackgroundProcessComplete?.({
+      taskId,
+      processId,
+      command,
+      outputPath,
+      ok,
+      exitCode: result.exitCode,
+      signal: result.signal,
+      error: ok ? undefined : buildErrorMessage(result.exitCode, result.signal, error),
+      cwd: result.cwd,
+      shellPath,
+      startedAtMs,
+      completedAtMs: Date.now(),
+    });
+  });
+
+  return {
+    ok: true,
+    name: "bash",
+    output: buildBackgroundStartMessage(taskId, outputPath, stopCommand),
+    metadata: {
+      backgroundTaskId: taskId,
+      processId: typeof pid === "number" ? pid : null,
+      outputPath,
+      stopCommand,
+      cwd,
+      shellPath,
+      startCwd: cwd,
+      runInBackground: true,
+    },
+  };
+}
+
+function buildBackgroundStartMessage(taskId: string, outputPath: string, stopCommand: string | null): string {
+  const parts = [`Command running in background with ID: ${taskId}.`];
+  if (stopCommand) {
+    parts.push(`Stop it with: ${stopCommand}`);
+  }
+  parts.push(`Output is being written to: ${outputPath}`);
+  return parts.join(" ");
+}
+
+function buildStopBackgroundProcessCommand(processId: number): string {
+  if (process.platform === "win32") {
+    return `cmd.exe /c "taskkill /PID ${processId} /T /F"`;
+  }
+  return `kill -- -${processId}`;
+}
+
+function writeFinalBackgroundOutput(outputPath: string, output: string | undefined): void {
+  try {
+    fs.writeFileSync(outputPath, output ?? "", "utf8");
+  } catch {
+    // Ignore notification/output persistence failures; the tool result already returned.
+  }
 }
 
 function appendChunk(existing: string, chunk: string | Buffer): string {
