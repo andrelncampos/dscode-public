@@ -1,0 +1,70 @@
+<% if (planText) { %>
+The user provided the following brainstorming context:
+<brainstorming>
+<%= planText %>
+</brainstorming>
+<% } else { %>
+The user has been brainstorming in this conversation. Review the conversation history to extract the product ideas, features, and requirements that have been discussed.
+<% } %>
+
+Your task is to plan specs based on the brainstorming and align them with the existing vision document.
+
+Follow these steps:
+
+### Step 1: Read Existing Documents
+
+Read these files (use the `read` tool):
+1. `.dscode/specs/vision.md` — understand the existing value blocks and vision.
+2. `.dscode/specs/roadmap.md` — see existing planned/created specs.
+3. `.dscode/specs/arch.md` — refresh on architectural principles.
+4. `.dscode/specs/adr.md` — note any relevant architecture decisions.
+5. `.dscode/specs/lessons.md` — note any relevant lessons.
+
+### Step 2: Align Brainstorming with Vision
+
+Compare the brainstorming content with `vision.md`:
+
+- If the brainstorming introduces NEW value blocks that are not yet in `vision.md`, ADD them to `vision.md` as new value blocks (V###). **Always append — never renumber existing blocks.** Use the next available number.
+- If the brainstorming ADDS details to existing value blocks, UPDATE those blocks with the additional information. Do NOT remove or rephrase existing content — only add to it.
+- If the brainstorming REFINES or CLARIFIES the target audience or value proposition, update those sections additively.
+
+**All modifications to vision.md must be additive.** Never delete, renumber, or restructure existing sections. This prevents breaking references from other documents.
+
+### Step 3: Plan Specs
+
+For each value block (existing or newly added) that needs implementation, plan one or more feature specs:
+
+1. Determine the SPEC NUMBER:
+   - Feature specs are numbered in increments of 10: 10, 20, 30, 40, ...
+   - Use the next available multiple of 10 that is not already in the roadmap.
+   - Fix specs fill gaps after their feature spec: e.g., 11, 12 after spec 10.
+
+2. Name each spec concisely and descriptively (e.g., "10-user-auth", "20-dashboard-ui", "30-api-layer").
+
+3. For each planned spec, add an entry to the roadmap table in `.dscode/specs/roadmap.md`:
+
+```
+| 10 | user-auth | planned | V1: User Authentication |
+```
+
+The References column must link to:
+- The relevant value block(s) in `vision.md` (e.g., "V1: User Authentication")
+- Any relevant ADR entries (e.g., "ADR-001")
+- Any relevant lessons (e.g., "L1")
+- Any other relevant documents
+
+### Step 4: Update Roadmap
+
+Use the `edit` tool to add rows to the roadmap table. Each entry must have:
+- **#** — spec number
+- **Name** — short, descriptive, kebab-case name
+- **Status** — always `planned` for newly planned specs
+- **References** — comma-separated links to relevant sections
+
+### Step 5: Report
+
+After completing all steps, report:
+1. Which brainstorming items were incorporated.
+2. What was added to `vision.md` (new value blocks or enhancements).
+3. How many specs were planned and their numbers/names.
+4. The total specs now in the roadmap with their statuses.

@@ -1,5 +1,6 @@
 import { defaultsToThinkingMode, DEEPSEEK_V4_MODELS } from "./common/model-capabilities";
 import { deepcodingSettingsSchema, formatZodErrors } from "./common/settings-schema";
+import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -441,11 +442,11 @@ export const DEFAULT_BASE_URL = "https://api.deepseek.com";
 // ---------------------------------------------------------------------------
 
 export function getUserSettingsPath(): string {
-  return path.join(os.homedir(), ".deepcode", "settings.json");
+  return path.join(getUserDscodeDir(), "settings.json");
 }
 
 export function getProjectSettingsPath(projectRoot: string): string {
-  return path.join(projectRoot, ".deepcode", "settings.json");
+  return path.join(getProjectDscodeDir(projectRoot), "settings.json");
 }
 
 export function readSettingsFile(settingsPath: string): DeepcodingSettings | null {
@@ -478,11 +479,17 @@ export function readSettingsFile(settingsPath: string): DeepcodingSettings | nul
 }
 
 export function readSettings(): DeepcodingSettings | null {
-  return readSettingsFile(getUserSettingsPath());
+  const settings = readSettingsFile(getUserSettingsPath());
+  if (settings) return settings;
+  // Fall back to legacy .deepcode path so existing users are not broken.
+  return readSettingsFile(path.join(os.homedir(), ".deepcode", "settings.json"));
 }
 
 export function readProjectSettings(projectRoot: string = process.cwd()): DeepcodingSettings | null {
-  return readSettingsFile(getProjectSettingsPath(projectRoot));
+  const settings = readSettingsFile(getProjectSettingsPath(projectRoot));
+  if (settings) return settings;
+  // Fall back to legacy .deepcode path so existing users are not broken.
+  return readSettingsFile(path.join(projectRoot, ".deepcode", "settings.json"));
 }
 
 function writeSettingsFile(settingsPath: string, settings: DeepcodingSettings): void {

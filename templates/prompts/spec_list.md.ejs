@@ -1,0 +1,34 @@
+Your task is to list all specs from the roadmap with their statuses.
+
+### Step 1: Read Roadmap
+
+Read `.dscode/specs/roadmap.md`.
+
+### Step 2: Parse and Display
+
+Parse the roadmap table and display all specs in a formatted list:
+
+```
+# SDD Specs
+
+| # | Name | Status | References |
+|---|---|---|---|
+| 10 | user-auth | audited | V1: Auth, ADR-001 |
+| 20 | dashboard | verified | V2: Dashboard |
+| 30 | api-layer | created | V3: API |
+| 40 | notifications | planned | V4: Notifications |
+```
+
+If no specs exist yet, report: "No specs found. Run `/spec-init` to initialize SDD, then `/spec-plan` to plan your first specs."
+
+### Step 3: Summary
+
+Show a summary:
+```
+Total specs: 4
+  planned:   1
+  created:   1
+  verified:  1
+  implemented: 0
+  audited:   1
+```

@@ -70,7 +70,23 @@ export type PromptSubmission = {
   selectedSkills?: SkillInfo[];
   permissions?: UserToolPermission[];
   alwaysAllows?: PermissionScope[];
-  command?: "new" | "resume" | "continue" | "undo" | "mcp" | "exit";
+  command?:
+    | "new"
+    | "resume"
+    | "continue"
+    | "undo"
+    | "mcp"
+    | "steering-add"
+    | "steering-list"
+    | "spec-init"
+    | "spec-plan"
+    | "spec-new"
+    | "spec-verify"
+    | "spec-implement"
+    | "spec-audit"
+    | "spec-list"
+    | "spec-status"
+    | "exit";
 };
 
 export type PromptDraft = {
@@ -737,6 +753,106 @@ export const PromptInput = React.memo(function PromptInput({
     }
     if (item.kind === "mcp") {
       onSubmit({ text: "/mcp", imageUrls: [], command: "mcp" });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "steering-add") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "steering-add",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "steering-list") {
+      onSubmit({
+        text: "/steering-list",
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "steering-list",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-init") {
+      onSubmit({
+        text: "/spec-init",
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-init",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-plan") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-plan",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-new") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-new",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-verify") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-verify",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-implement") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-implement",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-audit") {
+      onSubmit({
+        text: buffer.text.trim(),
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-audit",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-list") {
+      onSubmit({
+        text: "/spec-list",
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-list",
+      });
+      resetPromptInput();
+      return;
+    }
+    if (item.kind === "spec-status") {
+      onSubmit({
+        text: buffer.text.trim() || "/spec-status",
+        imageUrls: [],
+        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        command: "spec-status",
+      });
       resetPromptInput();
       return;
     }

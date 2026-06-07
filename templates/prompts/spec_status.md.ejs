@@ -1,0 +1,82 @@
+<% if (specNumber != null) { %>
+Your task is to show the detailed status of spec #<%= specNumber %>.
+
+### Step 1: Read Roadmap
+
+Read `.dscode/specs/roadmap.md` and find spec #<%= specNumber %>.
+
+### Step 2: Read Spec Documents
+
+Read the spec's documents:
+1. `.dscode/specs/<%= specNumber %>-<name>/requirements.md`
+2. `.dscode/specs/<%= specNumber %>-<name>/design.md`
+3. `.dscode/specs/<%= specNumber %>-<name>/task.md`
+
+(Discover the spec folder name from the roadmap first.)
+
+### Step 3: Display Status
+
+Show a detailed status report:
+
+```
+# Spec <%= specNumber %>: [Name]
+
+Status: [planned / created / verified / implemented / audited]
+References: [from roadmap]
+
+## Requirements
+- Number of FRs: [count]
+- Number of NFRs: [count]
+- Edge cases covered: [count]
+
+## Design
+- Components specified: [count]
+- Data structures: [count]
+
+## Tasks
+- Total tasks: [count]
+- Completed: [count]
+- Pending: [count]
+
+## Files
+[List of files in the spec folder with their sizes]
+```
+<% } else { %>
+Your task is to show the detailed status of ALL specs.
+
+### Step 1: Read Roadmap
+
+Read `.dscode/specs/roadmap.md`.
+
+### Step 2: Read All Spec Documents
+
+For each spec in the roadmap, read its documents:
+1. `.dscode/specs/<N>-<name>/requirements.md`
+2. `.dscode/specs/<N>-<name>/design.md`
+3. `.dscode/specs/<N>-<name>/task.md`
+
+(Discover the spec folder names from the roadmap first.)
+
+### Step 3: Display Status for Each Spec
+
+For each spec, show a compact status:
+
+```
+# Spec 10: user-auth [audited] — 12 FRs, 3 NFRs, 8/8 tasks done
+# Spec 20: dashboard [verified] — 8 FRs, 2 NFRs, 0/6 tasks done
+# Spec 30: api-layer [created] — 15 FRs, 4 NFRs, 0/10 tasks done
+# Spec 40: notifications [planned] — not yet created
+```
+
+### Step 4: Summary
+
+Show:
+```
+Total specs: 4
+  planned:   1
+  created:   1
+  verified:  1
+  implemented: 0
+  audited:   1
+```
+<% } %>

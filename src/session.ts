@@ -338,6 +338,7 @@ export class SessionManager {
   private mcpToolDefinitions: ToolDefinition[] = [];
   private readonly messageConverter: OpenAIMessageConverter;
   private static systemPromptCache = new Map<string, string>();
+  private lastInjectedAgentInstructionsHash: string | null = null;
 
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -352,6 +353,16 @@ export class SessionManager {
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
     this.messageConverter = new OpenAIMessageConverter({
       renderInitPrompt: () => this.renderInitCommandPrompt(),
+      renderSteeringAddPrompt: (steeringText: string) => this.renderSteeringAddCommandPrompt(steeringText),
+      renderSteeringListPrompt: () => this.renderSteeringListCommandPrompt(),
+      renderSpecInitPrompt: () => this.renderSpecInitPrompt(),
+      renderSpecPlanPrompt: (planText: string) => this.renderSpecPlanPrompt(planText),
+      renderSpecNewPrompt: (specNumber: number) => this.renderSpecNewPrompt(specNumber),
+      renderSpecVerifyPrompt: (specNumber: number) => this.renderSpecVerifyPrompt(specNumber),
+      renderSpecImplementPrompt: (specNumber: number) => this.renderSpecImplementPrompt(specNumber),
+      renderSpecAuditPrompt: (specNumber: number) => this.renderSpecAuditPrompt(specNumber),
+      renderSpecListPrompt: () => this.renderSpecListPrompt(),
+      renderSpecStatusPrompt: (specNumber: number | null) => this.renderSpecStatusPrompt(specNumber),
     });
   }
 
@@ -830,8 +841,10 @@ ${agentInstructions}
   private getSkillScanRoots(): Array<{ root: string; displayRoot: string }> {
     const homeDir = os.homedir();
     return [
+      { root: path.join(this.projectRoot, ".dscode", "skills"), displayRoot: "./.dscode/skills" },
       { root: path.join(this.projectRoot, ".deepcode", "skills"), displayRoot: "./.deepcode/skills" },
       { root: path.join(this.projectRoot, ".agents", "skills"), displayRoot: "./.agents/skills" },
+      { root: path.join(homeDir, ".dscode", "skills"), displayRoot: "~/.dscode/skills" },
       { root: path.join(homeDir, ".deepcode", "skills"), displayRoot: "~/.deepcode/skills" },
       { root: path.join(homeDir, ".agents", "skills"), displayRoot: "~/.agents/skills" },
     ];
@@ -1129,6 +1142,7 @@ ${agentInstructions}
 
     const agentInstructions = this.loadAgentInstructions();
     if (agentInstructions) {
+      this.lastInjectedAgentInstructionsHash = this.hashContent(agentInstructions);
       const instructionsMessage = this.buildSystemMessage(sessionId, agentInstructions);
       this.appendSessionMessage(sessionId, instructionsMessage);
     }
@@ -1241,6 +1255,9 @@ ${agentInstructions}
     }
     this.activeSessionId = sessionId;
     await this.activateSession(sessionId, controller);
+    if (this.isSteeringAddPrompt(userPrompt.text)) {
+      this.reloadAgentInstructions(sessionId);
+    }
   }
 
   private isContinuePrompt(userPrompt: UserPromptContent): boolean {
@@ -1285,7 +1302,7 @@ ${agentInstructions}
       this.onAssistantMessage(
         this.buildAssistantMessage(
           sessionId,
-          "API key not found. Please configure ~/.deepcode/settings.json or ./.deepcode/settings.json.",
+          "API key not found. Please configure ~/.dscode/settings.json or ./.dscode/settings.json.",
           null
         ),
         false
@@ -1912,7 +1929,7 @@ ${agentInstructions}
     sessionsIndexPath: string;
   } {
     const projectCode = getProjectCode(this.projectRoot);
-    const projectDir = path.join(os.homedir(), ".deepcode", "projects", projectCode);
+    const projectDir = path.join(os.homedir(), ".dscode", "projects", projectCode);
     const sessionsIndexPath = path.join(projectDir, "sessions-index.json");
     return { projectCode, projectDir, sessionsIndexPath };
   }
@@ -2138,12 +2155,76 @@ ${agentInstructions}
     });
   }
 
+  private renderSteeringAddCommandPrompt(steeringText: string): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "steering_add.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { steeringText });
+  }
+
+  private renderSteeringListCommandPrompt(): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "steering_list.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, {});
+  }
+
+  private renderSpecInitPrompt(): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_init.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, {});
+  }
+
+  private renderSpecPlanPrompt(planText: string): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_plan.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { planText });
+  }
+
+  private renderSpecNewPrompt(specNumber: number): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_new.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { specNumber });
+  }
+
+  private renderSpecVerifyPrompt(specNumber: number): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_verify.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { specNumber });
+  }
+
+  private renderSpecImplementPrompt(specNumber: number): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_implement.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { specNumber });
+  }
+
+  private renderSpecAuditPrompt(specNumber: number): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_audit.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { specNumber });
+  }
+
+  private renderSpecListPrompt(): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_list.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, {});
+  }
+
+  private renderSpecStatusPrompt(specNumber: number | null): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_status.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { specNumber });
+  }
+
   private getEffectiveProjectAgentsMdFile(): string | null {
     return this.loadProjectAgentInstructions()?.displayPath ?? null;
   }
 
   private loadProjectAgentInstructions(): { content: string; displayPath: string } | null {
     const candidatePaths = [
+      {
+        absolutePath: path.join(this.projectRoot, ".dscode", "AGENTS.md"),
+        displayPath: "./.dscode/AGENTS.md",
+      },
       {
         absolutePath: path.join(this.projectRoot, ".deepcode", "AGENTS.md"),
         displayPath: "./.deepcode/AGENTS.md",
@@ -2185,7 +2266,30 @@ ${agentInstructions}
       return projectInstructions.content;
     }
 
-    return this.readNonEmptyFile(path.join(os.homedir(), ".deepcode", "AGENTS.md"));
+    return (
+      this.readNonEmptyFile(path.join(os.homedir(), ".dscode", "AGENTS.md")) ??
+      this.readNonEmptyFile(path.join(os.homedir(), ".deepcode", "AGENTS.md"))
+    );
+  }
+
+  private hashContent(content: string): string {
+    return crypto.createHash("sha256").update(content).digest("hex");
+  }
+
+  private isSteeringAddPrompt(text: string | null | undefined): boolean {
+    return typeof text === "string" && /^\/steering-add\s/.test(text);
+  }
+
+  private reloadAgentInstructions(sessionId: string): void {
+    const agentInstructions = this.loadAgentInstructions();
+    if (!agentInstructions) return;
+
+    const hash = this.hashContent(agentInstructions);
+    if (hash === this.lastInjectedAgentInstructionsHash) return;
+
+    this.lastInjectedAgentInstructionsHash = hash;
+    const message = this.buildSystemMessage(sessionId, agentInstructions);
+    this.appendSessionMessage(sessionId, message);
   }
 
   private buildSystemMessage(

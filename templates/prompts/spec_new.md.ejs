@@ -1,0 +1,189 @@
+Your task is to create spec #<%= specNumber %> with the highest possible quality. This spec must be so detailed, complete, and deterministic that it can be implemented 100% by an autonomous AI engine with zero human decisions required.
+
+### Step 1: Read Context Documents
+
+Read these files:
+1. `.dscode/specs/roadmap.md` — find spec #<%= specNumber %> and note its name, status, and references.
+2. `.dscode/specs/vision.md` — read the value blocks referenced by this spec.
+3. `.dscode/specs/arch.md` — refresh on architecture and fundamental principles.
+4. `.dscode/specs/adr.md` — note any architecture decisions relevant to this spec.
+5. `.dscode/specs/lessons.md` — note any lessons relevant to this spec.
+
+If the spec does not exist in the roadmap, report that and stop.
+
+### Step 2: Determine Spec Folder
+
+The spec folder is `.dscode/specs/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
+
+### Step 3: Create `requirements.md`
+
+Create `.dscode/specs/<%= specNumber %>-<name>/requirements.md` with this structure:
+
+```markdown
+# Spec <%= specNumber %>: [Spec Name] — Requirements
+
+## Value Delivery
+
+[Which value block(s) from vision.md does this spec deliver? Copy the relevant value block description here verbatim.]
+
+## Functional Requirements
+
+### FR-001: [Requirement Name]
+
+**What:** [Precise description of what the system must do.]
+**Why:** [Why this requirement exists — trace back to the value block.]
+**Acceptance Criteria:**
+- [ ] [Deterministic, testable criterion 1]
+- [ ] [Deterministic, testable criterion 2]
+
+### FR-002: [Requirement Name]
+
+... (continue for ALL functional requirements — be exhaustive)
+
+## Non-Functional Requirements
+
+### NFR-001: [Requirement Name]
+
+**What:** [e.g., performance, security, accessibility, reliability, maintainability.]
+**Acceptance Criteria:**
+- [ ] [Deterministic, measurable criterion]
+
+## Constraints
+
+- [Any constraints from arch.md, ADR decisions, or technical limitations.]
+
+## Edge Cases & Error States
+
+- [What happens when...? List every edge case and the expected behavior.]
+
+## Dependencies
+
+- [Other specs, external services, libraries, or systems this spec depends on.]
+
+## Out of Scope
+
+- [Explicitly list what this spec does NOT cover, to prevent scope creep.]
+```
+
+**Quality requirements for requirements.md:**
+- Write exclusively for AI engines (DeepSeek V4 Pro). Human readability is secondary.
+- Every requirement must have clear, deterministic acceptance criteria.
+- No ambiguous terms like "good," "fast," "user-friendly" — use precise, measurable language.
+- Be exhaustive. If you think of a requirement, include it. Underspecification is failure.
+
+---
+
+### Step 4: Create `design.md`
+
+Create `.dscode/specs/<%= specNumber %>-<name>/design.md` with this structure:
+
+```markdown
+# Spec <%= specNumber %>: [Spec Name] — Design
+
+## Design Approach
+
+[High-level approach: what patterns, strategies, or architectural decisions guide this design?]
+
+## Architecture Decisions
+
+[Any decisions made specifically for this spec. Reference ADR entries if applicable.]
+
+## Component / Module Breakdown
+
+### Component: [Name]
+
+**Purpose:** [What this component does.]
+**Interface:** [Exact API signature — function names, parameters, return types.]
+**Internal Logic:** [Step-by-step description of how this component works internally.]
+**Dependencies:** [What other components or external libraries this component uses.]
+**Error Handling:** [How errors are handled — exact behavior for each error scenario.]
+
+### Component: [Name]
+
+... (continue for ALL components — be exhaustive)
+
+## Data Flow
+
+[Step-by-step description of how data flows through the system for each operation.]
+
+## Data Structures
+
+[Exact data types, schemas, database tables, or data models. Include all fields, types, constraints, and defaults.]
+
+## File / Module Layout
+
+[Where new files go, what they contain, how they relate to existing code.]
+
+## Testing Strategy
+
+[How each component and requirement should be tested. Include specific test scenarios.]
+
+## Migration / Rollback
+
+[If this spec modifies existing behavior, how is migration handled? How is rollback handled?]
+```
+
+**Quality requirements for design.md:**
+- The design must implement ALL requirements from requirements.md — nothing less.
+- The design must follow KISS and DRY principles from arch.md.
+- Every function, class, module, route, and component must be specified exactly — no "create a service" without specifying the exact interface.
+- Include file paths for new files and specify where modifications go in existing files.
+
+---
+
+### Step 5: Create `task.md`
+
+Create `.dscode/specs/<%= specNumber %>-<name>/task.md` with this structure:
+
+```markdown
+# Spec <%= specNumber %>: [Spec Name] — Implementation Tasks
+
+## Task Order
+
+Tasks MUST be executed sequentially in numerical order. Each task depends on the completion of all preceding tasks.
+
+## Tasks
+
+### Task 1: [Task Name]
+
+**Objective:** [What this task accomplishes.]
+**Requirements Covered:** [FR-001, FR-002, ...]
+**Design References:** [Relevant sections from design.md.]
+**Actions:**
+1. [Exact action — what file to create/modify, what code to write.]
+2. [Exact action.]
+3. ...
+**Validation:** [How to verify this task is complete — what to test, what to check.]
+**Status:** [ ] pending
+
+### Task 2: [Task Name]
+
+...
+
+### Task N: [Task Name]
+
+...
+```
+
+**Quality requirements for task.md:**
+- Tasks must be small enough that each can be completed in a single tool call sequence.
+- Each task must have a clear, verifiable completion criterion.
+- The task list must cover 100% of requirements.md as designed in design.md.
+- Tasks must be ordered correctly — no task can depend on a later task.
+- Mark ALL tasks as `[ ] pending` initially.
+
+---
+
+### Step 6: Update Roadmap Status
+
+After creating all 3 documents, update the roadmap entry for spec #<%= specNumber %> to status `created`.
+
+Use the `edit` tool to change `| <%= specNumber %> | ... | planned | ... |` to `| <%= specNumber %> | ... | created | ... |`.
+
+### Step 7: Report
+
+Report:
+1. The spec folder created and its absolute path.
+2. The 3 documents created with their sizes.
+3. Confirmation that roadmap status was updated to `created`.
+4. A brief summary of what this spec covers.

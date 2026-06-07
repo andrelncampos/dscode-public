@@ -5,6 +5,7 @@ import React from "react";
 import { render } from "ink";
 import { setShellIfWindows } from "./common/shell-utils";
 import { checkForNpmUpdate, promptForPendingUpdate, type PackageInfo } from "./common/update-check";
+import { migrateAllLevels } from "./common/dscode-paths";
 import { AppContainer } from "./ui";
 
 const args = process.argv.slice(2);
@@ -28,11 +29,11 @@ if (args.includes("--help") || args.includes("-h")) {
       "  dscode --help                       Show this help",
       "",
       "Configuration:",
-      "  ~/.deepcode/settings.json    User-level API key, model, base URL",
-      "  ./.deepcode/settings.json    Project-level settings",
-      "  ./.deepcode/skills/*/SKILL.md Project-level native skills",
+      "  ~/.dscode/settings.json    User-level API key, model, base URL",
+      "  ./.dscode/settings.json    Project-level settings",
+      "  ./.dscode/skills/*/SKILL.md Project-level native skills",
       "  ./.agents/skills/*/SKILL.md   Project-level interoperable skills",
-      "  ~/.deepcode/skills/*/SKILL.md User-level native skills",
+      "  ~/.dscode/skills/*/SKILL.md User-level native skills",
       "  ~/.agents/skills/*/SKILL.md   User-level interoperable skills",
       "",
       "Inside the TUI:",
@@ -76,6 +77,15 @@ configureWindowsShell();
 if (!process.stdin.isTTY) {
   process.stderr.write("dscode requires an interactive terminal (TTY). " + "Re-run from a real terminal session.\n");
   process.exit(1);
+}
+
+// Migrate any legacy .deepcode directories to .dscode at all three levels
+// (project root, git worktree root, and user home).
+const migratedPaths = migrateAllLevels(projectRoot);
+if (migratedPaths.length > 0) {
+  process.stderr.write(
+    `[dscode] Migrated legacy configuration from .deepcode to .dscode in: ${migratedPaths.join(", ")}\n`
+  );
 }
 
 void main();

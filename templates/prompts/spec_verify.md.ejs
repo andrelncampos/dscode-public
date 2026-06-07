@@ -1,0 +1,94 @@
+Your task is to verify that spec #<%= specNumber %> is complete, deterministic, and ready for 100% autonomous AI implementation.
+
+This is an IDEMPOTENT operation — you can run it multiple times, and each pass should improve the spec quality without degrading previous improvements.
+
+### Step 1: Read the Spec
+
+Read these files:
+1. `.dscode/specs/roadmap.md` — find spec #<%= specNumber %> and note its references.
+2. `.dscode/specs/<%= specNumber %>-<name>/requirements.md`
+3. `.dscode/specs/<%= specNumber %>-<name>/design.md`
+4. `.dscode/specs/<%= specNumber %>-<name>/task.md`
+5. `.dscode/specs/vision.md` — read the value blocks referenced by this spec.
+6. `.dscode/specs/arch.md` — check alignment with architectural principles.
+
+(You'll need to discover the spec folder name from the roadmap first.)
+
+### Step 2: Verify Requirements Completeness
+
+Check `requirements.md` against these criteria:
+
+#### Coverage
+- [ ] Does the spec cover 100% of the value promised by the referenced value block(s)?
+- [ ] Are ALL functional requirements listed? Think through every possible user action, system behavior, and integration point.
+- [ ] Are non-functional requirements specified with measurable targets?
+- [ ] Are edge cases and error states exhaustively listed?
+
+#### Determinism
+- [ ] Is every requirement phrased with precise, unambiguous language?
+- [ ] Does every requirement have acceptance criteria that are objectively verifiable?
+- [ ] Are there any vague terms? ("good," "fast," "nice," "should," "could," "might")
+- [ ] Could two different AI engines read this spec and produce identical implementations? If not, the spec needs more detail.
+
+#### Traceability
+- [ ] Does every requirement trace back to a value block in vision.md?
+- [ ] Are dependencies on other specs clearly stated?
+
+### Step 3: Verify Design Completeness
+
+Check `design.md` against these criteria:
+
+#### Coverage
+- [ ] Does the design cover EVERY requirement from requirements.md?
+- [ ] Is every component/module specified with its exact interface?
+- [ ] Are all data structures fully specified (all fields, types, constraints)?
+- [ ] Are file paths specified for all new and modified files?
+- [ ] Is error handling specified for every component?
+
+#### Quality
+- [ ] Does the design follow KISS? Is it the simplest design that fulfills the requirements?
+- [ ] Does the design follow DRY where it doesn't conflict with KISS?
+- [ ] Is the data flow specified step-by-step for each operation?
+
+### Step 4: Verify Task Completeness
+
+Check `task.md` against these criteria:
+
+#### Coverage
+- [ ] Do the tasks cover 100% of requirements.md as designed in design.md?
+- [ ] Is each task small enough to be completed in one logical unit of work?
+- [ ] Are tasks ordered correctly with no missing dependencies?
+
+#### Actionability
+- [ ] Does each task specify exact actions (what file, what change)?
+- [ ] Does each task have a verifiable completion criterion?
+- [ ] Are all tasks marked as `[ ] pending`?
+
+### Step 5: Fix All Gaps Found
+
+For EVERY gap, ambiguity, or incompleteness found in steps 2-4:
+
+1. Use the `edit` tool to fix the gap directly in the spec document.
+2. Do NOT leave suggestions or comments — fix the document immediately.
+3. Add missing requirements, design specifications, or tasks.
+4. Remove ambiguous language and replace it with precise, deterministic descriptions.
+
+### Step 6: Final Check
+
+After all fixes:
+- Re-read all 3 documents.
+- Confirm 100% coverage, determinism, and actionability.
+- If any new gaps are found, go back to Step 5.
+
+### Step 7: Update Roadmap
+
+Update the roadmap entry for spec #<%= specNumber %> to status `verified`.
+
+### Step 8: Report
+
+Report:
+1. Number of gaps found and fixed in requirements.md.
+2. Number of gaps found and fixed in design.md.
+3. Number of gaps found and fixed in task.md.
+4. Confirmation that the spec is now `verified` and ready for implementation.
+5. Confidence level (0-100%) that this spec can be implemented 100% by autonomous AI.

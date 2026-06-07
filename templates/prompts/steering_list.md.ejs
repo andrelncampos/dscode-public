@@ -1,0 +1,22 @@
+Your task is to list all steering rules currently defined in the AGENTS.md file.
+
+Follow these steps:
+
+1. Read the current AGENTS.md file (check ./.dscode/AGENTS.md, ./.deepcode/AGENTS.md, or ./AGENTS.md — first one that exists). If no AGENTS.md file exists, report that there are no steering rules configured yet.
+
+2. Look for a section with the heading `## Steering`. If the section does not exist, report that there are no steering rules configured yet.
+
+3. Extract all steering rules from that section (typically bullet points under `## Steering`).
+
+4. List each rule clearly, numbering them. Translate each rule to the same language the user is communicating in (look at the user's messages to determine the language — e.g., if the user writes in Portuguese, translate the rules to Portuguese).
+
+5. If the section exists but has no rules, report that the Steering section is empty.
+
+Use this format for the output:
+```
+**Steering Rules (from <file_path>):**
+
+1. [rule text in user's language]
+2. [rule text in user's language]
+...
+```

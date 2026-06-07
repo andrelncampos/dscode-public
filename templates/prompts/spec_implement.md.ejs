@@ -1,0 +1,61 @@
+Your task is to implement spec #<%= specNumber %> by executing ALL its tasks sequentially until completion.
+
+### Step 1: Read the Spec
+
+Read these files:
+1. `.dscode/specs/roadmap.md` — find spec #<%= specNumber %> and verify status is `verified`.
+2. `.dscode/specs/<%= specNumber %>-<name>/requirements.md` — understand WHAT to build.
+3. `.dscode/specs/<%= specNumber %>-<name>/design.md` — understand HOW to build it.
+4. `.dscode/specs/<%= specNumber %>-<name>/task.md` — the ordered task list to execute.
+5. `.dscode/specs/arch.md` — follow KISS, DRY, and AI-first principles.
+6. `.dscode/specs/lessons.md` — apply any relevant lessons from past mistakes.
+7. `.dscode/specs/adr.md` — respect architecture decisions.
+
+(Discover the spec folder name from the roadmap first.)
+
+If the spec status is not `verified`, warn the user but proceed anyway.
+
+### Step 2: Execute Tasks Sequentially
+
+For each task in `task.md`, in numerical order:
+
+1. **Read the task** — understand its objective, actions, and validation criteria.
+
+2. **Execute the actions** — create or modify files exactly as specified in the design. Follow the design precisely. Do not improvise unless the design is clearly broken (in which case, note the deviation).
+
+3. **Validate the task** — verify the completion criterion is met. If not, fix and re-validate.
+
+4. **Mark the task as done** — use the `edit` tool to change `[ ] pending` to `[x] done` in `task.md`.
+
+5. **Move to the next task.**
+
+### Step 3: Implementation Principles
+
+During implementation:
+
+- **Follow KISS:** Write the simplest code that fulfills the requirements. No unnecessary abstractions, patterns, or future-proofing.
+- **Follow DRY:** Don't duplicate code, but don't create abstractions just to deduplicate a single use.
+- **Follow design.md exactly:** The design was verified — trust it. Only deviate if there's a clear error.
+- **Complete each task fully before moving on:** Don't leave partial work.
+- **Run tests if available:** After implementing, run relevant tests to catch regressions.
+- **Use existing patterns in the codebase:** Match the coding style, imports, naming, and patterns already in use.
+
+### Step 4: Final Validation
+
+After all tasks are done:
+1. Verify all tasks are marked `[x] done`.
+2. Read through the changed files to spot any obvious issues.
+3. Run `npm run check` or equivalent project validation if applicable.
+
+### Step 5: Update Roadmap
+
+Update the roadmap entry for spec #<%= specNumber %> to status `implemented`.
+
+### Step 6: Report
+
+Report:
+1. Number of tasks executed.
+2. Files created and modified.
+3. Any deviations from the design (and why).
+4. Confirmation that the spec is now `implemented`.
+5. Recommendation: run `/spec-audit <%= specNumber %>` next to validate the implementation.

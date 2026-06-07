@@ -140,3 +140,6 @@ A **file history system** (`src/common/file-history.ts`) provides undo/checkpoin
 - **AGENTS.md loading**: The CLI loads agent instructions from `./AGENTS.md`, `./.deepcode/AGENTS.md`, or `~/.deepcode/AGENTS.md` (first found wins). Write project-specific guidance for the LLM in any of these.
 - **Skills**: Place skill definitions in `~/.agents/skills/<name>/SKILL.md` (user-level) or `./.agents/skills/<name>/SKILL.md` (project-level). Legacy path `./.deepcode/skills/` is also supported. Each SKILL.md uses YAML frontmatter with `name` and `description` fields.
 - **Built-in skills**: `agent-drift-guard` (detects and corrects execution drift), `plan-and-execute` (structured task planning with progress tracking), and `karpathy-guidelines` (behavioral guidelines to reduce common LLM coding mistakes). All three are defined in `templates/skills/` and always injected into every session.
+
+## Steering
+

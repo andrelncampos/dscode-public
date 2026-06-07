@@ -29,6 +29,16 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "undo",
     "mcp",
     "raw",
+    "steering-add",
+    "steering-list",
+    "spec-init",
+    "spec-plan",
+    "spec-new",
+    "spec-verify",
+    "spec-implement",
+    "spec-audit",
+    "spec-list",
+    "spec-status",
     "exit",
   ]);
 });

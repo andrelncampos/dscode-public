@@ -5,6 +5,26 @@ import type { SessionMessage } from "../session";
 export type OpenAIMessageConverterOptions = {
   /** Optional callback to render the /init command prompt template. */
   renderInitPrompt?: () => string;
+  /** Optional callback to render the /steering-add command prompt template. */
+  renderSteeringAddPrompt?: (steeringText: string) => string;
+  /** Optional callback to render the /steering-list command prompt template. */
+  renderSteeringListPrompt?: () => string;
+  /** Optional callback to render the /spec-init command prompt template. */
+  renderSpecInitPrompt?: () => string;
+  /** Optional callback to render the /spec-plan command prompt template. */
+  renderSpecPlanPrompt?: (planText: string) => string;
+  /** Optional callback to render the /spec-new command prompt template. */
+  renderSpecNewPrompt?: (specNumber: number) => string;
+  /** Optional callback to render the /spec-verify command prompt template. */
+  renderSpecVerifyPrompt?: (specNumber: number) => string;
+  /** Optional callback to render the /spec-implement command prompt template. */
+  renderSpecImplementPrompt?: (specNumber: number) => string;
+  /** Optional callback to render the /spec-audit command prompt template. */
+  renderSpecAuditPrompt?: (specNumber: number) => string;
+  /** Optional callback to render the /spec-list command prompt template. */
+  renderSpecListPrompt?: () => string;
+  /** Optional callback to render the /spec-status command prompt template. */
+  renderSpecStatusPrompt?: (specNumber: number | null) => string;
 };
 
 /**
@@ -134,6 +154,58 @@ export class OpenAIMessageConverter {
   private renderContent(message: SessionMessage): string {
     if (message.role === "user" && message.content === "/init") {
       return this.options.renderInitPrompt?.() ?? "";
+    }
+    if (message.role === "user") {
+      const steeringAddMatch = message.content?.match(/^\/steering-add\s+(.+)$/s);
+      if (steeringAddMatch) {
+        return this.options.renderSteeringAddPrompt?.(steeringAddMatch[1].trim()) ?? "";
+      }
+    }
+    if (message.role === "user" && message.content === "/steering-list") {
+      return this.options.renderSteeringListPrompt?.() ?? "";
+    }
+    if (message.role === "user" && message.content === "/spec-init") {
+      return this.options.renderSpecInitPrompt?.() ?? "";
+    }
+    if (message.role === "user") {
+      const specPlanMatch = message.content?.match(/^\/spec-plan(?:\s+(.+))?$/s);
+      if (specPlanMatch) {
+        return this.options.renderSpecPlanPrompt?.(specPlanMatch[1]?.trim() ?? "") ?? "";
+      }
+    }
+    if (message.role === "user") {
+      const specNewMatch = message.content?.match(/^\/spec-new\s+(\d+)$/);
+      if (specNewMatch) {
+        return this.options.renderSpecNewPrompt?.(parseInt(specNewMatch[1], 10)) ?? "";
+      }
+    }
+    if (message.role === "user") {
+      const specVerifyMatch = message.content?.match(/^\/spec-verify\s+(\d+)$/);
+      if (specVerifyMatch) {
+        return this.options.renderSpecVerifyPrompt?.(parseInt(specVerifyMatch[1], 10)) ?? "";
+      }
+    }
+    if (message.role === "user") {
+      const specImplementMatch = message.content?.match(/^\/spec-implement\s+(\d+)$/);
+      if (specImplementMatch) {
+        return this.options.renderSpecImplementPrompt?.(parseInt(specImplementMatch[1], 10)) ?? "";
+      }
+    }
+    if (message.role === "user") {
+      const specAuditMatch = message.content?.match(/^\/spec-audit\s+(\d+)$/);
+      if (specAuditMatch) {
+        return this.options.renderSpecAuditPrompt?.(parseInt(specAuditMatch[1], 10)) ?? "";
+      }
+    }
+    if (message.role === "user" && message.content === "/spec-list") {
+      return this.options.renderSpecListPrompt?.() ?? "";
+    }
+    if (message.role === "user") {
+      const specStatusMatch = message.content?.match(/^\/spec-status(?:\s+(\d+))?$/);
+      if (specStatusMatch) {
+        const specNum = specStatusMatch[1] ? parseInt(specStatusMatch[1], 10) : null;
+        return this.options.renderSpecStatusPrompt?.(specNum) ?? "";
+      }
     }
     return message.content ?? "";
   }
