@@ -1,6 +1,6 @@
 ## WebSearch
 
-Use this tool when you need up-to-date web information before writing code, changing dependencies, or citing external guidance.
+Use this tool when you need up-to-date web information before writing code, changing dependencies, or citing external guidance. For DeepSeek V4 models, web search is handled natively by the API (no configuration needed).
 
 JSON schema:
 

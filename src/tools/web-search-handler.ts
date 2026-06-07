@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { supportsWebSearch } from "../common/model-capabilities";
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
@@ -19,8 +20,14 @@ export async function handleWebSearchTool(
   }
 
   const llmContext = context.createOpenAIClient?.();
-  const scriptPath = llmContext?.webSearchTool?.trim();
 
+  // Use native DeepSeek web search when available
+  if (llmContext?.client && supportsWebSearch(llmContext.model)) {
+    return executeNativeWebSearch(query, llmContext.model, llmContext.client);
+  }
+
+  // Fallback to configured external script
+  const scriptPath = llmContext?.webSearchTool?.trim();
   if (!scriptPath) {
     return {
       ok: false,
@@ -29,11 +36,64 @@ export async function handleWebSearchTool(
         "WebSearch is not configured.\n" +
         "Configure webSearchTool in your settings.json with the path to an executable script.\n" +
         'Example: { "webSearchTool": "/usr/local/bin/web-search" }\n' +
-        "The script receives the search query as its first argument and must print JSON results to stdout.",
+        "The script receives the search query as its first argument and must print JSON results to stdout.\n\n" +
+        "Tip: If you're using DeepSeek V4 models, native web search is used automatically (no config needed).",
     };
   }
 
   return executeConfiguredWebSearch(query, scriptPath, context, llmContext?.env ?? {});
+}
+
+async function executeNativeWebSearch(
+  query: string,
+  model: string,
+  client: NonNullable<ReturnType<NonNullable<ToolExecutionContext["createOpenAIClient"]>>["client"]>
+): Promise<ToolExecutionResult> {
+  try {
+    const response = await client.chat.completions.create(
+      {
+        model,
+        messages: [
+          {
+            role: "user",
+            content: `Search the web for: ${query}`,
+          },
+        ],
+        tools: [{ type: "web_search", web_search: {} }],
+        temperature: 0.1,
+        max_tokens: 4096,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      {
+        signal: AbortSignal.timeout(15000),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any
+    );
+
+    const content = response.choices[0]?.message?.content ?? "";
+    if (!content.trim()) {
+      return {
+        ok: false,
+        name: "WebSearch",
+        error: "Web search returned no results.",
+      };
+    }
+
+    const truncated = content.length > MAX_OUTPUT_CHARS;
+    return {
+      ok: true,
+      name: "WebSearch",
+      output: truncated ? content.slice(0, MAX_OUTPUT_CHARS) : content,
+      metadata: { truncated },
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      name: "WebSearch",
+      error: `Web search failed: ${message}`,
+    };
+  }
 }
 
 async function executeConfiguredWebSearch(
