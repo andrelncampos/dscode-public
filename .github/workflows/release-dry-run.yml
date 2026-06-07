@@ -1,38 +1,65 @@
 name: Release Dry Run
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - "src/**"
-      - "templates/**"
-      - ".github/workflows/release-*"
 
 permissions:
   contents: read
 
 jobs:
   dry-run:
-    name: Verify package integrity (no publish)
-    runs-on: ubuntu-latest
+    name: Dry run ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-latest
+            node-version: "22"
+          - platform: linux-x64
+            runner: ubuntu-latest
+            node-version: "22"
+          - platform: macos-x64
+            runner: macos-13
+            node-version: "22"
+          - platform: macos-arm64
+            runner: macos-latest
+            node-version: "22"
+
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
-          node-version: "22"
+          node-version: ${{ matrix.node-version }}
           cache: npm
-      - run: npm ci
-      - run: npm run build
-      - name: Verify package contents
-        run: |
-          npm pack --dry-run 2>&1 | tee pack-output.txt
-          # Ensure key files are included
-          grep -q "dist/cli.js" pack-output.txt || { echo "::error::dist/cli.js missing from package"; exit 1; }
-          grep -q "LICENSE" pack-output.txt || { echo "::error::LICENSE missing from package"; exit 1; }
-          grep -q "README.md" pack-output.txt || { echo "::error::README.md missing from package"; exit 1; }
-      - name: Confirm no npm publish
-        run: |
-          echo "This workflow only validates packaging. It does NOT publish to npm."
-          echo "Publication is done manually by the maintainer."
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeCheck + Lint + Format Check
+        run: npm run check
+
+      - name: Bundle
+        run: npm run bundle
+
+      - name: Build binary (SEA)
+        run: npm run build:binary
+
+      - name: Package binary
+        run: npm run package:binary
+
+      - name: Validate binary
+        run: npm run validate:binary
+
+      - name: Upload package artifact (dry-run)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436ee6a3e # v4.6.2
+        with:
+          name: dry-run-${{ matrix.platform }}
+          path: release/packages/*
+          retention-days: 7
+          if-no-files-found: error

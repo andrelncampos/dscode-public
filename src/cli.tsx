@@ -144,6 +144,9 @@ function readPackageInfo(): PackageInfo {
       version: typeof pkg.version === "string" ? pkg.version : "",
     };
   } catch {
-    return { name: "@andrelncampos/dscode", version: "" };
+    return {
+      name: "@andrelncampos/dscode",
+      version: process.env.DSCODE_VERSION || "",
+    };
   }
 }

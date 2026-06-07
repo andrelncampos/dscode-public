@@ -55,199 +55,147 @@ O DsCode é útil para:
 
 ---
 
-## Download rápido
+## Instalação recomendada: baixar o binário pronto
 
-> ⚠️ **Ainda não há releases publicadas.** As instruções abaixo mostram como será o formato de download quando a primeira release for publicada. Enquanto isso, use a instalação via npm (próxima seção).
+> ⚠️ **Ainda não há releases publicadas.** As instruções abaixo mostram como será o formato de download quando a primeira release for publicada. Enquanto isso, use a instalação via npm (seção "Instalação alternativa via npm").
 
-**Quando houver uma release publicada**, acesse a [página de Releases do GitHub](https://github.com/andrelncampos/dscode/releases) e baixe o arquivo correspondente ao seu sistema:
+A forma mais rápida de usar o DsCode é baixar o binário pronto da [página de Releases do GitHub](https://github.com/andrelncampos/dscode/releases). Não é necessário instalar Node.js — o binário é autossuficiente.
+
+Escolha o arquivo correspondente ao seu sistema:
 
 | Sistema operacional | Arquivo para baixar |
 |---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon / ARM64) | `dscode-macos-arm64.tar.gz` |
+| Windows (x64) | `dscode-v1.0.1-windows-x64.zip` |
+| Linux (x64) | `dscode-v1.0.1-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-v1.0.1-macos-x64.tar.gz` |
+| macOS (Apple Silicon / ARM64) | `dscode-v1.0.1-macos-arm64.tar.gz` |
 
-Cada release inclui um arquivo `checksums.txt` para verificar a integridade do download.
+### Windows x64
 
----
-
-## Instalação por sistema operacional
-
-### Instalação recomendada (qualquer sistema)
-
-A forma mais simples de instalar é via npm:
-
-```bash
-npm install -g @andrelncampos/dscode
-```
-
-Depois execute `dscode` em qualquer pasta de projeto. Se ainda não tiver o Node.js instalado, veja os pré-requisitos abaixo.
-
-**Pré-requisito único**: [Node.js](https://nodejs.org) versão **22** ou superior.
-
-Verifique sua versão com:
-
-```bash
-node --version
-```
-
-A saída deve ser `v22.x.x` ou `v24.x.x`. Versões mais antigas (18, 20) não são compatíveis.
-
----
-
-### Windows
-
-#### Opção 1: npm (recomendada)
-
-1. Instale o [Node.js 22+](https://nodejs.org).
-2. Abra o **PowerShell** (ou Git Bash, Terminal, CMD).
-3. Instale globalmente:
-
-   ```powershell
-   npm install -g @andrelncampos/dscode
-   ```
-
-4. Verifique a instalação:
-
-   ```powershell
-   dscode --version
-   ```
-
-   Deve mostrar o número da versão (ex: `1.0.1`).
-
-5. Execute em qualquer projeto:
-
-   ```powershell
-   cd C:\meu-projeto
-   dscode
-   ```
-
-#### Opção 2: Binário da release
-
-Quando houver releases publicadas:
-
-1. Baixe `dscode-windows-x64.zip` da página de Releases.
+1. Baixe `dscode-vX.Y.Z-windows-x64.zip` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
 2. Extraia em uma pasta de sua escolha (ex: `C:\dscode`).
-3. Adicione a pasta ao PATH do sistema.
-4. Execute `dscode.exe` no terminal.
+3. Execute no terminal:
 
-#### Problemas comuns no Windows
-
-- **Erro "comando não encontrado" após `npm install -g`**: O PATH do npm pode não estar configurado. Feche e reabra o terminal, ou verifique se `%APPDATA%\npm` está no PATH.
-- **Erro de permissão na instalação**: Execute o PowerShell como administrador ou use `npm install -g` sem admin configurando o prefixo do npm para uma pasta local.
-
----
-
-### Linux
-
-#### Opção 1: npm (recomendada)
-
-1. Instale o [Node.js 22+](https://nodejs.org) (use `nvm` ou o gerenciador de pacotes da sua distribuição).
-
-   ```bash
-   # Exemplo com nvm
-   nvm install 22
-   nvm use 22
+   ```powershell
+   C:\dscode\dscode.exe --version
    ```
 
-2. Instale globalmente:
+4. **Opcional**: Adicione a pasta ao PATH do sistema para executar `dscode` de qualquer lugar:
+   - Pesquise "Variáveis de Ambiente" no Windows.
+   - Edite a variável `Path` e adicione `C:\dscode`.
+   - Reabra o terminal.
+
+> ⚠️ **Nota sobre o Windows Defender SmartScreen**: por ser um binário novo e gratuito, o Windows pode exibir um alerta de segurança na primeira execução. Isso é esperado para programas independentes. **Baixe apenas da página oficial de Releases.** Se o alerta aparecer, clique em "Mais informações" e depois em "Executar assim mesmo". **Não desative o SmartScreen.**
+
+### Linux x64
+
+1. Baixe `dscode-vX.Y.Z-linux-x64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
+2. Extraia e execute:
 
    ```bash
-   npm install -g @andrelncampos/dscode
+   tar -xzf dscode-vX.Y.Z-linux-x64.tar.gz
+   chmod +x dscode
+   ./dscode --version
    ```
 
-3. Verifique:
+3. **Opcional**: mova para um diretório no PATH:
 
    ```bash
+   sudo mv dscode /usr/local/bin/
    dscode --version
    ```
 
-4. Execute:
+### macOS Intel x64
+
+1. Baixe `dscode-vX.Y.Z-macos-x64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
+2. Extraia e execute:
 
    ```bash
-   cd /caminho/do/projeto
-   dscode
-   ```
-
-#### Opção 2: Binário da release
-
-Quando houver releases:
-
-1. Baixe `dscode-linux-x64.tar.gz`.
-2. Extraia:
-
-   ```bash
-   tar -xzf dscode-linux-x64.tar.gz
-   ```
-
-3. Torne executável (se necessário):
-
-   ```bash
+   tar -xzf dscode-vX.Y.Z-macos-x64.tar.gz
    chmod +x dscode
+   ./dscode --version
    ```
 
-4. Mova para o PATH:
+3. **Opcional**: mova para um diretório no PATH:
 
    ```bash
    sudo mv dscode /usr/local/bin/
    ```
 
-#### Problemas comuns no Linux
+> ⚠️ **Nota sobre o Gatekeeper**: o macOS pode bloquear a execução de binários baixados da internet. Se isso acontecer, vá em **Preferências do Sistema → Segurança e Privacidade** e autorize o DsCode manualmente. **Não desative o Gatekeeper permanentemente.**
 
-- **Permissão negada (EACCES) ao instalar globalmente**: Configure o prefixo do npm para um diretório local ou use `sudo`.
-- **Shell não reconhece `dscode`**: Verifique se `/usr/local/bin` está no PATH. Reabra o terminal.
+### macOS Apple Silicon ARM64
+
+1. Baixe `dscode-vX.Y.Z-macos-arm64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
+2. Mesmas instruções do macOS Intel acima.
+
+### Verificação de integridade
+
+Cada release inclui um arquivo `checksums.txt` com os hashes SHA256 de todos os arquivos. Para verificar seu download:
+
+**Windows (PowerShell):**
+
+```powershell
+Get-FileHash .\dscode-vX.Y.Z-windows-x64.zip -Algorithm SHA256
+# Compare o hash com o checksums.txt
+```
+
+**Linux:**
+
+```bash
+sha256sum dscode-vX.Y.Z-linux-x64.tar.gz
+# Compare o hash com o checksums.txt
+```
+
+**macOS:**
+
+```bash
+shasum -a 256 dscode-vX.Y.Z-macos-arm64.tar.gz
+# Compare o hash com o checksums.txt
+```
+
+### Atualização
+
+Para atualizar o DsCode, baixe a nova versão da [página de Releases](https://github.com/andrelncampos/dscode/releases) e substitua o binário anterior.
+
+### Desinstalação
+
+Remova o binário e a pasta onde ele foi extraído:
+
+- **Windows**: Delete a pasta (ex: `C:\dscode`) e remova-a do PATH.
+- **Linux/macOS**: `sudo rm /usr/local/bin/dscode` e delete os arquivos extraídos.
+
+As configurações do DsCode ficam em `~/.deepcode/settings.json`. Esse arquivo **não** é removido automaticamente — delete-o manualmente se desejar limpar tudo.
 
 ---
 
-### macOS
+## Instalação alternativa via npm
 
-#### Opção 1: npm (recomendada)
-
-1. Instale o [Node.js 22+](https://nodejs.org) (use o instalador oficial, Homebrew ou nvm).
-
-   ```bash
-   # Exemplo com Homebrew
-   brew install node@22
-   ```
-
-2. Instale globalmente:
-
-   ```bash
-   npm install -g @andrelncampos/dscode
-   ```
-
-3. Verifique:
-
-   ```bash
-   dscode --version
-   ```
-
-4. Execute:
-
-   ```bash
-   cd /caminho/do/projeto
-   dscode
-   ```
-
-#### Opção 2: Binário da release
-
-Quando houver releases, baixe o arquivo correto para seu Mac:
-
-- **Mac com chip Intel**: `dscode-macos-x64.tar.gz`
-- **Mac com Apple Silicon (M1/M2/M3/M4)**: `dscode-macos-arm64.tar.gz`
-
-Extraia com:
+O DsCode também está disponível como pacote npm. Esta opção exige [Node.js](https://nodejs.org) versão **22** ou superior instalado no sistema.
 
 ```bash
-tar -xzf dscode-macos-arm64.tar.gz
-chmod +x dscode
-sudo mv dscode /usr/local/bin/
+npm install -g @andrelncampos/dscode
 ```
 
-#### Nota sobre Gatekeeper
+Verifique a instalação:
 
-O macOS pode bloquear a execução de binários baixados da internet. Se isso acontecer, você precisará autorizar manualmente no painel **Segurança e Privacidade** das Preferências do Sistema. **Não desative o Gatekeeper permanentemente** — autorize apenas o DsCode.
+```bash
+dscode --version
+```
+
+**Pré-requisito**: Node.js 22+. Verifique com `node --version`. A saída deve ser `v22.x.x` ou superior.
+
+### Atualização via npm
+
+```bash
+npm update -g @andrelncampos/dscode
+```
+
+### Desinstalação via npm
+
+```bash
+npm uninstall -g @andrelncampos/dscode
+```
 
 ---
 

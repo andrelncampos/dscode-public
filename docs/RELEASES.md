@@ -6,10 +6,10 @@ Each release on the [GitHub Releases](https://github.com/andrelncampos/dscode/re
 
 | File | Operating System | Architecture |
 |---|---|---|
-| `dscode-windows-x64.zip` | Windows 10/11 | x86-64 (Intel/AMD) |
-| `dscode-linux-x64.tar.gz` | Linux | x86-64 (Intel/AMD) |
-| `dscode-macos-x64.tar.gz` | macOS | Intel x86-64 |
-| `dscode-macos-arm64.tar.gz` | macOS | Apple Silicon (M1/M2/M3/M4) |
+| `dscode-vX.Y.Z-windows-x64.zip` | Windows 10/11 | x86-64 (Intel/AMD) |
+| `dscode-vX.Y.Z-linux-x64.tar.gz` | Linux | x86-64 (Intel/AMD) |
+| `dscode-vX.Y.Z-macos-x64.tar.gz` | macOS | Intel x86-64 |
+| `dscode-vX.Y.Z-macos-arm64.tar.gz` | macOS | Apple Silicon (M1/M2/M3/M4) |
 
 Not sure what you have?
 
