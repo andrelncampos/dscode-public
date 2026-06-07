@@ -83,6 +83,12 @@ export function buildStatusLine(entry: SessionEntry): string {
   if (typeof entry.activeTokens === "number" && entry.activeTokens > 0) {
     parts.push(`tokens: ${entry.activeTokens}`);
   }
+  if (entry.cwd) {
+    parts.push(`cwd: ${entry.cwd}`);
+  }
+  if (entry.lastUserPrompt) {
+    parts.push(entry.lastUserPrompt);
+  }
   if (entry.failReason) {
     parts.push(`fail: ${entry.failReason}`);
   }

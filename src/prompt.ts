@@ -635,6 +635,29 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
         },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "glob",
+        description:
+          "Search for files matching a glob pattern (e.g., 'src/**/*.ts', '*.test.ts'). " +
+          "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
+          "Returns matching relative file paths as a JSON array. Prefer this over bash ls/find.",
+        parameters: {
+          type: "object",
+          properties: {
+            pattern: {
+              type: "string",
+              description:
+                "Glob pattern to match (e.g., '**/*.ts', 'src/**/*.tsx'). " +
+                "If the pattern has no directory component it matches in any directory.",
+            },
+          },
+          required: ["pattern"],
+          additionalProperties: false,
+        },
+      },
+    },
   ];
 
   tools.push({

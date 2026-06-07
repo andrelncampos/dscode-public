@@ -222,6 +222,9 @@ export type SessionEntry = {
   usage: ModelUsage | null;
   usagePerModel: Record<string, ModelUsage> | null;
   activeTokens: number;
+  cwd: string | null;
+  lastBashCommand: string | null;
+  lastUserPrompt: string | null;
   createTime: string;
   updateTime: string;
   processes: Map<string, SessionProcessEntry> | null; // {pid: process info}
@@ -1074,6 +1077,9 @@ ${agentInstructions}
       usage: null,
       usagePerModel: null,
       activeTokens: 0,
+      cwd: process.cwd(),
+      lastBashCommand: null,
+      lastUserPrompt: userPrompt.text ? userPrompt.text.slice(0, 200) : null,
       createTime: now,
       updateTime: now,
       processes: null,
@@ -1175,6 +1181,7 @@ ${agentInstructions}
       status: "pending",
       failReason: null,
       askPermissions: undefined,
+      lastUserPrompt: userPrompt.text ? userPrompt.text.slice(0, 200) : entry.lastUserPrompt,
       updateTime: now,
     }));
 
@@ -2585,6 +2592,7 @@ ${agentInstructions}
       return {
         ...entry,
         processes,
+        lastBashCommand: command,
         updateTime: now,
       };
     });
@@ -2791,6 +2799,9 @@ ${agentInstructions}
       usage: (value.usage as ModelUsage) ?? null,
       usagePerModel: this.normalizeUsagePerModel(value),
       activeTokens: typeof value.activeTokens === "number" ? value.activeTokens : 0,
+      cwd: typeof value.cwd === "string" ? value.cwd : null,
+      lastBashCommand: typeof value.lastBashCommand === "string" ? value.lastBashCommand : null,
+      lastUserPrompt: typeof value.lastUserPrompt === "string" ? value.lastUserPrompt : null,
       createTime: typeof value.createTime === "string" ? value.createTime : new Date().toISOString(),
       updateTime: typeof value.updateTime === "string" ? value.updateTime : new Date().toISOString(),
       processes: this.deserializeProcesses(value.processes),
