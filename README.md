@@ -382,6 +382,48 @@ O DsCode é otimizado para DeepSeek V4.
 
 ---
 
+## Como usar com OpenAI
+
+DsCode funciona com qualquer modelo da OpenAI compatível com a API Chat Completions.
+
+### Configuração para OpenAI
+
+```json
+{
+  "env": {
+    "MODEL": "gpt-4o",
+    "BASE_URL": "https://api.openai.com/v1",
+    "API_KEY": "sk-sua-chave-openai"
+  },
+  "thinkingEnabled": false
+}
+```
+
+### O que muda em relação ao DeepSeek
+
+| Funcionalidade | Com OpenAI |
+|---|---|
+| **Thinking mode** | ⚠️ Deve estar `false`. O reasoning effort é proprietário do DeepSeek |
+| **WebSearch built-in** | ❌ Não disponível. Use `webSearchTool` com script externo |
+| **KV Cache** | ❌ Não disponível (exclusivo do DeepSeek) |
+| **Imagens (Ctrl+V)** | ✅ Funciona com modelos de visão (`gpt-5.5`, `gpt-5`, `gpt-4o`) |
+| **Modelos suportados** | `gpt-5.5`, `gpt-5.4`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini` — qualquer Chat Completions |
+
+### Exemplo com modelo mais barato
+
+```json
+{
+  "env": {
+    "MODEL": "gpt-4o-mini",
+    "BASE_URL": "https://api.openai.com/v1",
+    "API_KEY": "sk-sua-chave-openai"
+  },
+  "thinkingEnabled": false
+}
+```
+
+---
+
 ## Boas práticas
 
 ### Segurança
