@@ -39,7 +39,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check",
     "build": "npm run check && npm run bundle && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "node src/tests/run-tests.mjs",
-    "test:single": "tsx --test",
+    "test:single": "node --import tsx --test",
     "security:audit": "npm audit --audit-level=high",
     "security:secrets": "echo 'Run gitleaks locally: gitleaks detect --source . --verbose'",
     "security:all": "npm run security:audit",
