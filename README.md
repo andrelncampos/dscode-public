@@ -406,8 +406,8 @@ DsCode funciona com qualquer modelo da OpenAI compatível com a API Chat Complet
 | **Thinking mode** | ⚠️ Deve estar `false`. O reasoning effort é proprietário do DeepSeek |
 | **WebSearch built-in** | ❌ Não disponível. Use `webSearchTool` com script externo |
 | **KV Cache** | ❌ Não disponível (exclusivo do DeepSeek) |
-| **Imagens (Ctrl+V)** | ✅ Funciona com modelos multimodais (`gpt-4o`, `gpt-4-turbo`) |
-| **Modelos suportados** | `gpt-4o`, `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo` e qualquer OpenAI-compatible |
+| **Imagens (Ctrl+V)** | ✅ Funciona com modelos de visão (`gpt-5.5`, `gpt-5`, `gpt-4o`) |
+| **Modelos suportados** | `gpt-5.5`, `gpt-5.4`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini` — qualquer Chat Completions |
 
 ### Exemplo com modelo mais barato
 
