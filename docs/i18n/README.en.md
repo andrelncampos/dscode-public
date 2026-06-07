@@ -55,235 +55,69 @@ DsCode is useful for:
 
 ---
 
-## Quick download
+## Installation
 
-> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published. In the meantime, use the npm installation method (next section).
+### Via npm (recommended)
 
-**Once a release is published**, go to the [GitHub Releases page](https://github.com/andrelncampos/dscode/releases) and download the file for your system:
+```bash
+npm install -g @andrelncampos/dscode
+```
 
-| Operating System | Download File |
+**Prerequisite**: [Node.js](https://nodejs.org) version **22** or later.
+
+Verify installation:
+
+```bash
+dscode --version
+```
+
+**Update:**
+
+```bash
+npm update -g @andrelncampos/dscode
+```
+
+**Uninstall:**
+
+```bash
+npm uninstall -g @andrelncampos/dscode
+```
+
+### Via binary (future)
+
+> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published. In the meantime, use the npm installation above.
+
+Download the binary from the [GitHub Releases page](https://github.com/andrelncampos/dscode/releases). No Node.js required — the binary is self-contained.
+
+| Operating System | File |
 |---|---|
 | Windows (x64) | `dscode-windows-x64.zip` |
 | Linux (x64) | `dscode-linux-x64.tar.gz` |
 | macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
 | macOS (Apple Silicon / ARM64) | `dscode-macos-arm64.tar.gz` |
 
-Each release includes a `checksums.txt` file to verify download integrity.
+Each release includes a `checksums.txt` with SHA256 hashes.
 
----
-
-## Installation by operating system
-
-### Recommended installation (any OS)
-
-The simplest way is via npm:
+### Installing from source
 
 ```bash
-npm install -g @andrelncampos/dscode
-```
-
-Then run `dscode` inside any project folder. If you don't have Node.js installed, see prerequisites below.
-
-**Single prerequisite**: [Node.js](https://nodejs.org) version **22** or later.
-
-Check your version:
-
-```bash
-node --version
-```
-
-Output should be `v22.x.x` or `v24.x.x`. Older versions (18, 20) are not supported.
-
----
-
-### Windows
-
-#### Option 1: npm (recommended)
-
-1. Install [Node.js 22+](https://nodejs.org).
-2. Open **PowerShell** (or Git Bash, Terminal, CMD).
-3. Install globally:
-
-   ```powershell
-   npm install -g @andrelncampos/dscode
-   ```
-
-4. Verify:
-
-   ```powershell
-   dscode --version
-   ```
-
-   Should show the version number (e.g., `1.0.1`).
-
-5. Run in any project:
-
-   ```powershell
-   cd C:\my-project
-   dscode
-   ```
-
-#### Option 2: Release binary
-
-When releases are available:
-
-1. Download `dscode-windows-x64.zip` from the Releases page.
-2. Extract to a folder of your choice (e.g., `C:\dscode`).
-3. Add the folder to your system PATH.
-4. Run `dscode.exe` in the terminal.
-
-#### Common Windows issues
-
-- **"Command not found" after `npm install -g`**: The npm PATH may not be configured. Close and reopen the terminal, or check that `%APPDATA%\npm` is in PATH.
-- **Permission error during installation**: Run PowerShell as administrator or configure npm's prefix to a local folder.
-
----
-
-### Linux
-
-#### Option 1: npm (recommended)
-
-1. Install [Node.js 22+](https://nodejs.org) (use `nvm` or your distribution's package manager).
-
-   ```bash
-   # Example with nvm
-   nvm install 22
-   nvm use 22
-   ```
-
-2. Install globally:
-
-   ```bash
-   npm install -g @andrelncampos/dscode
-   ```
-
-3. Verify:
-
-   ```bash
-   dscode --version
-   ```
-
-4. Run:
-
-   ```bash
-   cd /path/to/project
-   dscode
-   ```
-
-#### Option 2: Release binary
-
-When releases are available:
-
-1. Download `dscode-linux-x64.tar.gz`.
-2. Extract:
-
-   ```bash
-   tar -xzf dscode-linux-x64.tar.gz
-   ```
-
-3. Make executable (if needed):
-
-   ```bash
-   chmod +x dscode
-   ```
-
-4. Move to PATH:
-
-   ```bash
-   sudo mv dscode /usr/local/bin/
-   ```
-
-#### Common Linux issues
-
-- **Permission denied (EACCES) when installing globally**: Configure npm's prefix to a local directory or use `sudo`.
-- **Shell does not recognize `dscode`**: Check that `/usr/local/bin` is in PATH. Reopen the terminal.
-
----
-
-### macOS
-
-#### Option 1: npm (recommended)
-
-1. Install [Node.js 22+](https://nodejs.org) (use the official installer, Homebrew, or nvm).
-
-   ```bash
-   # Example with Homebrew
-   brew install node@22
-   ```
-
-2. Install globally:
-
-   ```bash
-   npm install -g @andrelncampos/dscode
-   ```
-
-3. Verify:
-
-   ```bash
-   dscode --version
-   ```
-
-4. Run:
-
-   ```bash
-   cd /path/to/project
-   dscode
-   ```
-
-#### Option 2: Release binary
-
-When releases are available, download the correct file for your Mac:
-
-- **Intel Mac**: `dscode-macos-x64.tar.gz`
-- **Apple Silicon Mac (M1/M2/M3/M4)**: `dscode-macos-arm64.tar.gz`
-
-Extract with:
-
-```bash
-tar -xzf dscode-macos-arm64.tar.gz
-chmod +x dscode
-sudo mv dscode /usr/local/bin/
-```
-
-#### Gatekeeper note
-
-macOS may block execution of binaries downloaded from the internet. If that happens, you'll need to authorize it manually in **Security & Privacy** in System Preferences. **Do not disable Gatekeeper permanently** — only authorize DsCode.
-
----
-
-## Installing from source
-
-For those who want the latest development version or to contribute:
-
-```bash
-# 1. Clone the repository
 git clone https://github.com/andrelncampos/dscode.git
 cd dscode
-
-# 2. Install dependencies
 npm ci
-
-# 3. Build (typecheck + lint + format + bundle)
 npm run build
-
-# 4. Create a local link (makes dscode available globally)
 npm link
-
-# 5. Verify
 dscode --version
 ```
-
-Now `dscode` is available as a global command in your terminal.
 
 ---
 
 ## Initial setup
 
-DsCode reads its configuration from `~/.deepcode/settings.json` (in your home directory). You can also have a `.deepcode/settings.json` inside a specific project for local settings.
+DsCode reads its configuration from `~/.dscode/settings.json` (your home directory). You can also have a `.dscode/settings.json` inside a specific project for local settings.
 
 ### Creating your first configuration
 
-Create `~/.deepcode/settings.json`:
+Create `~/.dscode/settings.json`:
 
 ```json
 {
@@ -326,12 +160,13 @@ $env:DEEPCODE_API_KEY = "put_your_key_here"
 | `env.MODEL` | string | AI model to use | `deepseek-v4-pro` |
 | `env.BASE_URL` | string | Provider API base URL | `https://api.deepseek.com` |
 | `env.API_KEY` | string | Provider API key | *(required)* |
-| `thinkingEnabled` | boolean | Enables thinking mode (AI "thinks" before responding) | `true` for DeepSeek |
+| `thinkingEnabled` | boolean | Enables thinking mode | `true` for DeepSeek |
 | `reasoningEffort` | string | Reasoning depth: `"high"` or `"max"` | `"max"` for V4 Pro |
 | `temperature` | number | Response creativity (0 to 2) | *(provider default)* |
 | `maxTokens` | number | Token limit per response | 65536 (Pro) / 32768 (Flash) |
-| `debugLogEnabled` | boolean | Saves debug logs to `~/.deepcode/logs/` | `false` |
-| `permissions` | object | Fine-grained permission control (read, write, network, etc.) | *(all allowed)* |
+| `debugLogEnabled` | boolean | Saves debug logs to `~/.dscode/logs/` | `false` |
+| `telemetryEnabled` | boolean | Sends anonymous usage statistics | `false` |
+| `permissions` | object | Fine-grained permission control | *(all allowed)* |
 | `mcpServers` | object | MCP server configuration | *(none)* |
 | `notify` | string | Script executed after each task completes | *(none)* |
 | `webSearchTool` | string | Custom web search script | *(uses built-in)* |
@@ -350,7 +185,7 @@ npm install -g @andrelncampos/dscode
 
 ### Step 2: Configure your key
 
-Create `~/.deepcode/settings.json` with your API key and preferred model (see the Configuration section above).
+Create `~/.dscode/settings.json` with your API key and preferred model (see Configuration section above).
 
 ### Step 3: Open a project folder
 
@@ -368,6 +203,8 @@ dscode
 
 You'll see a welcome screen with a text input field. The assistant is ready.
 
+**Tip:** Type `@` to search and mention project files — the AI can read and edit the files you reference.
+
 ### Step 5: Ask something simple
 
 Type in the prompt field:
@@ -384,13 +221,58 @@ Press **Enter**. The AI will analyze the project files and respond.
 Analyze the codebase and point out possible improvements, without changing anything.
 ```
 
-The AI will examine the code and suggest improvements. Use `Ctrl+O` to view the full output if needed.
+The AI will examine the code and suggest improvements. Use `Ctrl+O` to expand output or view running processes.
 
 ### Step 7: Review and commit
 
 When the AI makes changes to files, **review each diff** before committing. DsCode shows what was changed and you decide whether to accept it.
 
 > 💡 **Tip**: Make a commit (`git commit`) before requesting large tasks. If something goes wrong, you can undo with `git reset --hard`.
+
+---
+
+## Commands and shortcuts
+
+### Slash commands
+
+Type `/` in the prompt to open the command menu:
+
+| Command | Action |
+|---|---|
+| `/model` | Select model, thinking mode, and reasoning effort |
+| `/new` | Start a fresh conversation (clears context) |
+| `/init` | Create `AGENTS.md` file with instructions for the AI in the project |
+| `/resume` | Resume a previous conversation |
+| `/continue` | Continue the active conversation (or resume if empty) |
+| `/undo` | Restore code or conversation to a previous point |
+| `/mcp` | Show MCP server status and available tools |
+| `/raw` | Toggle reasoning display mode (full, summarized, hidden) |
+| `/exit` | Quit DsCode |
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Enter` | Send prompt |
+| `Shift+Enter` | Insert newline |
+| `@` | Search and mention project files |
+| `Tab` | Autocomplete (commands and file mentions) |
+| `/` | Open slash command menu |
+| `Ctrl+O` | Expand output / view running processes |
+| `Ctrl+V` | Paste clipboard image |
+| `Ctrl+X` | Clear pasted images |
+| `Ctrl+C` | Cancel prompt / interrupt AI |
+| `Esc` | Close modals / interrupt |
+| `Ctrl+Z` | Undo last prompt edit |
+| `Ctrl+Shift+Z` | Redo prompt edit |
+| `Ctrl+W` | Delete previous word |
+| `Ctrl+A` | Go to start of line |
+| `Ctrl+E` | Go to end of line |
+| `Ctrl+K` | Delete from cursor to end of line |
+| `Alt+←/→` | Navigate by word |
+| `↑/↓` | Navigate history (empty prompt) or menus |
+| `PageUp/PageDown` | Scroll message history |
+| `?` | Open/close help screen with all shortcuts |
 
 ---
 
@@ -410,7 +292,7 @@ Each example below is something you can type in the DsCode prompt field.
 | **Use a skill** | "Use the security review skill to audit this code." |
 | **Initialize an AGENTS.md** | Type `/init` to create a file with instructions the AI will follow in the project. |
 
-DsCode works **conversationally**: you type what you need, the AI responds and uses tools (read files, run commands, edit code). You can confirm or reject each action.
+DsCode works **conversationally**: you type what you need, the AI responds and uses tools. You can confirm or reject each action.
 
 ---
 
@@ -421,13 +303,14 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 | **Session** | An ongoing conversation between you and the AI. Each `/new` starts a clean session. | Start a new session when switching tasks to avoid mixing contexts. |
 | **Context** | The entire conversation history the AI "remembers". Includes your messages, responses, and files read. | Long contexts use more tokens. Use `/new` to reset. |
 | **Skills** | Markdown guides that teach the AI to follow specific rules. | Create a skill to standardize reviews, code style, or team processes. |
-| **Tools** | Tools the AI can use: read files, run commands, edit code, search the web. | The AI decides which tools to use. You can block those you consider dangerous. |
+| **Tools** | Tools the AI uses: `bash` (shell), `read`/`write`/`edit` (files), `glob`/`grep` (search), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (questions), `UpdatePlan` (tasks). | The AI decides which to use. You can block dangerous ones via `permissions`. |
+| **`@` Mentions** | Type `@` in the prompt to search and reference project files. | Use to direct the AI: "Analyze @src/utils.ts" — it already knows which file to read. |
 | **Provider** | The company providing the AI model (DeepSeek, OpenAI, Anthropic, etc.). | Choose a provider based on cost, quality, and privacy. |
 | **Model** | The specific AI model (e.g., `deepseek-v4-pro`, `gpt-4o`). | Different models have different quality, speed, and cost. |
 | **Thinking mode** | The AI "thinks" (reasons) before responding, generating internal tokens you may or may not see. | Enable for complex tasks (debugging, architecture). Disable for speed. |
 | **Reasoning effort** | Controls reasoning depth: `"high"` (good, faster) or `"max"` (best, slower). | Use `"max"` for hard problems and `"high"` for everyday tasks. |
 | **Prompt cache** | DeepSeek caches repeated parts of the context to charge fewer tokens (KV Cache). | Happens automatically. Keep prompts stable to save money. |
-| **Logs** | Debug files in `~/.deepcode/logs/` that record API calls. | Enable `debugLogEnabled` only to diagnose problems. |
+| **Logs** | Debug files in `~/.dscode/logs/` that record API calls. | Enable `debugLogEnabled` only to diagnose problems. |
 | **Permissions** | Control what the AI can do: read files, write, access network, run commands. | Configure restrictive permissions if you want to review each action before execution. |
 | **Workspace** | The root folder where DsCode is running. The AI only sees files in this folder (unless you authorize external access). | Open DsCode in the root of the project you want to work on. |
 | **Compaction** | When the conversation gets too long, DsCode summarizes the history to fit the token limit. | Automatic. You can force a new session with `/new` if you prefer. |
@@ -505,7 +388,7 @@ DeepSeek caches repeated parts of the context (KV Cache) and **does not charge**
 | **Commit before requesting large changes** | If the AI does something wrong, `git reset --hard` undoes everything. Without a prior commit, this isn't possible. |
 | **Read diffs before accepting** | DsCode shows each change. Review — the AI can make mistakes. |
 | **Don't paste sensitive data in prompts** | Information like passwords, tokens, or customer data may appear in logs or responses. |
-| **Sanitize logs before asking for help** | Logs in `~/.deepcode/logs/` may contain code snippets. Remove confidential information before sharing. |
+| **Sanitize logs before asking for help** | Logs in `~/.dscode/logs/` may contain code snippets. Remove confidential information before sharing. |
 | **Use a separate branch for experiments** | Create `git checkout -b ai-experiment` before requesting large changes. If something goes wrong, discard the branch. |
 
 ---
@@ -531,16 +414,16 @@ DeepSeek caches repeated parts of the context (KV Cache) and **does not charge**
 | **`dscode: command not found`** | Global npm not in PATH | Reopen terminal. On Windows, check `%APPDATA%\npm`. On Linux/macOS, check `~/.npm-global/bin`. |
 | **`Node.js version not supported`** | Node below version 22 | Install or upgrade to [Node.js 22+](https://nodejs.org). |
 | **`npm ci` failed** | Inconsistent dependencies | Delete `node_modules` and `package-lock.json`, then run `npm install`. |
-| **401 error (Unauthorized)** | API key missing or invalid | Check that `API_KEY` is correct in `~/.deepcode/settings.json` or environment variable. |
+| **401 error (Unauthorized)** | API key missing or invalid | Check that `API_KEY` is correct in `~/.dscode/settings.json` or environment variable. |
 | **429 error (Too Many Requests)** | Provider rate limit exceeded | Wait a few seconds and try again. Check your plan on the provider's platform. |
 | **Truncated response** | Token limit reached | Increase `maxTokens` in `settings.json` or type "continue" to resume. |
 | **Timeout / excessive delay** | Provider server overloaded or network issue | Wait. If persistent, switch models: use Flash instead of Pro temporarily. |
 | **Windows permission error** | npm without write permission | Run PowerShell as administrator or configure npm's prefix. |
 | **Linux/macOS permission error (EACCES)** | Global npm without permission | Configure npm's prefix to a local directory or use `sudo npm install -g`. |
 | **`npm run build` failed** | Typecheck or lint error | Run commands separately to identify the error: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
-| **Logs not appearing** | `debugLogEnabled` is `false` (default) | Enable `"debugLogEnabled": true` in `settings.json`. Logs appear at `~/.deepcode/logs/debug.log`. |
+| **Logs not appearing** | `debugLogEnabled` is `false` (default) | Enable `"debugLogEnabled": true` in `settings.json`. Logs appear at `~/.dscode/logs/debug.log`. |
 | **Model not recognized** | Incorrect model name | Use exact names: `deepseek-v4-pro`, `deepseek-v4-flash`, or a valid OpenAI-compatible model. |
-| **Token consumption too high** | Long context or overly broad tasks | Use `/new` to reset session. Be specific about files and scope. Don't ask to analyze the entire project. |
+| **Token consumption too high** | Long context or overly broad tasks | Use `/new` to reset session. Be specific about files and scope. |
 | **Error with large repositories** | Ignored files not being skipped | DsCode respects `.gitignore`. Check that your `.gitignore` is correct. |
 
 ---
