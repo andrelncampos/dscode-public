@@ -38,7 +38,7 @@ The Spec-Driven Development workflow provides slash commands (`/spec-init`, `/sp
 
 ### V6: Multi-Model Support with Thinking Mode
 
-Optimized for DeepSeek V4 Pro and Flash models, with support for any OpenAI-compatible provider. Thinking mode enables the AI to reason internally before responding, controlled via reasoning effort settings (high/max). Raw display modes let users view or collapse reasoning content. KV Cache awareness minimizes token costs on repeated context.
+Optimized for DeepSeek V4 Pro and Flash models, with support for any OpenAI-compatible provider (GPT 5.4 and later). Thinking mode enables the AI to reason internally before responding, controlled via reasoning effort settings (high/max). Raw display modes let users view or collapse reasoning content. DeepSeek V4 automatic context caching provides 120x input cost reduction on cache hits for Pro models and 50x for Flash. The `reasoning_content` field is only transmitted for turns with tool calls — per DeepSeek V4 API behavior, reasoning content between non-tool turns is ignored by the API and can be omitted to save input tokens. Web search uses the native DeepSeek `web_search` tool type when running on V4+ engines.
 
 ### V7: MCP Integration (Model Context Protocol)
 
@@ -46,7 +46,7 @@ Connects to external MCP servers for extended tool capabilities — database que
 
 ### V8: Session Management & Context Optimization
 
-Persistent conversations with session resumption (`/resume`, `/continue`). Automatic context compaction when token thresholds are exceeded (512K for DeepSeek V4, 128K for others). The `/new` command starts fresh sessions, and `/undo` provides conversation + code restore points.
+Persistent conversations with session resumption (`/resume`, `/continue`). Automatic context compaction when token thresholds are exceeded (384K default, matching the 1M context window of DeepSeek V4 and GPT 5.4+ engines). Compaction uses `deepseek-v4-flash` without thinking mode for cost-efficient summarization. The `/new` command starts fresh sessions, and `/undo` provides conversation + code restore points.
 
 ### V9: Cross-Platform CLI Distribution
 
@@ -55,3 +55,7 @@ Distributed as a standalone binary (via Node.js SEA — Single Executable Applic
 ### V10: Configuration & Extensibility
 
 Settings resolution from `~/.deepcode/settings.json` (global) and project-local overrides. Environment variables with `DEEPCODE_` prefix. Configurable model, API key, thinking mode, reasoning effort, temperature, max tokens, permissions, notifications, and web search tool. Debug logging and error logging enable diagnostics.
+
+### V11: Cost-Optimized AI Operations
+
+Systematic minimization of API token consumption without sacrificing output quality. Targets include: eliminating redundant `reasoning_content` transmission between non-tool turns (per DeepSeek V4 thinking-mode behavior), using cheaper models (`deepseek-v4-flash` without thinking) for auxiliary tasks like context compaction, replacing LLM-based skill matching with heuristic keyword matching to eliminate an extra API call per user message, slimming the system prompt by removing tool documentation duplicated between `templates/tools/` and the JSON function schema, compacting built-in skill documents to essential rules only, and removing legacy code paths and configuration options (external `webSearchTool` script, multimodal capability checks, pre-V4 model conditionals) that exist only for engines predating DeepSeek V4 and GPT 5.4. DeepSeek V4 automatic context caching (120x input cost reduction on cache hits for Pro, 50x for Flash) is leveraged transparently through the existing singleton client.

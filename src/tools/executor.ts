@@ -23,7 +23,6 @@ export type CreateOpenAIClient = () => {
   telemetryEnabled?: boolean;
   maxTokens?: number;
   notify?: string;
-  webSearchTool?: string;
   env?: Record<string, string>;
 };
 

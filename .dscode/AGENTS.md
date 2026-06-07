@@ -143,3 +143,4 @@ A **file history system** (`src/common/file-history.ts`) provides undo/checkpoin
 
 ## Steering
 
+- When executing /spec-audit, never run the full test suite (npm test). Run only the fast tests, excluding the heavy test files.

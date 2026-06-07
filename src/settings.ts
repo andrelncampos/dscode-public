@@ -1,4 +1,4 @@
-import { defaultsToThinkingMode, DEEPSEEK_V4_MODELS } from "./common/model-capabilities";
+import { defaultsToThinkingMode } from "./common/model-capabilities";
 import { deepcodingSettingsSchema, formatZodErrors } from "./common/settings-schema";
 import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import * as fs from "fs";
@@ -56,7 +56,6 @@ export type DeepcodingSettings = {
   telemetryEnabled?: boolean;
   maxTokens?: number;
   notify?: string;
-  webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
   permissions?: PermissionSettings;
 };
@@ -73,7 +72,6 @@ export type ResolvedDeepcodingSettings = {
   telemetryEnabled: boolean;
   maxTokens: number;
   notify?: string;
-  webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
   permissions: Required<PermissionSettings>;
 };
@@ -364,15 +362,10 @@ export function resolveSettingsSources(
     parseMaxTokens(projectEnv.MAX_TOKENS) ??
     parseMaxTokens(userSettings?.maxTokens) ??
     parseMaxTokens(userEnv.MAX_TOKENS) ??
-    (model === "deepseek-v4-pro" ? 65536 : DEEPSEEK_V4_MODELS.has(model) ? 32768 : 0);
+    (model === "deepseek-v4-pro" ? 65536 : 32768);
 
   const notify =
     trimString(systemEnv.NOTIFY) || trimString(projectSettings?.notify) || trimString(userSettings?.notify) || "";
-  const webSearchTool =
-    trimString(systemEnv.WEB_SEARCH_TOOL) ||
-    trimString(projectSettings?.webSearchTool) ||
-    trimString(userSettings?.webSearchTool) ||
-    "";
 
   return {
     env,
@@ -386,7 +379,6 @@ export function resolveSettingsSources(
     telemetryEnabled,
     maxTokens,
     notify: notify || undefined,
-    webSearchTool: webSearchTool || undefined,
     mcpServers: mergeMcpServers(userSettings, projectSettings, userEnv, projectEnv, systemEnv),
     permissions: mergePermissions(userSettings, projectSettings),
   };

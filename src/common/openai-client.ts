@@ -31,7 +31,6 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
   telemetryEnabled: boolean;
   maxTokens: number;
   notify?: string;
-  webSearchTool?: string;
   env: Record<string, string>;
 } {
   const settings = resolveCurrentSettings(projectRoot);
@@ -47,7 +46,6 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
       telemetryEnabled: settings.telemetryEnabled,
       maxTokens: settings.maxTokens,
       notify: settings.notify,
-      webSearchTool: settings.webSearchTool,
       env: settings.env,
     };
   }
@@ -65,7 +63,6 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
       telemetryEnabled: settings.telemetryEnabled,
       maxTokens: settings.maxTokens,
       notify: settings.notify,
-      webSearchTool: settings.webSearchTool,
       env: settings.env,
     };
   }
@@ -102,7 +99,6 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
     telemetryEnabled: settings.telemetryEnabled,
     maxTokens: settings.maxTokens,
     notify: settings.notify,
-    webSearchTool: settings.webSearchTool,
     env: settings.env,
   };
 }

@@ -11,7 +11,7 @@ import { applyModelConfigSelection, resolveSettings, resolveSettingsSources } fr
 
 const TEST_PROCESS_ENV = {};
 
-test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool", () => {
+test("resolveSettings reads top-level thinkingEnabled and notify", () => {
   const resolved = resolveSettings(
     {
       env: {
@@ -24,7 +24,6 @@ test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool
       reasoningEffort: "high",
       debugLogEnabled: true,
       notify: "  /tmp/notify.sh  ",
-      webSearchTool: "  /tmp/web-search.sh  ",
     },
     {
       model: "default-model",
@@ -41,7 +40,6 @@ test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool
   assert.equal(resolved.reasoningEffort, "high");
   assert.equal(resolved.debugLogEnabled, true);
   assert.equal(resolved.notify, "/tmp/notify.sh");
-  assert.equal(resolved.webSearchTool, "/tmp/web-search.sh");
 });
 
 test("resolveSettings gives top-level model priority over env MODEL", () => {
@@ -131,7 +129,7 @@ test("resolveSettings ignores removed legacy env.THINKING", () => {
     {}
   );
 
-  assert.equal(resolved.thinkingEnabled, false);
+  assert.equal(resolved.thinkingEnabled, true);
 });
 
 test("resolveSettingsSources applies user, project, and DEEPCODE environment precedence", () => {
@@ -301,7 +299,7 @@ test("resolveSettings applies thinking defaults to the fallback model", () => {
   assert.equal(resolved.thinkingEnabled, true);
 });
 
-test("resolveSettings keeps thinking mode off by default for other models", () => {
+test("resolveSettings enables thinking mode by default for all models", () => {
   const resolved = resolveSettings(
     {
       env: {
@@ -315,7 +313,7 @@ test("resolveSettings keeps thinking mode off by default for other models", () =
     TEST_PROCESS_ENV
   );
 
-  assert.equal(resolved.thinkingEnabled, false);
+  assert.equal(resolved.thinkingEnabled, true);
 });
 
 test("resolveSettings allows explicit thinkingEnabled to override model defaults", () => {

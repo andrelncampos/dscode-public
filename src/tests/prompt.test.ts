@@ -54,23 +54,12 @@ test("getTools requires bash sideEffects permission scopes", () => {
   assert.equal(runInBackground.type, "boolean");
 });
 
-test("getSystemPrompt always includes WebSearch docs", () => {
+test("getSystemPrompt returns base prompt without tool docs", () => {
   const prompt = getSystemPrompt("/tmp/project");
-  assert.equal(prompt.includes("## WebSearch"), true);
-});
-
-test("getSystemPrompt includes UpdatePlan docs", () => {
-  const prompt = getSystemPrompt("/tmp/project");
-  assert.equal(prompt.includes("## UpdatePlan"), true);
-  assert.equal(prompt.includes("The `plan` argument is a markdown string, not an array of step objects."), true);
-});
-
-test("getSystemPrompt includes Bash background guidance", () => {
-  const prompt = getSystemPrompt("/tmp/project");
-  assert.equal(prompt.includes("run_in_background: true"), true);
-  assert.equal(prompt.includes("do NOT add `&`"), true);
-  assert.equal(prompt.includes("use the `stopCommand` returned in the tool result metadata"), true);
-  assert.equal(prompt.includes("stop background tasks that has not reported a completed state"), true);
+  // Tool docs are removed from system prompt — they are already in the JSON function schema
+  assert.equal(prompt.includes("## WebSearch"), false);
+  assert.equal(prompt.includes("## UpdatePlan"), false);
+  assert.equal(prompt.includes("run_in_background"), false);
 });
 
 test("getSystemPrompt does not include runtime context", () => {
@@ -172,9 +161,10 @@ test("getRuntimeContext includes model guidance but omits dynamic date for cache
   assert.equal(prompt.includes('"root path": "/tmp/project"'), true);
 });
 
-test("getSystemPrompt renders Read docs for non-multimodal models", () => {
+test("getSystemPrompt does not include Read docs inline", () => {
   const prompt = getSystemPrompt("/tmp/project", { model: "deepseek-v4-flash" });
-  assert.equal(prompt.includes("the current model is not multimodal"), true);
+  // Tool docs are not in system prompt — they are in the JSON function schema
+  assert.equal(prompt.includes("not multimodal"), false);
   assert.equal(prompt.includes("the contents are presented visually"), false);
 });
 
