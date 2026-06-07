@@ -1,5 +1,4 @@
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
-import { supportsMultimodal } from "./model-capabilities";
 import type { SessionMessage } from "../session";
 
 export type OpenAIMessageConverterOptions = {
@@ -107,7 +106,11 @@ export class OpenAIMessageConverter {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private convertMessage(message: SessionMessage, thinkingEnabled: boolean, model: string): ChatCompletionMessageParam {
+  private convertMessage(
+    message: SessionMessage,
+    thinkingEnabled: boolean,
+    _model: string
+  ): ChatCompletionMessageParam {
     const content = this.renderContent(message);
     const base: ChatCompletionMessageParam = {
       role: message.role,
@@ -124,12 +127,18 @@ export class OpenAIMessageConverter {
     if (messageParams?.tool_call_id) {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
-    if (typeof messageParams?.reasoning_content === "string") {
-      (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
-    } else if (thinkingEnabled && message.role === "assistant") {
-      // Thinking-mode providers require every replayed assistant message
-      // to include the reasoning_content field, even when it is empty.
-      (base as { reasoning_content?: string }).reasoning_content = "";
+    const hasToolCalls =
+      Array.isArray(messageParams?.tool_calls) && (messageParams!.tool_calls as unknown[]).length > 0;
+    if (hasToolCalls) {
+      if (typeof messageParams?.reasoning_content === "string") {
+        (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
+      } else if (thinkingEnabled && message.role === "assistant") {
+        // Per DeepSeek V4 API docs: reasoning_content is only required to be
+        // passed back when the assistant performed a tool call in that turn.
+        // For turns without tool calls, it is ignored by the API and can be
+        // omitted to save input tokens.
+        (base as { reasoning_content?: string }).reasoning_content = "";
+      }
     }
 
     if ((message.role === "user" || message.role === "system") && message.contentParams) {
@@ -140,7 +149,7 @@ export class OpenAIMessageConverter {
       const params = Array.isArray(message.contentParams) ? message.contentParams : [message.contentParams];
       for (const param of params) {
         const part = param as ChatCompletionContentPart;
-        if (part && (part.type !== "image_url" || supportsMultimodal(model))) {
+        if (part) {
           contentParts.push(part);
         }
       }

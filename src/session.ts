@@ -7,7 +7,6 @@ import ejs from "ejs";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { launchNotifyScript } from "./common/notify";
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { DEEPSEEK_V4_MODELS } from "./common/model-capabilities";
 import { readTextFileWithMetadata } from "./common/file-utils";
 import {
   buildSkillDocumentsPrompt,
@@ -67,7 +66,6 @@ const MAX_SESSION_ENTRIES = 50;
 const MAX_PROJECT_CODE_LENGTH = 64;
 const PROJECT_CODE_HASH_LENGTH = 16;
 const BACKGROUND_FAILURE_LOG_TAIL_CHARS = 4000;
-const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
 const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 384 * 1024;
 
 type ChatCompletionDebugOptions = {
@@ -77,10 +75,8 @@ type ChatCompletionDebugOptions = {
   params?: Record<string, unknown>;
 };
 
-export function getCompactPromptTokenThreshold(model: string): number {
-  return DEEPSEEK_V4_MODELS.has(model)
-    ? DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD
-    : DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD;
+export function getCompactPromptTokenThreshold(_model: string): number {
+  return DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD;
 }
 
 // Keep project storage paths short enough for Git's internal files on Windows.
@@ -293,7 +289,6 @@ type SessionManagerOptions = {
   createOpenAIClient: CreateOpenAIClient;
   getResolvedSettings: () => {
     model: string;
-    webSearchTool?: string;
     mcpServers?: Record<string, McpServerConfig>;
     permissions?: Required<PermissionSettings>;
   };
@@ -319,7 +314,6 @@ export class SessionManager {
   private readonly createOpenAIClient: CreateOpenAIClient;
   private readonly getResolvedSettings: () => {
     model: string;
-    webSearchTool?: string;
     mcpServers?: Record<string, McpServerConfig>;
     permissions?: Required<PermissionSettings>;
   };
@@ -755,87 +749,35 @@ export class SessionManager {
     logOpenAIChatCompletionDebug(entry);
   }
 
-  async identifyMatchingSkillNames(
-    skills: SkillInfo[],
-    userPrompt: string,
-    options?: { signal?: AbortSignal; sessionId?: string }
-  ): Promise<string[]> {
-    this.throwIfAborted(options?.signal);
-    let systemPrompt = `When users ask you to perform tasks, check if any of the available skills match the goal and situation. Skills provide specialized capabilities and domain knowledge.\n
-Response in JSON format:
-\`\`\`
-{
-  "skillNames": ["", ...]
-}
-\`\`\`\n
-If none of the available skills match, respond with an empty array, i.e. \`{"skillNames": []}\`.\n
-`;
-    const simpleSkills = skills
-      .filter((x) => !x.isLoaded)
-      .map((x) => {
-        return { name: x.name, description: x.description };
-      });
-    if (simpleSkills.length === 0) {
-      return [];
-    }
+  private matchSkillsByKeywords(skills: SkillInfo[], userPrompt: string): string[] {
+    if (!userPrompt || skills.length === 0) return [];
+    const lowerPrompt = userPrompt.toLowerCase();
+    const matched: string[] = [];
 
-    const { client, model, baseURL, debugLogEnabled } = this.createOpenAIClient();
-    if (!client) {
-      return [];
-    }
+    for (const skill of skills) {
+      if (skill.isLoaded) continue;
 
-    const agentInstructions = this.loadAgentInstructions();
-    if (agentInstructions) {
-      systemPrompt += `Use the current agent instructions as additional context when deciding which skills match:\n
-<agent-instructions>
-${agentInstructions}
-</agent-instructions>\n
-`;
-    }
-    systemPrompt += "The candidate skills are as follows:\n\n";
-    systemPrompt += "```\n" + JSON.stringify(simpleSkills, null, 2) + "\n```";
+      // Rule 1: skill name matches (hyphens/spaces equivalent)
+      const normalizedName = skill.name.toLowerCase().replace(/-/g, " ");
+      const nameWithHyphens = skill.name.toLowerCase().replace(/ /g, "-");
+      if (lowerPrompt.includes(normalizedName) || lowerPrompt.includes(nameWithHyphens)) {
+        matched.push(skill.name);
+        continue;
+      }
 
-    try {
-      const response = await this.createChatCompletionStream(
-        client,
-        {
-          model,
-          temperature: 0.1,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          response_format: { type: "json_object" },
-        },
-        options?.signal ? { signal: options.signal } : undefined,
-        options?.sessionId,
-        {
-          enabled: debugLogEnabled,
-          location: "SessionManager.identifyMatchingSkillNames",
-          baseURL,
-          params: { purpose: "skill-matching", temperature: 0.1 },
+      // Rule 2: at least one significant word from description matches
+      if (skill.description) {
+        const descWords = skill.description
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "") // strip punctuation except hyphens
+          .split(/\s+/)
+          .filter((w) => w.length >= 5); // only significant words
+        if (descWords.some((word) => lowerPrompt.includes(word))) {
+          matched.push(skill.name);
         }
-      );
-      this.throwIfAborted(options?.signal);
-
-      const rawContent = response.choices?.[0]?.message?.content;
-      const content = typeof rawContent === "string" ? rawContent : "";
-      if (!content) {
-        return [];
       }
-
-      const parsed = JSON.parse(content);
-      if (parsed && Array.isArray(parsed.skillNames)) {
-        return parsed.skillNames;
-      }
-
-      return [];
-    } catch (error) {
-      if (this.isAbortLikeError(error) || options?.signal?.aborted) {
-        throw error;
-      }
-      return [];
     }
+    return matched;
   }
 
   private getSkillScanRoots(): Array<{ root: string; displayRoot: string }> {
@@ -1153,8 +1095,7 @@ ${agentInstructions}
 
     if (userPrompt.text) {
       const skills = await this.listSkills();
-      const skillNames = await this.identifyMatchingSkillNames(skills, userPrompt.text, { signal });
-      this.throwIfAborted(signal);
+      const skillNames = this.matchSkillsByKeywords(skills, userPrompt.text ?? "");
       const skillSet = new Set(skillNames);
       const matchedSkill = skills.filter((skill) => skillSet.has(skill.name));
       if (Array.isArray(userPrompt.skills)) {
@@ -1229,7 +1170,7 @@ ${agentInstructions}
 
     if (userPrompt.text) {
       const skills = await this.listSkills(sessionId);
-      const skillNames = await this.identifyMatchingSkillNames(skills, userPrompt.text, { signal, sessionId });
+      const skillNames = this.matchSkillsByKeywords(skills, userPrompt.text ?? "");
       this.throwIfAborted(signal);
       const skillSet = new Set(skillNames);
       const matchedSkill = skills.filter((skill) => skillSet.has(skill.name));
@@ -1562,8 +1503,7 @@ ${agentInstructions}
 
   async compactSession(sessionId: string, signal?: AbortSignal): Promise<void> {
     this.throwIfAborted(signal);
-    const { client, model, baseURL, temperature, thinkingEnabled, reasoningEffort, debugLogEnabled } =
-      this.createOpenAIClient();
+    const { client, baseURL, debugLogEnabled } = this.createOpenAIClient();
     if (!client) {
       return;
     }
@@ -1590,14 +1530,12 @@ ${agentInstructions}
     }
 
     const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, endIndex));
-    const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort);
+    const compactionModel = "deepseek-v4-flash";
     const response = await this.createChatCompletionStream(
       client,
       {
-        model,
-        ...(temperature !== undefined ? { temperature } : {}),
+        model: compactionModel,
         messages: [{ role: "user", content: compactPrompt }],
-        ...thinkingOptions,
       },
       signal ? { signal } : undefined,
       sessionId,
@@ -1605,7 +1543,7 @@ ${agentInstructions}
         enabled: debugLogEnabled,
         location: "SessionManager.compactSession",
         baseURL,
-        params: { temperature, thinkingEnabled, reasoningEffort },
+        params: { compactionModel },
       }
     );
     this.throwIfAborted(signal);
@@ -1627,7 +1565,7 @@ ${agentInstructions}
     this.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       usage: accumulateUsage(entry.usage, responseUsage),
-      usagePerModel: accumulateUsagePerModel(entry.usagePerModel, model, responseUsage),
+      usagePerModel: accumulateUsagePerModel(entry.usagePerModel, compactionModel, responseUsage),
       activeTokens: this.estimateContextTokens(sessionMessages),
       updateTime: now,
     }));
@@ -2521,7 +2459,7 @@ ${agentInstructions}
     this.appendSessionMessage(sessionId, userMessage);
     if (userPrompt.text) {
       const skills = await this.listSkills(sessionId);
-      const skillNames = await this.identifyMatchingSkillNames(skills, userPrompt.text, { signal, sessionId });
+      const skillNames = this.matchSkillsByKeywords(skills, userPrompt.text ?? "");
       this.throwIfAborted(signal);
       const skillSet = new Set(skillNames);
       const matchedSkill = skills.filter((skill) => skillSet.has(skill.name));

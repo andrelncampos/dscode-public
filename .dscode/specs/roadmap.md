@@ -4,4 +4,4 @@
 
 | # | Name | Status | References |
 |---|---|---|---|
-| (empty — to be populated by /spec-plan) | | | |
+| 10 | more-effectiveness-and-economy | audited | V6, V8, V11 |

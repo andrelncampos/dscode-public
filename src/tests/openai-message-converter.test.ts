@@ -94,7 +94,7 @@ test("OpenAIMessageConverter preserves image content for multimodal models", () 
   ]);
 });
 
-test("OpenAIMessageConverter filters image content for non-multimodal models", () => {
+test("OpenAIMessageConverter includes image content for all models (V4+ and GPT 5.4+)", () => {
   const c = converter();
   const messages: SessionMessage[] = [
     msg({
@@ -107,27 +107,33 @@ test("OpenAIMessageConverter filters image content for non-multimodal models", (
   const result = c.buildMessages(messages, false, "deepseek-v4-flash") as Array<{ role: string; content: unknown }>;
 
   assert.equal(result.length, 1);
-  assert.deepEqual(result[0]?.content, [{ type: "text", text: "Loaded pixel.png" }]);
+  assert.deepEqual(result[0]?.content, [
+    { type: "text", text: "Loaded pixel.png" },
+    { type: "image_url", image_url: { url: "data:image/png;base64,abc" } },
+  ]);
 });
 
-test("OpenAIMessageConverter injects reasoning_content in thinking mode", () => {
+test("OpenAIMessageConverter does not inject reasoning_content for non-tool assistant messages", () => {
   const c = converter();
   const messages: SessionMessage[] = [msg({ role: "assistant", content: "Final answer", messageParams: null })];
 
   const thinking = c.buildMessages(messages, true, "test-model") as Array<{ reasoning_content?: string }>;
   const nonThinking = c.buildMessages(messages, false, "test-model") as Array<{ reasoning_content?: string }>;
 
-  assert.equal(thinking[0]?.reasoning_content, "");
+  assert.equal(thinking[0]?.reasoning_content, undefined);
   assert.equal(Object.prototype.hasOwnProperty.call(nonThinking[0] ?? {}, "reasoning_content"), false);
 });
 
-test("OpenAIMessageConverter preserves existing reasoning_content from messageParams", () => {
+test("OpenAIMessageConverter preserves existing reasoning_content when tool calls are present", () => {
   const c = converter();
   const messages: SessionMessage[] = [
     msg({
       role: "assistant",
       content: "answer",
-      messageParams: { reasoning_content: "deep thought" },
+      messageParams: {
+        reasoning_content: "deep thought",
+        tool_calls: [{ id: "call-1", function: { name: "bash", arguments: "{}" } }],
+      },
     }),
   ];
 
@@ -505,4 +511,36 @@ test("OpenAIMessageConverter.findToolFunction handles null/empty toolCalls", () 
 
   const toolCalls = [null, undefined, { noId: true }];
   assert.equal(c.findToolFunction(toolCalls as unknown[], "call-1"), null);
+});
+
+test("omits reasoning_content when assistant message has no tool calls", () => {
+  const c = converter();
+  const messages: SessionMessage[] = [
+    msg({ id: "sys-1", role: "system", content: "system", visible: false }),
+    msg({ id: "u-1", role: "user", content: "hello" }),
+    assistantMsg("a-1", undefined, "some reasoning content"),
+  ];
+  const result = c.buildMessages(messages, true, "deepseek-v4-pro") as Array<{
+    role: string;
+    reasoning_content?: string;
+  }>;
+  const assistant = result.find((m) => m.role === "assistant");
+  assert.ok(assistant);
+  assert.equal(assistant.reasoning_content, undefined);
+});
+
+test("includes reasoning_content when assistant message has tool calls", () => {
+  const c = converter();
+  const messages: SessionMessage[] = [
+    msg({ id: "sys-1", role: "system", content: "system", visible: false }),
+    msg({ id: "u-1", role: "user", content: "hello" }),
+    assistantMsg("a-1", [{ id: "call-1", function: { name: "bash", arguments: "{}" } }], "some reasoning content"),
+  ];
+  const result = c.buildMessages(messages, true, "deepseek-v4-pro") as Array<{
+    role: string;
+    reasoning_content?: string;
+  }>;
+  const assistant = result.find((m) => m.role === "assistant");
+  assert.ok(assistant);
+  assert.equal(assistant.reasoning_content, "some reasoning content");
 });

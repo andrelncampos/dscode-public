@@ -45,7 +45,6 @@ export const deepcodingSettingsSchema = z.strictObject({
   debugLogEnabled: z.boolean().optional(),
   telemetryEnabled: z.boolean().optional(),
   notify: z.string().optional(),
-  webSearchTool: z.string().optional(),
   mcpServers: z.record(z.string(), mcpServerConfigSchema).optional(),
   permissions: permissionSettingsSchema.optional(),
 });

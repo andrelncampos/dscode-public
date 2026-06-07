@@ -2,11 +2,9 @@ import { execFileSync, execSync } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import ejs from "ejs";
 import { fileURLToPath } from "url";
 import type { SessionMessage } from "./session";
 import { findGitBashPath, resolveShellPath } from "./common/shell-utils";
-import { supportsMultimodal } from "./common/model-capabilities";
 
 const COMPACT_PROMPT_BASE = `Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
 This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
@@ -124,33 +122,6 @@ type SkillResourceListing = {
   files: string[];
   truncated: boolean;
 };
-
-function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): string {
-  const toolsDir = path.join(extensionRoot, "templates", "tools");
-  if (!fs.existsSync(toolsDir)) {
-    return "";
-  }
-
-  const entries = fs.readdirSync(toolsDir);
-  const docs = entries
-    .filter((entry) => entry.endsWith(".md") || entry.endsWith(".md.ejs"))
-    .sort()
-    .map((entry) => {
-      const fullPath = path.join(toolsDir, entry);
-      try {
-        const template = fs.readFileSync(fullPath, "utf8");
-        const content = entry.endsWith(".ejs")
-          ? ejs.render(template, { supportsMultimodal: supportsMultimodal(options.model ?? "") })
-          : template;
-        return content.trim();
-      } catch {
-        return "";
-      }
-    })
-    .filter((content) => content.length > 0);
-
-  return docs.join("\n\n");
-}
 
 function readDefaultSkillDocs(extensionRoot: string): Array<{ name: string; content: string }> {
   const skillsDir = path.join(extensionRoot, "templates", "skills");
@@ -270,9 +241,8 @@ function getCurrentDateAndModelPrompt(model?: string): string {
   return model ? `The current LLM model is ${model}. You can switch models at any time using the /model command.` : "";
 }
 
-export function getSystemPrompt(_projectRoot: string, options: PromptToolOptions = {}): string {
-  const toolDocs = readToolDocs(getExtensionRoot(), options);
-  return toolDocs ? `${SYSTEM_PROMPT_BASE}\n\n# Available Tools\n\n${toolDocs}` : SYSTEM_PROMPT_BASE;
+export function getSystemPrompt(_projectRoot: string, _options: PromptToolOptions = {}): string {
+  return SYSTEM_PROMPT_BASE;
 }
 
 export function getCompactPrompt(sessionMessages: SessionMessage[]): string {

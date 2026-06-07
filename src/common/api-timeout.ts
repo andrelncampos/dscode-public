@@ -1,5 +1,3 @@
-import { DEEPSEEK_V4_MODELS } from "./model-capabilities";
-
 /**
  * Default timeout for API requests in milliseconds (3 minutes).
  */
@@ -42,9 +40,6 @@ export function resolveApiTimeoutMs(model?: string): number {
     }
     if (model === "deepseek-v4-flash") {
       return FLASH_API_TIMEOUT_MS;
-    }
-    if (DEEPSEEK_V4_MODELS.has(model)) {
-      return PRO_API_TIMEOUT_MS;
     }
   }
 
