@@ -11,6 +11,16 @@ export type SlashCommandKind =
   | "undo"
   | "mcp"
   | "raw"
+  | "steering-add"
+  | "steering-list"
+  | "spec-init"
+  | "spec-plan"
+  | "spec-new"
+  | "spec-verify"
+  | "spec-implement"
+  | "spec-audit"
+  | "spec-list"
+  | "spec-status"
   | "exit";
 
 export type SlashCommandItem = {
@@ -77,6 +87,71 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/raw",
     args: ["lite", "normal", "raw-scrollback"],
     description: "Toggle display mode for viewing or collapsing reasoning content",
+  },
+  {
+    kind: "steering-add",
+    name: "steering-add",
+    label: "/steering-add",
+    description: "Add a steering rule to the STEERINGS section of AGENTS.md",
+  },
+  {
+    kind: "steering-list",
+    name: "steering-list",
+    label: "/steering-list",
+    description: "List all steering rules from the STEERINGS section of AGENTS.md",
+  },
+  {
+    kind: "spec-init",
+    name: "spec-init",
+    label: "/spec-init",
+    description: "Initialize SDD structure: vision, arch, roadmap, ADR, and lessons files",
+  },
+  {
+    kind: "spec-plan",
+    name: "spec-plan",
+    label: "/spec-plan",
+    description: "Plan specs from brainstorming, align with vision, update roadmap",
+  },
+  {
+    kind: "spec-new",
+    name: "spec-new",
+    label: "/spec-new",
+    args: ["<spec-number>"],
+    description: "Create a new spec with requirements, design, and task documents",
+  },
+  {
+    kind: "spec-verify",
+    name: "spec-verify",
+    label: "/spec-verify",
+    args: ["<spec-number>"],
+    description: "Verify spec completeness, determinism, and alignment with vision",
+  },
+  {
+    kind: "spec-implement",
+    name: "spec-implement",
+    label: "/spec-implement",
+    args: ["<spec-number>"],
+    description: "Implement all tasks from a spec sequentially",
+  },
+  {
+    kind: "spec-audit",
+    name: "spec-audit",
+    label: "/spec-audit",
+    args: ["<spec-number>"],
+    description: "Audit implementation quality and correctness for a spec",
+  },
+  {
+    kind: "spec-list",
+    name: "spec-list",
+    label: "/spec-list",
+    description: "List all specs with their statuses from the roadmap",
+  },
+  {
+    kind: "spec-status",
+    name: "spec-status",
+    label: "/spec-status",
+    args: ["[spec-number]"],
+    description: "Show detailed status of a specific spec or all specs",
   },
   {
     kind: "exit",

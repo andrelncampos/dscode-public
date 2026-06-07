@@ -121,7 +121,7 @@ export function compareVersions(a: string, b: string): number {
 }
 
 export function getUpdateStatePath(): string {
-  return path.join(os.homedir(), ".deepcode", UPDATE_STATE_FILE);
+  return path.join(os.homedir(), ".dscode", UPDATE_STATE_FILE);
 }
 
 async function promptUpdateChoice({

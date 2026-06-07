@@ -1,0 +1,176 @@
+Your task is to initialize the SDD (Spec Driven Development) structure for this project. Create the following files under `.dscode/specs/`. If the `.dscode/specs/` directory does not exist, create it first.
+
+### Step 0: Check for Existing Files
+
+Before creating anything, check if `.dscode/specs/` already exists and whether any of the 5 files are already present using the `read` tool:
+
+1. `.dscode/specs/vision.md`
+2. `.dscode/specs/arch.md`
+3. `.dscode/specs/roadmap.md`
+4. `.dscode/specs/adr.md`
+5. `.dscode/specs/lessons.md`
+
+**If ANY of these files already exist**, STOP and report to the user:
+- Which files already exist (with their absolute paths).
+- Warn that running `/spec-init` will **overwrite** these files and **destroy existing data**.
+- Ask the user to confirm before proceeding. Do NOT create or overwrite anything until the user explicitly confirms.
+- If the user confirms, proceed to create/overwrite only the files that need creation/update.
+
+**If NONE of the files exist** (clean project), proceed to create all 5 files.
+
+Create these 5 files with the structure described below. Use the `write` tool for each file.
+
+---
+
+### 1. `.dscode/specs/vision.md` — Product Vision
+
+This file describes the product vision: who the target audience is, what value the product delivers to them, and a breakdown of value blocks.
+
+Use this outline (adapt to what you know about this project from the existing AGENTS.md, README, and codebase):
+
+```markdown
+# Product Vision
+
+## Target Audience
+
+[Describe the primary users — who will use this product and why.]
+
+## Value Proposition
+
+[One or two sentences describing the core value the product delivers.]
+
+## Value Blocks
+
+### V1: [Value Block Name]
+
+[Describe this block of value. What does it deliver to the user? Why is it important? This section will be referenced by specs.]
+
+### V2: [Value Block Name]
+
+[Describe this block of value...]
+
+### VN: [Value Block Name]
+
+[Describe this block of value...]
+```
+
+**Rules:**
+- Value blocks should cover ALL the value the product aims to deliver.
+- Use short, descriptive names for value blocks (e.g., "V1: User Authentication", "V2: Real-time Dashboard").
+- Each value block must be independently understandable — assume specs will reference individual blocks.
+- The content must be additive-only in the future. Never renumber value blocks after creation; always append new ones at the end.
+
+---
+
+### 2. `.dscode/specs/arch.md` — Architecture Document
+
+This file has two sections: (1) Technical Architecture and (2) Conceptual Architecture with fundamental principles.
+
+```markdown
+# Architecture
+
+## 1. Technical Architecture
+
+- **Stack:** [main language, frameworks, libraries]
+- **Database:** [database technology and key design decisions]
+- **Deployment:** [how the product is published — web, desktop, mobile; hosting platform]
+- **Platform:** [web / desktop / mobile / CLI / etc.]
+
+## 2. Conceptual Architecture
+
+### Layers
+
+[Describe the conceptual layers of the application — e.g., Presentation, Business Logic, Data Access.]
+
+### Fundamental Principles
+
+These principles MUST be followed by ALL specs and implementations:
+
+1. **Extreme Detail & Determinism:** All specs must be created, maintained, and evolved with extreme detail, total completeness, and absolute determinism. No decision may be left pending for implementation time. Every spec must be implementable 100% by autonomous AI.
+
+2. **KISS (Keep It Simple, Stupid):** All implementations must be as simple as possible. Avoid unnecessary abstractions, patterns, or complexity. The AI must be able to implement, maintain, and evolve the code easily.
+
+3. **DRY (Don't Repeat Yourself):** Avoid duplication whenever possible, provided it does not conflict with KISS. Simplicity takes precedence over deduplication when they conflict.
+
+4. **AI-First Documentation:** All spec documents (requirements.md, design.md, task.md) are written exclusively for AI engines (especially DeepSeek V4 Pro). Human readability is secondary. Precision, completeness, and determinism are paramount.
+```
+
+---
+
+### 3. `.dscode/specs/roadmap.md` — Spec Roadmap
+
+```markdown
+# Roadmap
+
+## Specs
+
+| # | Name | Status | References |
+|---|---|---|---|
+| (empty — to be populated by /spec-plan) | | | |
+```
+
+**Rules:**
+- Feature specs are numbered in increments of 10 (10, 20, 30, ...).
+- Fix specs fill the gaps after their related feature spec (e.g., 11, 12 after 10; 21 after 20).
+- Statuses: `planned`, `created`, `verified`, `implemented`, `audited`.
+- References column links to relevant sections in vision.md (value blocks), arch.md, adr.md, lessons.md.
+
+---
+
+### 4. `.dscode/specs/adr.md` — Architecture Decision Records
+
+```markdown
+# Architecture Decision Records (ADR)
+
+## ADR-001: [Decision Title]
+
+**Date:** [ISO date]
+**Status:** accepted
+
+**Context:** [What problem or situation led to this decision?]
+
+**Decision:** [What was decided?]
+
+**Rationale:** [Why was this decision made? What alternatives were considered?]
+
+**Consequences:** [What are the implications — positive and negative?]
+
+---
+
+(Add more ADR entries as decisions are made. Each ADR gets a sequential number: ADR-001, ADR-002, ...)
+```
+
+Populate with ADR-001 describing the initial technology stack and platform choices, based on what you observe in the codebase.
+
+---
+
+### 5. `.dscode/specs/lessons.md` — Lessons Learned
+
+```markdown
+# Lessons Learned
+
+## L1: [Lesson Title]
+
+**Date:** [ISO date]
+**Category:** [architecture / implementation / process / tooling / other]
+
+**Problem:** [What difficulty was encountered?]
+
+**Solution:** [How was it resolved?]
+
+**Takeaway:** [What should be done to avoid similar issues in the future, and what solution pattern can be reused?]
+
+---
+
+(Add more lessons as they are discovered during development.)
+```
+
+Leave this file with a brief note: "*No lessons recorded yet — this file is populated as the project evolves.*"
+
+---
+
+## Important: After creating all 5 files, report to the user:
+
+1. Which files were created.
+2. The absolute paths to the files.
+3. A brief summary of the SDD structure that is now ready for use.

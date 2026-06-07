@@ -200,7 +200,7 @@ test("isPathInAnyDirectory matches absolute and project-relative directories wit
 
 test("appendProjectPermissionAllows writes unique project-level allow scopes", () => {
   const projectRoot = createTempDir("deepcode-permission-settings-");
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
   fs.writeFileSync(settingsPath, JSON.stringify({ permissions: { allow: ["read-in-cwd"] } }), "utf8");
 
@@ -223,7 +223,7 @@ test("appendProjectPermissionAllows seeds inherited permissions before adding al
     },
   });
 
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
   assert.deepEqual(settings.permissions, {
     allow: ["read-in-cwd", "query-git-log"],
@@ -245,7 +245,7 @@ test("appendProjectPermissionAllows moves inherited ask and deny scopes into all
     },
   });
 
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
   assert.deepEqual(settings.permissions, {
     allow: ["read-in-cwd", "network", "write-out-cwd"],
@@ -267,7 +267,7 @@ test("appendProjectPermissionAllows writes inherited permissions even when scope
     },
   });
 
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
   assert.deepEqual(settings.permissions, {
     allow: ["read-in-cwd"],
@@ -279,7 +279,7 @@ test("appendProjectPermissionAllows writes inherited permissions even when scope
 
 test("appendProjectPermissionAllows preserves existing project permissions", () => {
   const projectRoot = createTempDir("deepcode-permission-settings-explicit-default-");
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
   fs.writeFileSync(
     settingsPath,
@@ -305,7 +305,7 @@ test("appendProjectPermissionAllows preserves existing project permissions", () 
 
 test("appendProjectPermissionAllows removes existing ask and deny conflicts", () => {
   const projectRoot = createTempDir("deepcode-permission-settings-existing-conflict-");
-  const settingsPath = path.join(projectRoot, ".deepcode", "settings.json");
+  const settingsPath = path.join(projectRoot, ".dscode", "settings.json");
   fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
   fs.writeFileSync(
     settingsPath,

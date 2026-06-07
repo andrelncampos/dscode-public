@@ -329,7 +329,7 @@ test("SessionManager normalizes legacy sessions without activeTokens to zero", (
   setHomeDir(home);
 
   const projectCode = getProjectCode(workspace);
-  const projectDir = path.join(home, ".deepcode", "projects", projectCode);
+  const projectDir = path.join(home, ".dscode", "projects", projectCode);
   fs.mkdirSync(projectDir, { recursive: true });
   fs.writeFileSync(
     path.join(projectDir, "sessions-index.json"),
@@ -382,7 +382,7 @@ test("SessionManager marks skills loaded from existing session messages", async 
   );
 
   const projectCode = getProjectCode(workspace);
-  const projectDir = path.join(home, ".deepcode", "projects", projectCode);
+  const projectDir = path.join(home, ".dscode", "projects", projectCode);
   fs.mkdirSync(projectDir, { recursive: true });
   fs.writeFileSync(
     path.join(projectDir, "loaded-session.jsonl"),
@@ -1249,7 +1249,7 @@ test("createSession initializes file-history repo and session branch", async (t)
 
   const sessionId = await manager.createSession({ text: "first prompt" });
   const userMessage = manager.listSessionMessages(sessionId).find((message) => message.role === "user");
-  const gitDir = path.join(home, ".deepcode", "projects", getProjectCode(workspace), "file-history", ".git");
+  const gitDir = path.join(home, ".dscode", "projects", getProjectCode(workspace), "file-history", ".git");
 
   assert.ok(fs.existsSync(gitDir));
   assert.ok(userMessage?.checkpointHash);
@@ -2099,7 +2099,7 @@ test("replySession applies permission replies, runs pending tools, and stores al
   });
 
   const toolMessage = manager.listSessionMessages(sessionId).find((message) => message.role === "tool");
-  const settings = JSON.parse(fs.readFileSync(path.join(workspace, ".deepcode", "settings.json"), "utf8"));
+  const settings = JSON.parse(fs.readFileSync(path.join(workspace, ".dscode", "settings.json"), "utf8"));
 
   assert.match(toolMessage?.content ?? "", /allowed content/);
   assert.deepEqual(settings.permissions.allow, ["read-in-cwd"]);
@@ -3113,7 +3113,7 @@ test("SessionManager.deleteSession removes the messages file", () => {
   (manager as any).activateSession = async () => {};
 
   const sessionId = createSessionAndMessages(manager, "session-delete-msg", "Test session");
-  const messagePath = path.join(home, ".deepcode", "projects", getProjectCode(workspace), `${sessionId}.jsonl`);
+  const messagePath = path.join(home, ".dscode", "projects", getProjectCode(workspace), `${sessionId}.jsonl`);
 
   // Verify messages file exists
   assert.ok(fs.existsSync(messagePath));
@@ -3220,7 +3220,7 @@ function createFileHistoryCommit(
   files: Record<string, string>
 ): string {
   const projectCode = getProjectCode(workspace);
-  const gitDir = path.join(home, ".deepcode", "projects", projectCode, "file-history", ".git");
+  const gitDir = path.join(home, ".dscode", "projects", projectCode, "file-history", ".git");
   const fileHistory = new GitFileHistory(workspace, gitDir);
   fileHistory.ensureSession(sessionId);
 
@@ -3238,7 +3238,7 @@ function createFileHistoryCommit(
 
 function getFileHistoryGitDir(home: string, workspace: string): string {
   const projectCode = getProjectCode(workspace);
-  return path.join(home, ".deepcode", "projects", projectCode, "file-history", ".git");
+  return path.join(home, ".dscode", "projects", projectCode, "file-history", ".git");
 }
 
 function readFileHistoryManifest(home: string, workspace: string, checkpointHash: string): any {

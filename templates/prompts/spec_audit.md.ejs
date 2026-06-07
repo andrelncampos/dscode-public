@@ -1,0 +1,80 @@
+Your task is to audit the implementation of spec #<%= specNumber %> to ensure everything was implemented correctly, efficiently, and completely.
+
+This is an IDEMPOTENT operation — you can run it multiple times, and each pass should improve the implementation quality without degrading previous improvements.
+
+### Step 1: Read Everything
+
+Read these files:
+1. `.dscode/specs/roadmap.md` — find spec #<%= specNumber %>.
+2. `.dscode/specs/<%= specNumber %>-<name>/requirements.md` — what SHOULD have been built.
+3. `.dscode/specs/<%= specNumber %>-<name>/design.md` — HOW it should have been built.
+4. `.dscode/specs/<%= specNumber %>-<name>/task.md` — the task list with completion status.
+5. All files modified or created during implementation (discover from git diff or task list).
+6. `.dscode/specs/arch.md` — verify adherence to KISS, DRY, AI-first principles.
+
+(Discover the spec folder name from the roadmap first.)
+
+### Step 2: Verify Task Completion
+
+- [ ] Are ALL tasks marked as `[x] done`?
+- [ ] For each task, does the actual code match what the task described?
+- [ ] Are there any tasks still marked `[ ] pending`? If so, the implementation is incomplete — flag this.
+
+### Step 3: Verify Requirements Coverage
+
+Go through EVERY requirement in `requirements.md`:
+
+- [ ] Does the code fulfill this requirement?
+- [ ] Can you trace the requirement to specific code?
+- [ ] Do the acceptance criteria pass?
+
+If any requirement is not fulfilled, implement the missing functionality NOW.
+
+### Step 4: Verify Design Adherence
+
+- [ ] Does the code follow the design in `design.md`?
+- [ ] Are the component interfaces correct?
+- [ ] Is the data flow correct?
+- [ ] Are the data structures correct?
+- [ ] Are file paths correct?
+
+If the code deviates from the design, determine if:
+- The design was wrong → update design.md to match the correct implementation.
+- The implementation was wrong → fix the code to match the design.
+
+### Step 5: Verify Code Quality
+
+- [ ] Does the code follow KISS? Is it the simplest possible implementation?
+- [ ] Is there any unnecessary abstraction, indirection, or complexity?
+- [ ] Is there any duplicated code that should be deduplicated (without violating KISS)?
+- [ ] Does the code match the existing codebase style (indentation, naming, patterns)?
+- [ ] Are there any unused imports, variables, or dead code?
+
+If quality issues are found, fix them NOW using `edit`.
+
+### Step 6: Run Tests
+
+If the project has tests, run them:
+- Run `npm test` or equivalent.
+- If any tests fail, fix the code and re-run until all pass.
+- If new code lacks tests, add tests for critical paths.
+
+### Step 7: Fix All Issues Found
+
+For EVERY issue found in steps 2-6:
+1. Fix the code using `edit` or `write`.
+2. Update design.md or task.md if the fix changes the design or tasks.
+3. Re-verify after fixing.
+
+### Step 8: Update Roadmap
+
+Update the roadmap entry for spec #<%= specNumber %> to status `audited`.
+
+### Step 9: Report
+
+Report:
+1. Number of issues found and fixed (by category: task completion, requirements coverage, design adherence, code quality).
+2. Files modified during the audit.
+3. Test results (passed/failed/fixed).
+4. Confirmation that the spec is now `audited`.
+5. Overall quality assessment: excellent / good / acceptable / needs rework.

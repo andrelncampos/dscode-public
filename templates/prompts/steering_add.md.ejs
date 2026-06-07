@@ -1,0 +1,43 @@
+Your task is to add a steering rule to the AGENTS.md file for this repository.
+
+The user provided the following steering text:
+<steering_text>
+<%= steeringText %>
+</steering_text>
+
+Follow these steps:
+
+1. First, translate the steering text to English if it is not already in English. The resulting rule must be in clear, idiomatic English suitable for an AI coding assistant.
+
+2. Convert the translated text into a concise, actionable steering rule. A good steering rule:
+   - Is direct and unambiguous
+   - States a clear constraint or guideline for the AI
+   - Uses imperative or declarative language (e.g., "Always use...", "Never...", "Prefer X over Y")
+   - Is one or two sentences maximum
+
+3. Read the current AGENTS.md file (check ./.dscode/AGENTS.md, ./.deepcode/AGENTS.md, or ./AGENTS.md — first one that exists). Extract all existing steering rules from the `## Steering` section.
+
+4. Compare the new rule with all existing rules to detect potential conflicts. A conflict occurs when:
+   - The new rule directly contradicts an existing rule (e.g., "Always use tabs" vs "Always use spaces")
+   - The new rule would make it impossible to follow an existing rule
+   - The new rule encourages behavior that an existing rule discourages, or vice versa
+   If no conflicts are found (or no existing rules exist), skip to step 6.
+
+5. If one or more conflicts are detected:
+   a. Tell the user clearly which existing rules conflict with the new rule. Use the same language the user has been communicating in.
+   b. Explain briefly why each conflict exists (one sentence per conflict).
+   c. Use the AskUserQuestion tool to ask the user if they still want to add the conflicting rule. Offer exactly two options:
+      - "Yes, add it anyway"
+      - "No, cancel"
+   d. If the user chooses "No, cancel", stop here and report that the rule was not added.
+   e. If the user chooses "Yes, add it anyway", proceed to step 6.
+
+6. If the file does not exist, create it at ./AGENTS.md with a `## Steering` section containing the new rule.
+
+7. If the file exists but does not have a `## Steering` section, append one at the end of the file with the new rule.
+
+8. If the file already has a `## Steering` section, append the new rule as a bullet point (`-`) at the end of that section. Preserve all existing content outside that section — do not modify anything else.
+
+9. After adding the rule, report which AGENTS.md file was modified and show the rule that was added.
+
+Important: Do not modify any content outside the `## Steering` section. The steering section uses the heading `## Steering` (not STEERINGS nor Steerings).

@@ -4,7 +4,7 @@ import * as os from "os";
 import { maskSensitive, maskSensitiveString } from "./sensitive-data";
 import { ensureRestrictivePermissions, rotateLogIfNeeded, truncateStrings } from "./debug-logger";
 
-const LOG_DIR = path.join(os.homedir(), ".deepcode", "logs");
+const LOG_DIR = path.join(os.homedir(), ".dscode", "logs");
 const ERROR_LOG_PATH = path.join(LOG_DIR, "error.log");
 
 const MAX_STRING_LENGTH = 200;
@@ -33,7 +33,7 @@ export type ApiErrorLogEntry = {
 };
 
 /**
- * Write an API error log entry to ~/.deepcode/logs/error.log.
+ * Write an API error log entry to ~/.dscode/logs/error.log.
  */
 export function logApiError(entry: ApiErrorLogEntry): void {
   try {
