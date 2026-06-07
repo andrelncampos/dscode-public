@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0 # full history for complete scan
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@b54aef3dc96a9a200e95291ba2fa9d5e494fbf52 # v2.4.0
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
         continue-on-error: true
