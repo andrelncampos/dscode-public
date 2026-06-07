@@ -8,6 +8,8 @@ import { type PromptDraft, PromptInput, type PromptSubmission } from "./PromptIn
 import { MessageView, RawModeExitPrompt } from "../components";
 import { SessionList } from "./SessionList";
 import { type UndoRestoreMode, UndoSelector } from "./UndoSelector";
+import { HelpModal } from "./HelpModal";
+import ErrorBanner from "../components/ErrorBanner";
 import { buildLoadingText } from "../core/loading-text";
 import { findExpandedThinkingId } from "../core/thinking-state";
 import { WelcomeScreen } from "./WelcomeScreen";
@@ -91,6 +93,7 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
   const [nowTick, setNowTick] = useState(0);
   const [mcpStatuses, setMcpStatuses] = useState<ReturnType<typeof sessionManager.getMcpStatus>>([]);
   const [showProcessStdout, setShowProcessStdout] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
 
   rawModeRef.current = mode;
   messagesRef.current = messages;
@@ -122,7 +125,7 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
         setStreamProgress(progress);
       },
       onMcpStatusChanged: () => {
-        // 当 MCP 状态变更时，如果当前正在查看 MCP 状态页面，则更新显示
+        // When MCP status changes, if currently viewing the MCP status page, update the display
         setMcpStatuses(sessionManager.getMcpStatus());
       },
       onProcessStdout: (pid, chunk) => {
@@ -369,6 +372,10 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
     sessionManager.interruptActiveSession();
   }, [sessionManager]);
 
+  const handleToggleHelp = useCallback(() => {
+    setHelpVisible((prev) => !prev);
+  }, []);
+
   const handleToggleProcessStdout = useCallback(() => {
     setShowProcessStdout(true);
   }, []);
@@ -611,6 +618,13 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
   const expandedThinkingId = findExpandedThinkingId(messages);
   const pendingQuestion = useMemo(() => findPendingAskUserQuestion(messages, activeStatus), [activeStatus, messages]);
   const shouldShowQuestionPrompt = Boolean(pendingQuestion && !dismissedQuestionIds.has(pendingQuestion.messageId));
+  const canShowHelp =
+    helpVisible &&
+    view === "chat" &&
+    !shouldShowQuestionPrompt &&
+    activeStatus !== "ask_permission" &&
+    !showProcessStdout &&
+    !busy;
   const loadingText = useMemo(
     () => (busy ? buildLoadingText({ progress: streamProgress, processes: runningProcesses, now: Date.now() }) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick forces periodic recalculation for spinner animation
@@ -730,9 +744,14 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
         </Box>
       ) : null}
       {errorLine ? (
-        <Box>
-          <Text color="red">Error: {errorLine}</Text>
-        </Box>
+        <ErrorBanner
+          message={errorLine}
+          severity="error"
+          maxWidth={screenWidth}
+          dismissable
+          onDismiss={() => setErrorLine(null)}
+          autoDismiss
+        />
       ) : null}
       {showProcessStdout ? (
         <ProcessStdoutView
@@ -746,6 +765,7 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
       ) : view === "session-list" ? (
         <SessionList
           sessions={sessions}
+          currentSessionId={sessionManager.getActiveSessionId() ?? undefined}
           onSelect={(id) => void handleSelectSession(id)}
           onCancel={() => setView("chat")}
           onDelete={(id) => {
@@ -794,6 +814,8 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
           onSubmit={handlePermissionResult}
           onCancel={handlePermissionCancel}
         />
+      ) : canShowHelp ? (
+        <HelpModal onClose={() => setHelpVisible(false)} />
       ) : isExiting ? null : (
         <PromptInput
           projectRoot={projectRoot}
@@ -803,6 +825,8 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
           promptHistory={promptHistory}
           busy={busy}
           loadingText={loadingText}
+          streamProgress={streamProgress}
+          nowTick={nowTick}
           runningProcesses={runningProcesses}
           promptDraft={promptDraft}
           onSubmit={handleSubmit}
@@ -810,6 +834,8 @@ function App({ projectRoot, initialPrompt, onRestart }: AppProps): React.ReactEl
           onRawModeChange={handleRawModeChange}
           onInterrupt={handleInterrupt}
           onToggleProcessStdout={handleToggleProcessStdout}
+          onToggleHelp={handleToggleHelp}
+          helpVisible={helpVisible}
           placeholder="Type your message..."
         />
       )}

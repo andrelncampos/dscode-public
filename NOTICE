@@ -1,0 +1,52 @@
+dscode is derived from lessweb/deepcode-cli, originally licensed under the MIT License.
+
+Original project: https://github.com/lessweb/deepcode-cli
+Subsequent modifications are maintained by André Campos.
+
+--- Original MIT License Copyright Notice (from upstream) ---
+
+MIT License
+
+Copyright (c) 2026 lessweb
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--- Third-Party Dependencies ---
+
+This project depends on third-party open source packages.
+Each package retains its own license terms. Key runtime dependencies include:
+
+  - ink (MIT) — React for terminals
+  - react (MIT) — UI library
+  - openai (Apache-2.0) — OpenAI API client
+  - undici (MIT) — HTTP client
+  - zod (MIT) — Schema validation
+  - ejs (Apache-2.0) — Template engine
+  - chalk (MIT) — Terminal string styling
+  - gradient-string (MIT) — Gradient text
+  - gray-matter (MIT) — YAML frontmatter parser
+  - ignore (MIT) — .gitignore parser
+
+A complete and up-to-date list is available in package.json.
+Run `npm ls --all --production` for the full dependency tree with license metadata.
+
+--- Preservation Notice ---
+
+When distributing this software, you must retain the above copyright notice,
+this list of conditions, and the disclaimer from the original MIT License.

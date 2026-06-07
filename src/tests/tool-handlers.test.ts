@@ -29,7 +29,7 @@ test("Bash streams stdout and stderr before command completion", async () => {
 
   const resultPromise = handleBashTool(
     {
-      command: "printf 'first\\n'; sleep 1; printf 'second\\n'; printf 'err\\n' >&2",
+      command: "printf 'first\\n'; sleep 0.15; printf 'second\\n'; printf 'err\\n' >&2",
     },
     createContext("bash-live-output", workspace, {
       onProcessStdout: (_pid, chunk) => {
@@ -40,7 +40,7 @@ test("Bash streams stdout and stderr before command completion", async () => {
     completed = true;
   });
 
-  await waitFor(() => chunks.join("").includes("first"), 1500);
+  await waitFor(() => chunks.join("").includes("first"), 1000);
 
   assert.equal(completed, false);
 
@@ -58,7 +58,7 @@ test("Bash terminates commands that exceed the configured timeout", async () => 
 
   const result = await handleBashTool(
     {
-      command: "printf 'start\\n'; sleep 5; printf 'done\\n'",
+      command: "printf 'start\\n'; sleep 0.8; printf 'done\\n'",
     },
     createContext("bash-timeout", workspace, {
       bashTimeoutMs: 100,
@@ -1046,7 +1046,7 @@ async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<voi
     if (predicate()) {
       return;
     }
-    await delay(25);
+    await delay(50);
   }
   assert.equal(predicate(), true);
 }

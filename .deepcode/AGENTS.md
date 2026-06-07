@@ -98,6 +98,7 @@ Run the CLI locally for manual testing: `node dist/cli.js` (after `npm run bundl
 - **Test naming**: `describe`/`test` blocks with descriptive names. Example: `test("SessionManager preserves structured system content when building OpenAI messages", ...)`
 - **Relaxed lint rules**: Test files allow `any` and unused vars.
 - Run all tests with `npm test` before submitting a PR. A cross-platform test runner is available at `src/tests/run-tests.mjs`.
+- **Test suite strategy**: The test runner splits tests into two suites — **fast** (33 files, ~150s) and **heavy** (2 files, ~120s). During development, only run the fast suite to keep the feedback loop short. The heavy suite (session integration tests with LLM mock) is a CI gate — only required before committing + pushing. Use `npm run check` (typecheck + lint + format) as the primary development gate; add the fast suite when touching core logic. Full `npm test` is reserved for pre-commit validation.
 
 ## Commit & Pull Request Guidelines
 
@@ -120,7 +121,7 @@ Run the CLI locally for manual testing: `node dist/cli.js` (after `npm run bundl
 
 ## Architecture Overview
 
-The CLI (`@vegamo/deepcode-cli`) renders a terminal UI using [Ink](https://github.com/vadimdemedes/ink) (React for terminals). `SessionManager` drives the LLM interaction loop: it builds system prompts, sends user messages with optional skills/images, streams responses, executes tool calls via `ToolExecutor`, and compacts context when token thresholds are exceeded (512K for DeepSeek V4 models, 128K for others). OpenAI client connectivity is managed by `createOpenAIClient()` in `src/common/openai-client.ts`, which caches the client singleton and applies a 180-second keep-alive timeout.
+The CLI (`@andrelncampos/dscode`) renders a terminal UI using [Ink](https://github.com/vadimdemedes/ink) (React for terminals). `SessionManager` drives the LLM interaction loop: it builds system prompts, sends user messages with optional skills/images, streams responses, executes tool calls via `ToolExecutor`, and compacts context when token thresholds are exceeded (512K for DeepSeek V4 models, 128K for others). OpenAI client connectivity is managed by `createOpenAIClient()` in `src/common/openai-client.ts`, which caches the client singleton and applies a 180-second keep-alive timeout.
 
 Seven built-in tools are available to the LLM: `bash`, `read`, `write`, `edit`, `AskUserQuestion`, `UpdatePlan`, and `WebSearch`. Tool definitions are registered in `src/tools/executor.ts` and described to the LLM via `src/prompt.ts` and `templates/tools/`. The `UpdatePlan` tool enables the LLM to display and update a structured task list in the terminal.
 

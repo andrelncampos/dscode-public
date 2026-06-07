@@ -1,0 +1,75 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * 1" # every Monday at 08:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Run npm audit
+        # Fails only on HIGH or CRITICAL vulnerabilities.
+        # Warnings are logged but do not break the build.
+        run: npm audit --audit-level=high
+        continue-on-error: false
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # full history for complete scan
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@b54aef3dc96a9a200e95291ba2fa9d5e494fbf52 # v2.4.0
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        continue-on-error: true
+        # gitleaks-action outputs findings to SARIF, but the action itself
+        # handles that. We use continue-on-error so findings are reported
+        # but do not block the CI pipeline by default.
+        # To enforce secret blocking, set GITLEAKS_ENABLE_UPLOAD_ARTIFACT=false
+        # and remove continue-on-error.
+
+  dangerous-files:
+    name: Check for dangerous committed files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Scan for dangerous files
+        run: |
+          set -e
+          DANGEROUS=0
+          # Check for files that should never be committed
+          for pattern in \
+            "*.env" \
+            "*.pem" \
+            "*.p12" \
+            "*.pfx" \
+            "*.key" \
+            "debug.log" \
+            "*.log"
+          do
+            FOUND=$(find . -type f -name "$pattern" -not -path "./node_modules/*" -not -path "./.git/*" 2>/dev/null || true)
+            if [ -n "$FOUND" ]; then
+              echo "::error::Dangerous file found: $FOUND"
+              DANGEROUS=1
+            fi
+          done
+          exit $DANGEROUS

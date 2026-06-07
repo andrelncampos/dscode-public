@@ -82,7 +82,7 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     kind: "exit",
     name: "exit",
     label: "/exit",
-    description: "Quit Deep Code CLI",
+    description: "Quit DsCode CLI",
   },
 ];
 

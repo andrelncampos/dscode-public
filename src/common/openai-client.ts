@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import OpenAI from "openai";
 import { Agent, fetch as undiciFetch } from "undici";
 import { resolveCurrentSettings } from "../settings";
@@ -10,7 +7,11 @@ import { resolveCurrentSettings } from "../settings";
 // is too short for a CLI where the user may spend 10–30 seconds reading
 // output between prompts.  By passing a dedicated Agent to undiciFetch we
 // keep connections reusable for three minutes after the last request.
-const keepAliveAgent = new Agent({ keepAliveTimeout: 180_000 });
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 180_000,
+  headersTimeout: 150_000, // max time to wait for response headers
+  bodyTimeout: 300_000, // max time to wait for response body (streaming)
+});
 
 // Module-level cache for the OpenAI client instance.  The client itself is
 // a stateless fetch wrapper, so it is safe to share across calls as long as
@@ -28,10 +29,10 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
   reasoningEffort: "high" | "max";
   debugLogEnabled: boolean;
   telemetryEnabled: boolean;
+  maxTokens: number;
   notify?: string;
   webSearchTool?: string;
   env: Record<string, string>;
-  machineId?: string;
 } {
   const settings = resolveCurrentSettings(projectRoot);
   if (!settings.apiKey) {
@@ -44,10 +45,10 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
       reasoningEffort: settings.reasoningEffort,
       debugLogEnabled: settings.debugLogEnabled,
       telemetryEnabled: settings.telemetryEnabled,
+      maxTokens: settings.maxTokens,
       notify: settings.notify,
       webSearchTool: settings.webSearchTool,
       env: settings.env,
-      machineId: getMachineId(),
     };
   }
 
@@ -62,10 +63,10 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
       reasoningEffort: settings.reasoningEffort,
       debugLogEnabled: settings.debugLogEnabled,
       telemetryEnabled: settings.telemetryEnabled,
+      maxTokens: settings.maxTokens,
       notify: settings.notify,
       webSearchTool: settings.webSearchTool,
       env: settings.env,
-      machineId: getMachineId(),
     };
   }
 
@@ -99,27 +100,9 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
     reasoningEffort: settings.reasoningEffort,
     debugLogEnabled: settings.debugLogEnabled,
     telemetryEnabled: settings.telemetryEnabled,
+    maxTokens: settings.maxTokens,
     notify: settings.notify,
     webSearchTool: settings.webSearchTool,
     env: settings.env,
-    machineId: getMachineId(),
   };
-}
-
-function getMachineId(): string | undefined {
-  try {
-    const idPath = path.join(os.homedir(), ".deepcode", "machine-id");
-    if (fs.existsSync(idPath)) {
-      const raw = fs.readFileSync(idPath, "utf8").trim();
-      if (raw) {
-        return raw;
-      }
-    }
-    const generated = `${os.hostname()}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
-    fs.mkdirSync(path.dirname(idPath), { recursive: true });
-    fs.writeFileSync(idPath, generated, "utf8");
-    return generated;
-  } catch {
-    return undefined;
-  }
 }

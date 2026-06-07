@@ -16,8 +16,7 @@ type WelcomeScreenProps = {
   width: number;
 };
 
-const TITLE_PANEL_WIDTH = 70;
-const PANEL_CONTENT_HEIGHT = 8;
+const PANEL_MIN_WIDTH = 58;
 
 const SHORTCUT_TIPS = [
   { label: "Enter", description: "Send the prompt" },
@@ -25,72 +24,54 @@ const SHORTCUT_TIPS = [
   { label: "Ctrl+V", description: "Paste an image from the clipboard" },
   { label: "Esc", description: "Interrupt the current model turn" },
   { label: "/", description: "Open the skills and commands menu" },
-  { label: "Ctrl+D twice", description: "Quit Deep Code CLI" },
+  { label: "Ctrl+D twice", description: "Quit DsCode CLI" },
 ];
 
 export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeScreenProps): React.ReactElement {
   const { version } = useAppContext();
   const tips = useMemo(() => buildWelcomeTips(skills), [skills]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
-  const compact = width < TITLE_PANEL_WIDTH + 42;
+  const compact = width < PANEL_MIN_WIDTH + 20;
   const cwd = formatHomeRelativePath(projectRoot);
   const tip = tips[Math.min(tipIndex, Math.max(0, tips.length - 1))] ?? tips[0];
-  const panelWidth = compact ? undefined : Math.min(width, 72);
+  const effortLabel = settings.thinkingEnabled ? settings.reasoningEffort : "--";
 
   return (
     <Box flexDirection="column" marginY={1}>
-      <Box flexDirection="column" width={panelWidth}>
-        <Box flexDirection="column" paddingX={1}>
-          <Box flexDirection="column" justifyContent="center" paddingX={1}>
-            <Box justifyContent="center" width={compact ? undefined : TITLE_PANEL_WIDTH}>
-              <ThemedGradient>{AsciiLogo}</ThemedGradient>
-            </Box>
-          </Box>
+      {/* Logo with cyberpunk gradient */}
+      <Box justifyContent="center">
+        <ThemedGradient bold>{AsciiLogo}</ThemedGradient>
+      </Box>
 
-          <Box
-            borderStyle={"round"}
-            borderColor={"#229ac3e6"}
-            flexDirection="column"
-            flexGrow={1}
-            height={compact ? undefined : PANEL_CONTENT_HEIGHT}
-            marginTop={compact ? 1 : 0}
-            paddingX={1}
-          >
-            <Box flexGrow={1} marginBottom={compact ? 1 : 0}>
-              <Text color={"#229ac3e6"}>{">"}_ Deep Code </Text>
-              <Text color="gray"> (v{version || "unknown"})</Text>
-            </Box>
-            {!compact ? <Text> </Text> : null}
-            <SettingRow label="Model" value={settings.model} />
-            <SettingRow label="Thinking Enabled" value={String(settings.thinkingEnabled)} />
-            <SettingRow label="Reasoning Effort" value={settings.thinkingEnabled ? settings.reasoningEffort : "-"} />
-            <SettingRow label="CWD" value={cwd} />
-          </Box>
+      {/* Status bar */}
+      <Box justifyContent="center" marginTop={1} paddingX={2}>
+        <Text dimColor>
+          ▸ <Text color="#06b6d4">{settings.model}</Text>
+          {"  │  "}
+          thinking: <Text color={settings.thinkingEnabled ? "#06b6d4" : "gray"}>{effortLabel}</Text>
+          {"  │  "}
+          cwd: <Text color="#06b6d4">{compact ? "~" : cwd}</Text>
+          {"  ◈"}
+        </Text>
+      </Box>
+
+      {/* Version line */}
+      <Box justifyContent="center" marginTop={compact ? 0 : 0}>
+        <Text color="gray" dimColor>
+          v{version || "unknown"} — {settings.thinkingEnabled ? "thinking mode active" : "non-thinking mode"}
+        </Text>
+      </Box>
+
+      {/* Random tip */}
+      {tip ? (
+        <Box justifyContent="center" marginTop={2}>
+          <Text dimColor>
+            <Text color="#7b2fff">▸</Text> <Text color="gray">{tip.label}</Text>
+            {" — "}
+            {tip.description}
+          </Text>
         </Box>
-      </Box>
-
-      <Box flexDirection="column" width={panelWidth} paddingX={1}>
-        {tip ? (
-          <Box marginTop={1}>
-            <Text dimColor>
-              Tips: {tip.label} - {tip.description}
-            </Text>
-          </Box>
-        ) : null}
-      </Box>
-    </Box>
-  );
-}
-
-function SettingRow({ label, value }: { label: string; value: string }): React.ReactElement {
-  return (
-    <Box flexDirection="row">
-      <Box width={20}>
-        <Text>{label}</Text>
-      </Box>
-      <Box flexGrow={1} justifyContent="flex-end">
-        <Text>{value}</Text>
-      </Box>
+      ) : null}
     </Box>
   );
 }

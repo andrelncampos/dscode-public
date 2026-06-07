@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import React from "react";
 import { render } from "ink";
 import { setShellIfWindows } from "./common/shell-utils";
@@ -15,14 +18,14 @@ if (args.includes("--version") || args.includes("-v")) {
 if (args.includes("--help") || args.includes("-h")) {
   process.stdout.write(
     [
-      "deepcode - Deep Code CLI",
+      "dscode - dscode CLI",
       "",
       "Usage:",
-      "  deepcode                              Launch the interactive TUI in the current directory",
-      "  deepcode -p <prompt>                  Launch with a pre-filled prompt",
-      "  deepcode --prompt <prompt>            Same as -p",
-      "  deepcode --version                    Print the version",
-      "  deepcode --help                       Show this help",
+      "  dscode                              Launch the interactive TUI in the current directory",
+      "  dscode -p <prompt>                  Launch with a pre-filled prompt",
+      "  dscode --prompt <prompt>            Same as -p",
+      "  dscode --version                    Print the version",
+      "  dscode --help                       Show this help",
       "",
       "Configuration:",
       "  ~/.deepcode/settings.json    User-level API key, model, base URL",
@@ -71,7 +74,7 @@ const projectRoot = process.cwd();
 configureWindowsShell();
 
 if (!process.stdin.isTTY) {
-  process.stderr.write("deepcode requires an interactive terminal (TTY). " + "Re-run from a real terminal session.\n");
+  process.stderr.write("dscode requires an interactive terminal (TTY). " + "Re-run from a real terminal session.\n");
   process.exit(1);
 }
 
@@ -125,19 +128,22 @@ function configureWindowsShell(): void {
     setShellIfWindows();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`deepcode: ${message}\n`);
+    process.stderr.write(`dscode: ${message}\n`);
     process.exit(1);
   }
 }
 
 function readPackageInfo(): PackageInfo {
   try {
-    const pkg = require("../package.json") as { name?: unknown; version?: unknown };
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const pkgPath = resolve(currentDir, "..", "package.json");
+    const raw = readFileSync(pkgPath, "utf8");
+    const pkg = JSON.parse(raw) as { name?: unknown; version?: unknown };
     return {
-      name: typeof pkg.name === "string" ? pkg.name : "@vegamo/deepcode-cli",
+      name: typeof pkg.name === "string" ? pkg.name : "@andrelncampos/dscode",
       version: typeof pkg.version === "string" ? pkg.version : "",
     };
   } catch {
-    return { name: "@vegamo/deepcode-cli", version: "" };
+    return { name: "@andrelncampos/dscode", version: "" };
   }
 }

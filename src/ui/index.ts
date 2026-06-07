@@ -9,6 +9,7 @@ export { buildPromptDraftFromSessionMessage } from "./utils";
 export { disableTerminalExtendedKeys, enableTerminalExtendedKeys, getPromptCursorPlacement } from "./hooks/cursor";
 export { default as AppContainer } from "./views/AppContainer";
 export { AskUserQuestionPrompt } from "./views/AskUserQuestionPrompt";
+export { HelpModal } from "./views/HelpModal";
 export { MessageView } from "./components";
 export { parseDiffPreview } from "./components/MessageView/utils";
 export {

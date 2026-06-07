@@ -90,9 +90,9 @@ Here's an example of how your output should be structured:
 
 </summary>`;
 
-const SYSTEM_PROMPT_BASE = `你是名叫Deep Code的交互式CLI工具，帮助用户完成软件工程任务。 Use the instructions below and the tools available to you to assist the user.
+const SYSTEM_PROMPT_BASE = `You are an interactive CLI tool called DsCode that helps users complete software engineering tasks. Use the instructions below and the tools available to you to assist the user.
 
-重要：严禁编造任何非编程相关的 URL。对于编程链接，仅限使用：1) 用户提供的上下文；2) 你确定的官方文档主域名。在输出前，必须自查该链接是否存在于你的上下文记忆中；若不存在，请明确说明无法提供。`;
+Important: Do not fabricate any non-programming URLs. For programming links, only use: 1) context provided by the user; 2) the main domain of official documentation you have identified. Before outputting, you must verify that the link exists in your context memory; if it does not, explicitly state that you cannot provide it.`;
 
 type PromptToolOptions = {
   model?: string;
@@ -267,10 +267,7 @@ function escapeXml(value: string): string {
 }
 
 function getCurrentDateAndModelPrompt(model?: string): string {
-  const date = new Date();
-  let prompt = `今天是${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日。随着对话的进行，时间在流逝。`;
-  prompt += model ? `\n当前LLM模型为${model}，对话中可通过/model命令切换模型。` : "";
-  return prompt;
+  return model ? `The current LLM model is ${model}. You can switch models at any time using the /model command.` : "";
 }
 
 export function getSystemPrompt(_projectRoot: string, options: PromptToolOptions = {}): string {

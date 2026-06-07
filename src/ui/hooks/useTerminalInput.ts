@@ -249,10 +249,20 @@ export function useTerminalInput(
   // O(n²) copying when the terminal splits a large paste across many events.
   const pasteRef = useRef({ active: false, chunks: [] as string[] });
 
+  // Escape-sequence buffer: some Windows terminals (mintty, conpty) may split
+  // multi-byte escape sequences like \u001B\r (Shift+Enter) across separate data
+  // events.  Buffering the lone ESC for a short window and prepending it to
+  // the next event lets us reconstruct the complete sequence.
+  const escTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useLayoutEffect(() => {
     if (!isActive) {
       pasteRef.current.active = false;
       pasteRef.current.chunks = [];
+      if (escTimerRef.current !== null) {
+        clearTimeout(escTimerRef.current);
+        escTimerRef.current = null;
+      }
       return;
     }
     setRawMode(true);
@@ -334,6 +344,31 @@ export function useTerminalInput(
       }
 
       // ----- Normal (non-paste) input -----
+      // Buffer a lone ESC to handle split escape sequences (e.g. Shift+Enter
+      // arriving as \u001B followed by \r on Windows terminals).
+      if (raw === "\u001B") {
+        // Clear any previous ESC timer (shouldn't happen, but be safe).
+        if (escTimerRef.current !== null) {
+          clearTimeout(escTimerRef.current);
+        }
+        // If more data arrives within this window, prepend ESC and process
+        // the combined sequence.  Otherwise dispatch as standalone ESC.
+        escTimerRef.current = setTimeout(() => {
+          escTimerRef.current = null;
+          dispatchTerminalInput("\u001B", handlerRef.current);
+        }, 10);
+        return;
+      }
+
+      // If a buffered ESC is pending, prepend it to the current data so
+      // parseTerminalInput sees the full sequence (e.g. \u001B\r → Shift+Enter).
+      if (escTimerRef.current !== null) {
+        clearTimeout(escTimerRef.current);
+        escTimerRef.current = null;
+        dispatchTerminalInput("\u001B" + raw, handlerRef.current);
+        return;
+      }
+
       dispatchTerminalInput(data, handlerRef.current);
     };
 

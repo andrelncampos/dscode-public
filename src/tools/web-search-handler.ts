@@ -1,35 +1,9 @@
-import { randomUUID } from "crypto";
 import { spawn } from "child_process";
-import type OpenAI from "openai";
-import type { CreateOpenAIClient, ToolExecutionContext, ToolExecutionResult } from "./executor";
+import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
 const WEB_SEARCH_TOOL_ACTIVITY_PREFIX = "WebSearch:";
-const DEFAULT_WEB_SEARCH_API_URL = "https://deepcode.vegamo.cn/api/plugin/web-search";
-
-type SearchLanguage = "en" | "zh";
-
-type SearchDecision = {
-  dominantLanguage: SearchLanguage;
-  reason: string;
-};
-
-type SearchPreparation = {
-  resolvedQuery: string;
-  decision: SearchDecision;
-  translated: boolean;
-};
-
-type LLMClientContext = {
-  client: OpenAI;
-  model: string;
-  thinkingEnabled: boolean;
-  notify?: string;
-  webSearchTool?: string;
-  env?: Record<string, string>;
-  machineId?: string;
-};
 
 export async function handleWebSearchTool(
   args: Record<string, unknown>,
@@ -46,24 +20,20 @@ export async function handleWebSearchTool(
 
   const llmContext = context.createOpenAIClient?.();
   const scriptPath = llmContext?.webSearchTool?.trim();
-  if (scriptPath) {
-    return executeConfiguredWebSearch(query, scriptPath, context, llmContext?.env ?? {});
-  }
 
-  if (!hasUsableClient(llmContext)) {
+  if (!scriptPath) {
     return {
       ok: false,
       name: "WebSearch",
       error:
-        "WebSearch default mode requires a valid LLM configuration in ~/.deepcode/settings.json or ./.deepcode/settings.json.",
+        "WebSearch is not configured.\n" +
+        "Configure webSearchTool in your settings.json with the path to an executable script.\n" +
+        'Example: { "webSearchTool": "/usr/local/bin/web-search" }\n' +
+        "The script receives the search query as its first argument and must print JSON results to stdout.",
     };
   }
 
-  return executeDefaultWebSearch(query, llmContext, context);
-}
-
-function hasUsableClient(value: ReturnType<CreateOpenAIClient> | undefined): value is LLMClientContext {
-  return Boolean(value?.client);
+  return executeConfiguredWebSearch(query, scriptPath, context, llmContext?.env ?? {});
 }
 
 async function executeConfiguredWebSearch(
@@ -119,37 +89,6 @@ async function executeConfiguredWebSearch(
   };
 }
 
-async function executeDefaultWebSearch(
-  query: string,
-  llmContext: LLMClientContext,
-  context: ToolExecutionContext
-): Promise<ToolExecutionResult> {
-  try {
-    const prepared = await prepareSearchQuery(query, llmContext);
-    const output = await runDefaultWebSearchRequest(prepared.resolvedQuery, llmContext.machineId, context);
-
-    return {
-      ok: true,
-      name: "WebSearch",
-      output,
-      metadata: {
-        originalQuery: query,
-        resolvedQuery: prepared.resolvedQuery,
-        translated: prepared.translated,
-        dominantLanguage: prepared.decision.dominantLanguage,
-        languageReason: prepared.decision.reason,
-      },
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      ok: false,
-      name: "WebSearch",
-      error: `WebSearch default mode failed: ${message}`,
-    };
-  }
-}
-
 async function runWebSearchScript(
   scriptPath: string,
   query: string,
@@ -195,169 +134,6 @@ async function runWebSearchScript(
       });
     });
   });
-}
-
-async function prepareSearchQuery(query: string, llmContext: LLMClientContext): Promise<SearchPreparation> {
-  const decision = await decideSearchLanguage(query, llmContext);
-  const containsChinese = containsChineseChar(query);
-
-  if (decision.dominantLanguage === "en" && containsChinese) {
-    const translatedQuery = await translateQuery(query, "English", llmContext);
-    if (translatedQuery) {
-      return {
-        resolvedQuery: translatedQuery,
-        decision,
-        translated: true,
-      };
-    }
-  }
-
-  if (decision.dominantLanguage === "zh" && !containsChinese) {
-    const translatedQuery = await translateQuery(query, "Chinese", llmContext);
-    if (translatedQuery) {
-      return {
-        resolvedQuery: translatedQuery,
-        decision,
-        translated: true,
-      };
-    }
-  }
-
-  return {
-    resolvedQuery: query,
-    decision,
-    translated: false,
-  };
-}
-
-function containsChineseChar(text: string): boolean {
-  return /[\u4e00-\u9fff]/.test(text);
-}
-
-async function decideSearchLanguage(query: string, llmContext: LLMClientContext): Promise<SearchDecision> {
-  const prompt = `Decide whether the topic below has more useful online material in English or Chinese.
-
-Topic:
-\`\`\`text
-${query}
-\`\`\`
-
-Return strict JSON:
-{"dominant_language":"en"|"zh","reason":"one short sentence"}
-Do not include markdown or any extra text.`;
-
-  const result = parseJsonResponse(await chat(llmContext, prompt));
-  const dominantLanguage = result.dominant_language;
-
-  if (dominantLanguage !== "en" && dominantLanguage !== "zh") {
-    throw new Error(`Unexpected dominant language: ${String(dominantLanguage)}`);
-  }
-
-  return {
-    dominantLanguage,
-    reason: typeof result.reason === "string" ? result.reason : "",
-  };
-}
-
-async function translateQuery(
-  query: string,
-  targetLanguage: "English" | "Chinese",
-  llmContext: LLMClientContext
-): Promise<string> {
-  const prompt = `Translate the query text below into ${targetLanguage}.
-
-Requirements:
-- Preserve product names, library names, API names, versions, and abbreviations when appropriate.
-- Return only the translated query, without quotes or explanation.
-
-Query:
-\`\`\`text
-${query}
-\`\`\``;
-
-  return stripCodeFence(await chat(llmContext, prompt))
-    .trim()
-    .replace(/^['"]|['"]$/g, "");
-}
-
-async function chat(llmContext: LLMClientContext, prompt: string): Promise<string> {
-  const response = await llmContext.client.chat.completions.create({
-    model: llmContext.model,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = response.choices?.[0]?.message?.content as unknown;
-  if (typeof content === "string") {
-    return content.trim();
-  }
-  if (Array.isArray(content)) {
-    return (content as Array<{ text?: string }>)
-      .map((part) => (typeof part.text === "string" ? part.text : ""))
-      .join("\n")
-      .trim();
-  }
-  return "";
-}
-
-function parseJsonResponse(text: string): Record<string, unknown> {
-  const cleaned = stripCodeFence(text).trim();
-  try {
-    return JSON.parse(cleaned) as Record<string, unknown>;
-  } catch {
-    const firstBrace = cleaned.indexOf("{");
-    const lastBrace = cleaned.lastIndexOf("}");
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)) as Record<string, unknown>;
-    }
-    throw new Error(`Failed to parse JSON response: ${cleaned || "<empty>"}`);
-  }
-}
-
-function stripCodeFence(text: string): string {
-  const trimmed = text.trim();
-  const fenceMatch = trimmed.match(/^```(?:[\w-]+)?\n([\s\S]*?)\n```$/);
-  return fenceMatch ? fenceMatch[1] : trimmed;
-}
-
-async function runDefaultWebSearchRequest(
-  query: string,
-  machineId: string | undefined,
-  context: ToolExecutionContext
-): Promise<string> {
-  if (!machineId) {
-    throw new Error("Missing vscode.env.machineId for the default WebSearch request.");
-  }
-
-  const activityId = `web-search-${randomUUID()}`;
-  context.onProcessStart?.(activityId, formatWebSearchActivityLabel(query));
-  try {
-    const response = await fetch(DEFAULT_WEB_SEARCH_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Token: machineId,
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(`WebSearch API request failed with status ${response.status}${body ? `: ${body}` : ""}`);
-    }
-
-    const payload = (await response.json()) as {
-      success?: unknown;
-      result?: unknown;
-    };
-
-    if (typeof payload.result === "string" && payload.result.trim()) {
-      return payload.result.trim();
-    }
-  } finally {
-    context.onProcessExit?.(activityId);
-  }
-
-  throw new Error("The web search response was empty.");
 }
 
 function appendChunk(existing: string, chunk: string | Buffer): string {

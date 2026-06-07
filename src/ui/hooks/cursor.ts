@@ -49,7 +49,10 @@ function disableBracketedPaste(): string {
 }
 
 export function enableTerminalExtendedKeys(): string {
-  return "\u001B[>4;1m";
+  // Level 2 (;2) reports all keys with modifiers (Shift, Ctrl, Alt, Meta),
+  // including Shift+Enter. Level 1 (;1) only reports a subset and may not
+  // include Shift+Enter on some terminals (e.g. mintty / Git Bash on Windows).
+  return "\u001B[>4;2m";
 }
 
 export function disableTerminalExtendedKeys(): string {

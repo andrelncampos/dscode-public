@@ -1,37 +1,37 @@
-# Deep Code 权限机制
+# dscode Permission Mechanism
 
-Deep Code 内置了一套细粒度的权限控制机制，在 AI 助手执行工具调用（如执行 Shell 命令、读写文件、访问网络等）前，根据用户配置的策略决定是自动放行、直接拒绝、还是弹出交互式确认。
+dscode includes a fine-grained permission control mechanism. Before the AI assistant executes a tool call (such as running a shell command, reading/writing files, accessing the network, etc.), the system determines whether to auto-allow, auto-deny, or prompt for interactive confirmation based on your configured policy.
 
-## 概述
+## Overview
 
-每次 AI 助手调用工具时，系统会自动分析该操作涉及的**权限范围（Permission Scope）**，然后根据 `settings.json` 中的权限配置做出决策。对于需要用户确认的操作，会在终端中弹出交互式选择界面，用户可以选择：
+Each time the AI assistant invokes a tool, the system automatically analyzes the **permission scopes** involved and makes a decision based on the permission configuration in `settings.json`. For operations requiring user confirmation, an interactive prompt appears in the terminal with the following choices:
 
-- **Yes** — 仅本次放行
-- **Yes, and always allow** — 本次放行，并将该权限范围写入项目配置文件，后续同类操作不再询问
-- **No** — 拒绝本次操作
+- **Yes** — Allow this one time only
+- **Yes, and always allow** — Allow this time and persistently save the scope to the project configuration so future calls skip the prompt
+- **No** — Deny this operation
 
-## 权限范围
+## Permission Scopes
 
-Deep Code 定义了以下 10 种权限范围，覆盖了工具调用的各类风险场景：
+dscode defines the following 10 permission scopes, covering various risk scenarios for tool calls:
 
-| 权限范围 | 说明 |
-| -------- | ---- |
-| `read-in-cwd` | 读取当前工作区内的文件 |
-| `read-out-cwd` | 读取当前工作区外的文件 |
-| `write-in-cwd` | 在当前工作区内创建或覆写文件 |
-| `write-out-cwd` | 在当前工作区外创建或覆写文件 |
-| `delete-in-cwd` | 删除当前工作区内的文件 |
-| `delete-out-cwd` | 删除当前工作区外的文件 |
-| `query-git-log` | 查询 Git 历史（如 `git log`、`git show`、`git blame`） |
-| `mutate-git-log` | 修改 Git 历史（如 `git commit`、`git rebase`、`git tag`） |
-| `network` | 访问网络（如 `curl`、`npm install` 等联网操作） |
-| `mcp` | 调用 MCP 外部工具 |
+| Permission Scope | Description |
+| ---------------- | ----------- |
+| `read-in-cwd` | Read files inside the current workspace |
+| `read-out-cwd` | Read files outside the current workspace |
+| `write-in-cwd` | Create or overwrite files inside the current workspace |
+| `write-out-cwd` | Create or overwrite files outside the current workspace |
+| `delete-in-cwd` | Delete files inside the current workspace |
+| `delete-out-cwd` | Delete files outside the current workspace |
+| `query-git-log` | Query Git history (e.g., `git log`, `git show`, `git blame`) |
+| `mutate-git-log` | Mutate Git history (e.g., `git commit`, `git rebase`, `git tag`) |
+| `network` | Access the network (e.g., `curl`, `npm install`) |
+| `mcp` | Invoke MCP external tools |
 
-此外还有一个特殊的 `unknown` 范围，当 LLM 无法准确分类命令的副作用时使用，**`unknown` 总是触发询问**。
+There is also a special `unknown` scope used when the LLM cannot classify a command's side effects — **`unknown` always triggers a prompt**.
 
-## 权限配置
+## Permission Configuration
 
-在 `~/.deepcode/settings.json`（用户级）或 `.deepcode/settings.json`（项目级）中通过 `permissions` 字段配置：
+Configure permissions in `~/.deepcode/settings.json` (user-level) or `.deepcode/settings.json` (project-level) via the `permissions` field:
 
 ```json
 {
@@ -44,25 +44,25 @@ Deep Code 定义了以下 10 种权限范围，覆盖了工具调用的各类风
 }
 ```
 
-### 配置项说明
+### Configuration Fields
 
-| 字段 | 类型 | 说明 |
-| ---- | ---- | ---- |
-| `allow` | `string[]` | 始终自动放行的权限范围列表 |
-| `deny` | `string[]` | 始终自动拒绝的权限范围列表 |
-| `ask` | `string[]` | 始终弹出询问的权限范围列表 |
-| `defaultMode` | `"allowAll"` \| `"askAll"` | 未在 `allow`/`deny`/`ask` 中明确列出的权限范围的默认处理方式。默认为 `"allowAll"` |
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `allow` | `string[]` | Permission scopes that are always auto-allowed |
+| `deny` | `string[]` | Permission scopes that are always auto-denied |
+| `ask` | `string[]` | Permission scopes that always trigger a confirmation prompt |
+| `defaultMode` | `"allowAll"` \| `"askAll"` | Default behavior for scopes not explicitly listed in `allow`/`deny`/`ask`. Defaults to `"allowAll"` |
 
-### 优先级规则
+### Priority Rules
 
-当一个工具调用涉及多个权限范围时，决策按以下优先级进行：
+When a tool call involves multiple permission scopes, the decision follows this priority:
 
-1. 若任一范围命中 `deny` → **拒绝**
-2. 若任一范围命中 `ask` → **询问**
-3. 若所有范围均在 `allow` 中 → **自动放行**
-4. 否则 → 按 `defaultMode` 处理
+1. If any scope matches `deny` → **Deny**
+2. If any scope matches `ask` → **Prompt**
+3. If all scopes are in `allow` → **Auto-allow**
+4. Otherwise → use `defaultMode`
 
-### 示例：宽松模式（默认）
+### Example: Relaxed Mode (default)
 
 ```json
 {
@@ -72,9 +72,9 @@ Deep Code 定义了以下 10 种权限范围，覆盖了工具调用的各类风
 }
 ```
 
-默认行为：所有操作自动放行，无需确认。
+Default behavior: all operations are auto-allowed with no confirmation required.
 
-### 示例：严格模式
+### Example: Strict Mode
 
 ```json
 {
@@ -85,17 +85,16 @@ Deep Code 定义了以下 10 种权限范围，覆盖了工具调用的各类风
 }
 ```
 
-此配置的效果：
-- 工作区内读写、Git 查询 → 自动放行
-- 其他操作都需要用户确认。
+With this configuration:
+- Reading/writing inside the workspace and querying Git history → auto-allowed
+- All other operations → require user confirmation
 
+## Persistence
 
-## 持久化机制
+When you select "Yes, and always allow" in a permission prompt, the corresponding scope is written to the project's `.deepcode/settings.json`:
 
-当用户在权限提示中选择 "Yes, and always allow" 后，对应的权限范围会被写入当前项目的 `.deepcode/settings.json` 文件中：
+- The scope is appended to the `permissions.allow` list
+- If the scope was previously in `deny` or `ask`, it is automatically removed
+- Duplicate scopes are not written again
 
-- 新增范围会追加到 `permissions.allow` 列表
-- 如果该范围之前存在于 `deny` 或 `ask` 中，会被自动移除
-- 不会重复写入已存在的范围
-
-这样后续同类操作就不再询问。
+This means subsequent calls involving the same scope will no longer prompt for confirmation.

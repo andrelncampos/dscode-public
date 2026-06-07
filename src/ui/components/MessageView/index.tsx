@@ -4,6 +4,7 @@ import { renderMarkdown, renderMarkdownSegments } from "./markdown";
 import {
   buildThinkingSummary,
   buildToolSummary,
+  formatRelativeTime,
   formatStatusName,
   formatToolStatusParams,
   getToolDiffPreviewLines,
@@ -21,12 +22,13 @@ export function MessageView({ message, collapsed, width = 80 }: MessageViewProps
   if (message.role === "user") {
     const text = message.content || "(no content)";
     return (
-      <Box marginLeft={1} marginBottom={1} flexDirection="row" marginY={0} flexGrow={1} gap={1}>
+      <Box marginLeft={1} marginTop={1} marginBottom={2} flexDirection="row" flexGrow={1} gap={1}>
         <Box>
           <Text color="#229ac3">{`>`}</Text>
         </Box>
         <Box flexGrow={1}>
           <Text color="#229ac3">{text}</Text>
+          <Text dimColor> · {formatRelativeTime(message.createTime)}</Text>
           {Array.isArray(message.contentParams) && message.contentParams.length > 0 ? (
             <Text color="#229ac3">{`  📎 ${message.contentParams.length} image attachment(s)`}</Text>
           ) : null}
@@ -44,13 +46,13 @@ export function MessageView({ message, collapsed, width = 80 }: MessageViewProps
       if (collapsed !== false) {
         return (
           <Box marginLeft={1} marginBottom={1} marginY={0}>
-            <StatusLine width={width} bulletColor="gray" name="Thinking" params={summary} />
+            <StatusLine width={width} bulletColor="gray" name="▶ Thinking" params={summary} />
           </Box>
         );
       }
       return (
         <Box marginLeft={1} flexDirection="column" marginBottom={1} marginY={0}>
-          <StatusLine width={width} bulletColor="gray" name="Thinking" params={content ? "" : summary} />
+          <StatusLine width={width} bulletColor="gray" name="▼ Thinking" params={content ? "" : summary} />
           <Box flexDirection="column" marginLeft={2}>
             {content ? <Text dimColor>{renderMarkdown(content)}</Text> : null}
           </Box>
@@ -83,6 +85,7 @@ export function MessageView({ message, collapsed, width = 80 }: MessageViewProps
                 return <Text key={i}>{seg.body}</Text>;
               })
             : null}
+          <Text dimColor>· {formatRelativeTime(message.createTime)}</Text>
         </Box>
       </Box>
     );

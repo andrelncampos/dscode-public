@@ -159,7 +159,7 @@ test("parseTerminalInput recognizes alternate shifted return sequences", () => {
 });
 
 test("terminal extended key helpers request and restore modifyOtherKeys mode", () => {
-  assert.equal(enableTerminalExtendedKeys(), "\u001B[>4;1m");
+  assert.equal(enableTerminalExtendedKeys(), "\u001B[>4;2m");
   assert.equal(disableTerminalExtendedKeys(), "\u001B[>4;0m");
 });
 

@@ -116,55 +116,55 @@ After all tasks are completed (`[x]`):
 
 **Example requirements:**
 ```markdown
-# 新功能：添加深色模式切换
+# New feature: Add dark mode toggle
 
-用户应该能够在浅色和深色主题之间切换。
-切换开关应放在设置页面中。
-```
-
-**分析后的 UpdatePlan 调用：**
-```markdown
-## Task List
-
-- [ ] 在设置页面创建深色模式切换组件
-- [ ] 添加深色模式状态管理（context/store）
-- [ ] 实现深色主题的 CSS-in-JS 样式
-- [ ] 更新现有组件以支持主题切换
-- [ ] 运行测试并验证功能
-```
-
-**UpdatePlan call during execution:**
-```markdown
-## Task List
-
-- [x] 在设置页面创建深色模式切换组件
-- [>] 添加深色模式状态管理（context/store）
-- [ ] 实现深色主题的 CSS-in-JS 样式
-- [ ] 更新现有组件以支持主题切换
-- [ ] 运行测试并验证功能
-```
-
-### Example 2: Bug fix with investigation
-
-**Example requirements:**
-```markdown
-# Fix bug：登录表单提交时崩溃
-
-当用户点击提交时，应用崩溃。
-错误信息："Cannot read property 'email' of undefined"
+Users should be able to switch between light and dark themes.
+The toggle switch should be placed in the settings page.
 ```
 
 **UpdatePlan call after analysis:**
 ```markdown
 ## Task List
 
-- [ ] 在本地复现缺陷
-- [ ] 调查登录表单组件中的错误
-- [ ] 定位 undefined email 属性的根本原因
-- [ ] 实施修复
-- [ ] 添加验证以防止类似问题
-- [ ] 使用各种输入测试修复
-- [ ] 更新错误处理
+- [ ] Create dark mode toggle component in settings page
+- [ ] Add dark mode state management (context/store)
+- [ ] Implement dark theme CSS-in-JS styles
+- [ ] Update existing components to support theme switching
+- [ ] Run tests and verify functionality
+```
+
+**UpdatePlan call during execution:**
+```markdown
+## Task List
+
+- [x] Create dark mode toggle component in settings page
+- [>] Add dark mode state management (context/store)
+- [ ] Implement dark theme CSS-in-JS styles
+- [ ] Update existing components to support theme switching
+- [ ] Run tests and verify functionality
+```
+
+### Example 2: Bug fix with investigation
+
+**Example requirements:**
+```markdown
+# Fix bug: Login form crashes on submit
+
+When the user clicks submit, the application crashes.
+Error message: "Cannot read property 'email' of undefined"
+```
+
+**UpdatePlan call after analysis:**
+```markdown
+## Task List
+
+- [ ] Reproduce the bug locally
+- [ ] Investigate the error in the login form component
+- [ ] Identify the root cause of the undefined email property
+- [ ] Implement the fix
+- [ ] Add validation to prevent similar issues
+- [ ] Test the fix with various inputs
+- [ ] Update error handling
 ```
 
 ## When to Use This Skill

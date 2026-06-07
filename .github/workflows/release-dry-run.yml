@@ -1,0 +1,38 @@
+name: Release Dry Run
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - "templates/**"
+      - ".github/workflows/release-*"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    name: Verify package integrity (no publish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify package contents
+        run: |
+          npm pack --dry-run 2>&1 | tee pack-output.txt
+          # Ensure key files are included
+          grep -q "dist/cli.js" pack-output.txt || { echo "::error::dist/cli.js missing from package"; exit 1; }
+          grep -q "LICENSE" pack-output.txt || { echo "::error::LICENSE missing from package"; exit 1; }
+          grep -q "README.md" pack-output.txt || { echo "::error::README.md missing from package"; exit 1; }
+      - name: Confirm no npm publish
+        run: |
+          echo "This workflow only validates packaging. It does NOT publish to npm."
+          echo "Publication is done manually by the maintainer."

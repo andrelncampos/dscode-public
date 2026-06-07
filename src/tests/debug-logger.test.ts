@@ -53,3 +53,65 @@ test("debug logger appends full entries without rotation", () => {
     }
   }
 });
+
+test("debug logger sanitizes sensitive keys and embedded secrets", () => {
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "deepcode-debug-log-home-"));
+  process.env.HOME = home;
+  if (process.platform === "win32") {
+    process.env.USERPROFILE = home;
+  }
+  try {
+    logOpenAIChatCompletionDebug({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      location: "test.location",
+      requestId: "req-sensitive",
+      model: "test-model",
+      request: {
+        model: "test-model",
+        messages: [{ role: "user", content: "Hello" }],
+        headers: {
+          authorization: "Bearer sk-secret-token-12345",
+          "x-api-key": "my-api-key-value",
+        },
+      },
+      response: {
+        choices: [
+          {
+            message: {
+              content: 'Generated: api_key="sk-abc" and access_token=secret123',
+            },
+          },
+        ],
+      },
+    });
+
+    const raw = fs.readFileSync(getDebugLogPath(), "utf8");
+    const entry = JSON.parse(raw.trim()) as Record<string, any>;
+
+    // Sensitive keys in request headers → "[REDACTED]"
+    assert.equal(entry.request.headers.authorization, "[REDACTED]");
+    assert.equal(entry.request.headers["x-api-key"], "[REDACTED]");
+
+    // Embedded secrets in response content → redacted
+    const content = entry.response.choices[0].message.content as string;
+    assert.ok(content.includes("[REDACTED]"));
+    assert.ok(!content.includes("sk-abc"));
+    assert.ok(!content.includes("secret123"));
+
+    // Non-sensitive content preserved
+    assert.ok(content.includes("Generated:"));
+  } finally {
+    if (originalHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    if (originalUserProfile === undefined) {
+      delete process.env.USERPROFILE;
+    } else {
+      process.env.USERPROFILE = originalUserProfile;
+    }
+  }
+});

@@ -74,12 +74,12 @@ const DropdownMenu = React.memo(function DropdownMenu({
   const visibleStart = calculateVisibleStart(activeIndex, items?.length, maxVisible);
   const visibleItems = items?.slice(visibleStart, visibleStart + maxVisible);
 
-  // 计算标签列最佳宽度：包含所有可能的前缀和后缀
+  // Calculate optimal label column width: includes all possible prefixes and suffixes
   const labelColumnWidth = useMemo(() => {
     if (visibleItems.length === 0) {
       return 0;
     }
-    // 计算每个 item 实际需要的最大宽度
+    // Calculate the actual maximum width needed for each item
     const maxContentWidth = Math.max(
       ...visibleItems.map((item) => {
         let width = 2; // prefix "> " or "  "
@@ -93,7 +93,7 @@ const DropdownMenu = React.memo(function DropdownMenu({
         return width;
       })
     );
-    const maxAllowed = Math.max(10, (width - 2) >> 1); // 容器50%宽度（减去gap），至少保留10列
+    const maxAllowed = Math.max(10, (width - 2) >> 1); // 50% of container width (minus gap), at least 10 cols
     return Math.min(maxContentWidth, maxAllowed);
   }, [visibleItems, width]);
 

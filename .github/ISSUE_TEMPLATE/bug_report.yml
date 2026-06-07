@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ SECURITY WARNING**: Do NOT paste API keys, tokens, passwords, private prompts, proprietary files, or complete unsanitized logs in this issue.
+        If you are reporting a security vulnerability, follow [SECURITY.md](https://github.com/andrelncampos/dscode/blob/main/SECURITY.md) instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: dscode version
+      placeholder: e.g., 1.0.1
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g., Windows 11, macOS 15, Ubuntu 24.04
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: e.g., 22.14.0
+    validations:
+      required: true
+
+  - type: input
+    id: npm
+    attributes:
+      label: npm version (if installed via npm)
+      placeholder: e.g., 10.9.0
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider / Model
+      placeholder: e.g., DeepSeek V4 Pro, OpenAI GPT-4o
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps so we can reproduce the issue.
+      placeholder: |
+        1. Run `dscode`
+        2. Type `/model` ...
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include error messages if any.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs (optional)
+      description: |
+        If relevant, include log excerpts from `~/.deepcode/logs/`.
+        **Before pasting**, verify you have removed:
+        - API keys, tokens, and Authorization headers
+        - Personal paths (replace with `~/...`)
+        - Proprietary code or private data

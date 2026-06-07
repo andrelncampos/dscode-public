@@ -31,6 +31,7 @@ import {
 import { McpManager } from "./mcp/mcp-manager";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
 import type { McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
+import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
@@ -67,7 +68,7 @@ const MAX_PROJECT_CODE_LENGTH = 64;
 const PROJECT_CODE_HASH_LENGTH = 16;
 const BACKGROUND_FAILURE_LOG_TAIL_CHARS = 4000;
 const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
-const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 512 * 1024;
+const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 384 * 1024;
 
 type ChatCompletionDebugOptions = {
   enabled?: boolean;
@@ -367,7 +368,7 @@ export class SessionManager {
     this.mcpManager.setOnToolsListChanged(() => {
       this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
     });
-    // 设置状态变更回调，通知 UI 更新
+    // Set status change callback to notify UI updates
     this.mcpManager.setOnStatusChanged(() => {
       this.onMcpStatusChanged?.();
     });
@@ -410,15 +411,17 @@ export class SessionManager {
   }
 
   private estimateContextTokens(messages: SessionMessage[]): number {
-    let total = 0;
+    let estimatedTokens = 0;
     for (const msg of messages) {
       if (msg.compacted) continue;
-      total += msg.content?.length ?? 0;
+      if (msg.content) {
+        estimatedTokens += this.estimateStreamTokens(msg.content);
+      }
       if (msg.messageParams) {
-        total += JSON.stringify(msg.messageParams).length;
+        estimatedTokens += this.estimateStreamTokens(JSON.stringify(msg.messageParams));
       }
     }
-    return Math.ceil(total / 4);
+    return Math.ceil(estimatedTokens);
   }
 
   private formatEstimatedTokens(tokens: number): string {
@@ -467,6 +470,13 @@ export class SessionManager {
     return error.name === "AbortError" || error.constructor.name === "APIUserAbortError";
   }
 
+  /**
+   * Checks whether the error represents an API request timeout.
+   */
+  private isTimeoutError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === "TimeoutError";
+  }
+
   private throwIfAborted(signal?: AbortSignal | null): void {
     if (!signal?.aborted) {
       return;
@@ -493,6 +503,17 @@ export class SessionManager {
     let estimatedTokens = 0;
     this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "start", sessionId);
 
+    // Combine user-provided abort signal with a global API request timeout.
+    // This prevents the session from hanging indefinitely when the API server
+    // accepts the connection but never sends a response.
+    let requestOptions = options;
+    if (options?.signal instanceof AbortSignal && !options.signal.aborted) {
+      const timeoutMs = resolveApiTimeoutMs(typeof request.model === "string" ? request.model : undefined);
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const combinedSignal = AbortSignal.any([options.signal, timeoutSignal]);
+      requestOptions = { ...options, signal: combinedSignal };
+    }
+
     const streamRequest = {
       ...request,
       stream: true,
@@ -509,7 +530,7 @@ export class SessionManager {
           body: Record<string, unknown>,
           options?: Record<string, unknown>
         ) => Promise<unknown>
-      )(streamRequest, options);
+      )(streamRequest, requestOptions);
     } catch (error) {
       this.logChatCompletionDebug(debug, {
         timestamp: new Date().toISOString(),
@@ -1230,10 +1251,20 @@ ${agentInstructions}
     permissionPrompt?: UserPromptContent
   ): Promise<void> {
     const startedAt = Date.now();
-    const { client, model, baseURL, temperature, thinkingEnabled, reasoningEffort, debugLogEnabled, notify, env } =
-      this.createOpenAIClient();
+    const {
+      client,
+      model,
+      baseURL,
+      temperature,
+      thinkingEnabled,
+      reasoningEffort,
+      debugLogEnabled,
+      notify,
+      env,
+      maxTokens,
+    } = this.createOpenAIClient();
     const effortManager = new RuntimeReasoningEffortManager();
-    let currentReasoningEffort: ReasoningEffort = reasoningEffort ?? "high";
+    let currentReasoningEffort: ReasoningEffort = reasoningEffort ?? "max";
     const now = new Date().toISOString();
     rebuildSessionStateFromHistory(sessionId, this.listSessionMessages(sessionId));
 
@@ -1338,9 +1369,11 @@ ${agentInstructions}
           client,
           {
             model,
-            ...(temperature !== undefined ? { temperature } : {}),
+            ...(temperature !== undefined && !thinkingEnabled ? { temperature } : {}),
             messages,
+            ...((maxTokens ?? 0) > 0 ? { max_tokens: maxTokens } : {}),
             tools: cachedTools,
+            user_id: sessionId,
             ...thinkingOptions,
           },
           { signal: sessionController.signal },
@@ -1474,15 +1507,26 @@ ${agentInstructions}
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : String(error);
       const aborted = this.isAbortLikeError(error) || sessionController.signal.aborted;
+      const timedOut = this.isTimeoutError(error);
+
+      const failReason = aborted
+        ? "interrupted"
+        : timedOut
+          ? `Request timed out after ${Math.round(resolveApiTimeoutMs() / 1000)}s`
+          : errMessage;
+
       this.updateSessionEntry(sessionId, (entry) => ({
         ...entry,
         status: aborted ? "interrupted" : "failed",
-        failReason: aborted ? "interrupted" : errMessage,
+        failReason,
         updateTime: new Date().toISOString(),
       }));
 
       if (!aborted) {
-        this.onAssistantMessage(this.buildAssistantMessage(sessionId, `Request failed: ${errMessage}`, null), false);
+        const userMessage = timedOut
+          ? `Request timed out after ${Math.round(resolveApiTimeoutMs() / 1000)} seconds. You can retry by sending another message.`
+          : `Request failed: ${errMessage}`;
+        this.onAssistantMessage(this.buildAssistantMessage(sessionId, userMessage, null), false);
       }
     } finally {
       if (this.sessionControllers.get(sessionId) === sessionController) {
@@ -1595,8 +1639,8 @@ ${agentInstructions}
   }
 
   private reportNewPrompt(): void {
-    const { machineId, telemetryEnabled } = this.createOpenAIClient();
-    reportNewPrompt({ enabled: telemetryEnabled ?? true, machineId });
+    const { telemetryEnabled } = this.createOpenAIClient();
+    reportNewPrompt({ enabled: telemetryEnabled ?? false });
   }
 
   interruptActiveSession(): void {

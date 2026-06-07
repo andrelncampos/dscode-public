@@ -1,4 +1,5 @@
-import { defaultsToThinkingMode } from "./common/model-capabilities";
+import { defaultsToThinkingMode, DEEPSEEK_V4_MODELS } from "./common/model-capabilities";
+import { deepcodingSettingsSchema, formatZodErrors } from "./common/settings-schema";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -12,6 +13,7 @@ export type DeepcodingEnv = Record<string, string | undefined> & {
   REASONING_EFFORT?: string;
   DEBUG_LOG_ENABLED?: string;
   TELEMETRY_ENABLED?: string;
+  MAX_TOKENS?: string;
 };
 
 export type ReasoningEffort = "high" | "max";
@@ -51,6 +53,7 @@ export type DeepcodingSettings = {
   reasoningEffort?: ReasoningEffort;
   debugLogEnabled?: boolean;
   telemetryEnabled?: boolean;
+  maxTokens?: number;
   notify?: string;
   webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
@@ -67,6 +70,7 @@ export type ResolvedDeepcodingSettings = {
   reasoningEffort: ReasoningEffort;
   debugLogEnabled: boolean;
   telemetryEnabled: boolean;
+  maxTokens: number;
   notify?: string;
   webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
@@ -280,6 +284,17 @@ function mergeMcpServers(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
+function parseMaxTokens(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 1 ? Math.round(value) : undefined;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 1 ? Math.round(parsed) : undefined;
+  }
+  return undefined;
+}
+
 export function resolveSettingsSources(
   userSettings: DeepcodingSettings | null | undefined,
   projectSettings: DeepcodingSettings | null | undefined,
@@ -317,7 +332,7 @@ export function resolveSettingsSources(
     resolveReasoningEffort(projectEnv.REASONING_EFFORT) ??
     resolveReasoningEffort(userSettings?.reasoningEffort) ??
     resolveReasoningEffort(userEnv.REASONING_EFFORT) ??
-    "max";
+    (model === "deepseek-v4-pro" ? "max" : "high");
 
   const temperature =
     parseTemperature(systemEnv.TEMPERATURE) ??
@@ -340,7 +355,15 @@ export function resolveSettingsSources(
     parseBoolean(projectEnv.TELEMETRY_ENABLED) ??
     parseBoolean(userSettings?.telemetryEnabled) ??
     parseBoolean(userEnv.TELEMETRY_ENABLED) ??
-    true;
+    false;
+
+  const maxTokens =
+    parseMaxTokens(systemEnv.MAX_TOKENS) ??
+    parseMaxTokens(projectSettings?.maxTokens) ??
+    parseMaxTokens(projectEnv.MAX_TOKENS) ??
+    parseMaxTokens(userSettings?.maxTokens) ??
+    parseMaxTokens(userEnv.MAX_TOKENS) ??
+    (model === "deepseek-v4-pro" ? 65536 : DEEPSEEK_V4_MODELS.has(model) ? 32768 : 0);
 
   const notify =
     trimString(systemEnv.NOTIFY) || trimString(projectSettings?.notify) || trimString(userSettings?.notify) || "";
@@ -360,6 +383,7 @@ export function resolveSettingsSources(
     reasoningEffort,
     debugLogEnabled,
     telemetryEnabled,
+    maxTokens,
     notify: notify || undefined,
     webSearchTool: webSearchTool || undefined,
     mcpServers: mergeMcpServers(userSettings, projectSettings, userEnv, projectEnv, systemEnv),
@@ -430,8 +454,25 @@ export function readSettingsFile(settingsPath: string): DeepcodingSettings | nul
       return null;
     }
     const raw = fs.readFileSync(settingsPath, "utf8");
-    return JSON.parse(raw) as DeepcodingSettings;
-  } catch {
+    const parsed = JSON.parse(raw);
+
+    const result = deepcodingSettingsSchema.safeParse(parsed);
+
+    if (!result.success) {
+      const errorMessage = formatZodErrors(result.error, settingsPath);
+      process.stderr.write(errorMessage + "\n");
+      // Zod strips invalid fields and unknown keys, so the result only
+      // contains valid data.  Return it so the system degrades gracefully.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const partial = (result as any).data as DeepcodingSettings | undefined;
+      return partial ?? ({} as DeepcodingSettings);
+    }
+
+    return result.data as DeepcodingSettings;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      process.stderr.write(`\x1b[31mInvalid JSON in settings file: ${settingsPath}\n  ${error.message}\x1b[0m\n`);
+    }
     return null;
   }
 }

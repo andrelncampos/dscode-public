@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { highlightCode } from "./code-highlight";
 
 /**
  * A rendered piece of markdown.  Consumers should use `wrap="truncate-end"` for
@@ -36,7 +37,14 @@ export function renderMarkdownSegments(text: string, maxWidth?: number): Markdow
   for (const seg of fenceSegments) {
     if (seg.kind === "code") {
       const langTag = seg.lang ? chalk.dim(`[${seg.lang}]`) + "\n" : "";
-      segments.push({ kind: "code", body: langTag + chalk.cyan(seg.body), lang: seg.lang });
+      const highlightedBody = highlightCode(seg.body, seg.lang);
+      const body = maxWidth
+        ? highlightedBody
+            .split("\n")
+            .map((line) => (visualWidth(line) > maxWidth ? line + chalk.dim(" ↵") : line))
+            .join("\n")
+        : highlightedBody;
+      segments.push({ kind: "code", body: langTag + body, lang: seg.lang });
       continue;
     }
     const blocks = splitTableBlocks(seg.body);

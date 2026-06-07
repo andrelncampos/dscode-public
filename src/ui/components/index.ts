@@ -5,3 +5,5 @@ export { default as SkillsDropdown } from "./SkillsDropdown";
 export { default as ModelsDropdown } from "./ModelsDropdown";
 export { default as FileMentionMenu } from "./FileMentionMenu";
 export { default as DropdownMenu } from "./DropdownMenu";
+export { StreamingIndicator } from "./StreamingIndicator";
+export { default as ErrorBanner } from "./ErrorBanner";

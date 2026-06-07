@@ -43,7 +43,7 @@ export class RuntimeReasoningEffortManager {
 
   constructor() {
     this.state = {
-      currentEffort: "high",
+      currentEffort: "max",
       consecutiveFailures: 0,
       consecutiveIdenticalCalls: 0,
       lastFingerprint: null,
@@ -93,7 +93,7 @@ export class RuntimeReasoningEffortManager {
 
   reset(): void {
     this.state = {
-      currentEffort: "high",
+      currentEffort: "max",
       consecutiveFailures: 0,
       consecutiveIdenticalCalls: 0,
       lastFingerprint: null,
@@ -142,22 +142,11 @@ export class RuntimeReasoningEffortManager {
     return null;
   }
 
-  private evaluateDowngrade(allOk: boolean, fingerprint: string): ReasoningEffort | null {
-    if (this.state.downgradeCooldownRemaining > 0) {
-      this.state.lastFingerprint = fingerprint;
-      return null;
-    }
-
-    if (allOk && fingerprint !== this.state.lastFingerprint) {
-      this.state.cleanTurnStreak += 1;
-      if (this.state.cleanTurnStreak >= this.state.downgradeThreshold) {
-        return this.downgrade();
-      }
-    } else if (!allOk) {
-      this.state.cleanTurnStreak = 0;
-    }
-
-    this.state.lastFingerprint = fingerprint;
+  private evaluateDowngrade(_allOk: boolean, _fingerprint: string): ReasoningEffort | null {
+    // Auto-downgrade from "max" to "high" is disabled.
+    // Detecting "simple operations" reliably is too difficult in practice —
+    // it is safer to stay at "max" and let the user manually switch to
+    // "high" via /model when they want to save tokens on routine tasks.
     return null;
   }
 

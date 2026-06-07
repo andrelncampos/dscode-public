@@ -104,7 +104,7 @@ test("OpenAIMessageConverter filters image content for non-multimodal models", (
     }),
   ];
 
-  const result = c.buildMessages(messages, false, "deepseek-chat") as Array<{ role: string; content: unknown }>;
+  const result = c.buildMessages(messages, false, "deepseek-v4-flash") as Array<{ role: string; content: unknown }>;
 
   assert.equal(result.length, 1);
   assert.deepEqual(result[0]?.content, [{ type: "text", text: "Loaded pixel.png" }]);

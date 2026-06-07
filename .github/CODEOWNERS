@@ -1,0 +1,29 @@
+# CODEOWNERS — default owner for the entire repository
+* @andrelncampos
+
+# Sensitive areas — additional owners can be added as the project grows
+.github/                                          @andrelncampos
+.github/workflows/                                @andrelncampos
+scripts/                                          @andrelncampos
+src/common/                                       @andrelncampos
+src/common/sensitive-data.ts                      @andrelncampos
+src/common/debug-logger.ts                        @andrelncampos
+src/common/error-logger.ts                        @andrelncampos
+src/common/openai-client.ts                       @andrelncampos
+src/session.ts                                    @andrelncampos
+src/settings.ts                                   @andrelncampos
+src/tests/                                        @andrelncampos
+
+# Package manager and release files
+package.json                                      @andrelncampos
+package-lock.json                                 @andrelncampos
+tsconfig.json                                     @andrelncampos
+eslint.config.mjs                                 @andrelncampos
+.prettierrc                                       @andrelncampos
+
+# Documentation and governance
+LICENSE                                           @andrelncampos
+NOTICE                                            @andrelncampos
+SECURITY.md                                       @andrelncampos
+CONTRIBUTING.md                                   @andrelncampos
+docs/                                             @andrelncampos

@@ -5,6 +5,7 @@ import { truncate } from "../components/MessageView/utils";
 
 type Props = {
   sessions: SessionEntry[];
+  currentSessionId?: string;
   onSelect: (sessionId: string) => void;
   onCancel: () => void;
   onDelete?: (sessionId: string) => void;
@@ -39,7 +40,14 @@ export function filterSessions(sessions: SessionEntry[], query: string): Session
   });
 }
 
-export function SessionList({ sessions, onSelect, onCancel, onDelete, onRename }: Props): React.ReactElement {
+export function SessionList({
+  sessions,
+  currentSessionId,
+  onSelect,
+  onCancel,
+  onDelete,
+  onRename,
+}: Props): React.ReactElement {
   const [index, setIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmDeleteSessionId, setConfirmDeleteSessionId] = useState<string | null>(null);
@@ -333,7 +341,10 @@ export function SessionList({ sessions, onSelect, onCancel, onDelete, onRename }
                       {isConfirming ? (
                         <Text color="yellow"> [Delete? Enter=yes, Esc=no]</Text>
                       ) : isRenaming ? null : (
-                        <Text dimColor> ({formatSessionStatus(session.status)})</Text>
+                        <>
+                          <Text dimColor> ({formatSessionStatus(session.status)})</Text>
+                          {session.id === currentSessionId ? <Text color="green"> ● active</Text> : null}
+                        </>
                       )}
                     </Box>
                     <Box width="100%">

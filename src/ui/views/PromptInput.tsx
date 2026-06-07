@@ -60,8 +60,9 @@ import {
 import SlashCommandMenu, { isSkillSelected } from "./SlashCommandMenu";
 import type { ModelConfigSelection, PermissionScope } from "../../settings";
 import { FileMentionMenu, ModelsDropdown, RawModelDropdown, SkillsDropdown } from "../components";
-import type { SessionEntry, SkillInfo } from "../../session";
+import type { LlmStreamProgress, SessionEntry, SkillInfo } from "../../session";
 import type { UserToolPermission } from "../../common/permissions";
+import { StreamingIndicator } from "../components/StreamingIndicator";
 
 export type PromptSubmission = {
   text: string;
@@ -95,6 +96,10 @@ type Props = {
   onRawModeChange?: (mode: string) => void;
   onInterrupt: () => void;
   onToggleProcessStdout?: () => void;
+  onToggleHelp?: () => void;
+  helpVisible?: boolean;
+  streamProgress?: LlmStreamProgress | null;
+  nowTick?: number;
 };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -121,6 +126,37 @@ const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: 
   );
 });
 
+const KEY_COLOR = "cyan";
+
+function ColoredFooter({ text }: { text: string }): React.ReactElement {
+  // Split on " · " and color known key patterns (enter, esc, ctrl+x, @, /, etc.)
+  const parts = text.split(" · ");
+  return (
+    <Text>
+      {parts.map((part, i) => {
+        const match = part.match(/^(\S+)\s+(.+)$/);
+        if (match) {
+          const key = match[1]!;
+          const desc = match[2]!;
+          return (
+            <React.Fragment key={i}>
+              {i > 0 ? <Text dimColor> · </Text> : null}
+              <Text color={KEY_COLOR}>{key}</Text>
+              <Text dimColor> {desc}</Text>
+            </React.Fragment>
+          );
+        }
+        return (
+          <React.Fragment key={i}>
+            {i > 0 ? <Text dimColor> · </Text> : null}
+            <Text dimColor>{part}</Text>
+          </React.Fragment>
+        );
+      })}
+    </Text>
+  );
+}
+
 export const PromptInput = React.memo(function PromptInput({
   projectRoot,
   skills,
@@ -138,6 +174,10 @@ export const PromptInput = React.memo(function PromptInput({
   onInterrupt,
   onToggleProcessStdout,
   onRawModeChange,
+  onToggleHelp,
+  helpVisible,
+  streamProgress,
+  nowTick,
 }: Props): React.ReactElement {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -301,6 +341,20 @@ export const PromptInput = React.memo(function PromptInput({
       }
 
       if (disabled) {
+        return;
+      }
+
+      if (
+        input === "?" &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.shift &&
+        isEmpty(buffer) &&
+        !showMenu &&
+        !helpVisible &&
+        onToggleHelp
+      ) {
+        onToggleHelp();
         return;
       }
 
@@ -805,11 +859,29 @@ export const PromptInput = React.memo(function PromptInput({
         onSelect={insertFileMentionSelection}
       />
       <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
-      {!showFooterText && (
-        <Box>
-          <Text dimColor>{footerText}</Text>
-        </Box>
-      )}
+      {!showFooterText &&
+        (busy && streamProgress ? (
+          <StreamingIndicator
+            progress={streamProgress}
+            now={nowTick ?? Date.now()}
+            width={screenWidth}
+            modelName={modelConfig.model}
+          />
+        ) : (
+          <Box>
+            {!busy && !statusMessage ? (
+              <>
+                <Text color="magenta">{modelConfig.model}</Text>
+                <Text dimColor> · </Text>
+              </>
+            ) : null}
+            {statusMessage || (busy && loadingText?.trim()) ? (
+              <Text dimColor>{footerText}</Text>
+            ) : (
+              <ColoredFooter text={footerText} />
+            )}
+          </Box>
+        ))}
     </Box>
   );
 });

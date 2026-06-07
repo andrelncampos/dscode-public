@@ -25,6 +25,7 @@ export type FileSnippet = {
   preview: string;
   fileVersion: number;
   scopeType: "snippet" | "full";
+  createdAt: number;
 };
 
 export type SessionStateHistoryMessage = {
@@ -32,15 +33,137 @@ export type SessionStateHistoryMessage = {
   content?: unknown;
 };
 
-const fileStatesBySession = new Map<string, Map<string, FileState>>();
-const snippetsBySession = new Map<string, Map<string, FileSnippet>>();
+// ── Eviction limits ──────────────────────────────────────────────
+
+const MAX_FILE_STATES_PER_SESSION = 500;
+const MAX_FILE_STATES_GLOBAL = 3000;
+const MAX_SNIPPETS_PER_SESSION = 200;
+const SNIPPET_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// ── LruMap ───────────────────────────────────────────────────────
+
+/**
+ * A Map subclass that evicts the least-recently-used entry when
+ * the map exceeds `maxSize`.  Re-inserting an existing key (via
+ * delete + set) moves it to the end, so the first key is always
+ * the LRU candidate.
+ */
+class LruMap<K, V> extends Map<K, V> {
+  private maxSize: number;
+
+  constructor(maxSize: number) {
+    super();
+    this.maxSize = maxSize;
+  }
+
+  set(key: K, value: V): this {
+    if (this.has(key)) {
+      this.delete(key);
+    }
+    super.set(key, value);
+    if (this.size > this.maxSize) {
+      const oldestKey = this.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.delete(oldestKey);
+      }
+    }
+    return this;
+  }
+}
+
+// ── Global state maps ────────────────────────────────────────────
+
+const fileStatesBySession = new Map<string, LruMap<string, FileState>>();
+const snippetsBySession = new Map<string, LruMap<string, FileSnippet>>();
 const snippetCountersBySession = new Map<string, number>();
 const fullFileSnippetCountersBySession = new Map<string, number>();
-const fileVersionsBySession = new Map<string, Map<string, number>>();
+const fileVersionsBySession = new Map<string, LruMap<string, number>>();
+
+/** Approximate global count of file-state entries across all sessions. */
+let totalFileStatesGlobal = 0;
+
+// ── Internal helpers ─────────────────────────────────────────────
+
+function warnEviction(detail: string): void {
+  console.warn(`[state] LRU eviction: ${detail}`);
+}
+
+function createLruFileStatesMap(): LruMap<string, FileState> {
+  return new LruMap<string, FileState>(MAX_FILE_STATES_PER_SESSION);
+}
+
+function createLruSnippetsMap(): LruMap<string, FileSnippet> {
+  return new LruMap<string, FileSnippet>(MAX_SNIPPETS_PER_SESSION);
+}
+
+function createLruVersionsMap(): LruMap<string, number> {
+  return new LruMap<string, number>(MAX_FILE_STATES_PER_SESSION);
+}
+
+/**
+ * Evict the oldest file-state entry from the session that currently
+ * has the most tracked files (global cap enforcement).
+ */
+function evictGlobalOldestFileState(): void {
+  let largestSessionId: string | null = null;
+  let largestSize = 0;
+
+  for (const [sessionId, sessionMap] of fileStatesBySession) {
+    if (sessionMap.size > largestSize) {
+      largestSize = sessionMap.size;
+      largestSessionId = sessionId;
+    }
+  }
+
+  if (largestSessionId) {
+    const sessionMap = fileStatesBySession.get(largestSessionId);
+    if (sessionMap && sessionMap.size > 0) {
+      const oldestKey = sessionMap.keys().next().value;
+      if (oldestKey !== undefined) {
+        sessionMap.delete(oldestKey);
+        totalFileStatesGlobal -= 1;
+        warnEviction(
+          `removed file state for ${oldestKey} (session ${largestSessionId}, reason: global file-state limit ${MAX_FILE_STATES_GLOBAL})`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Remove snippets that have exceeded the TTL for the given session.
+ */
+function evictExpiredSnippets(sessionId: string): void {
+  const snippets = snippetsBySession.get(sessionId);
+  if (!snippets || snippets.size === 0) {
+    return;
+  }
+
+  const now = Date.now();
+  const expiredIds: string[] = [];
+
+  for (const [id, snippet] of snippets) {
+    if (now - snippet.createdAt > SNIPPET_TTL_MS) {
+      expiredIds.push(id);
+    }
+  }
+
+  for (const id of expiredIds) {
+    snippets.delete(id);
+    warnEviction(`removed expired snippet ${id} (session ${sessionId}, reason: TTL ${SNIPPET_TTL_MS}ms)`);
+  }
+}
+
+// ── Public API ───────────────────────────────────────────────────
 
 export function clearSessionState(sessionId: string): void {
   if (!sessionId) {
     return;
+  }
+
+  const fileMap = fileStatesBySession.get(sessionId);
+  if (fileMap) {
+    totalFileStatesGlobal -= fileMap.size;
   }
 
   fileStatesBySession.delete(sessionId);
@@ -106,7 +229,7 @@ export function recordFileState(
 
   let sessionState = fileStatesBySession.get(sessionId);
   if (!sessionState) {
-    sessionState = new Map<string, FileState>();
+    sessionState = createLruFileStatesMap();
     fileStatesBySession.set(sessionId, sessionState);
   }
 
@@ -114,11 +237,20 @@ export function recordFileState(
   const currentVersion = getFileVersion(sessionId, normalizedPath);
   const nextVersion = options.incrementVersion ? currentVersion + 1 : currentVersion;
   setFileVersion(sessionId, normalizedPath, nextVersion);
+
+  const existed = sessionState.has(normalizedPath);
   sessionState.set(normalizedPath, {
     ...state,
     filePath: normalizedPath,
     version: nextVersion,
   });
+
+  if (!existed) {
+    totalFileStatesGlobal += 1;
+    if (totalFileStatesGlobal > MAX_FILE_STATES_GLOBAL) {
+      evictGlobalOldestFileState();
+    }
+  }
 }
 
 export function markFileRead(
@@ -164,7 +296,7 @@ export function getFileVersion(sessionId: string, filePath: string): number {
 function setFileVersion(sessionId: string, filePath: string, version: number): void {
   let sessionVersions = fileVersionsBySession.get(sessionId);
   if (!sessionVersions) {
-    sessionVersions = new Map<string, number>();
+    sessionVersions = createLruVersionsMap();
     fileVersionsBySession.set(sessionId, sessionVersions);
   }
   sessionVersions.set(normalizeFilePath(filePath), version);
@@ -239,6 +371,9 @@ function createSnippetWithId(
     return null;
   }
 
+  // Lazily evict expired snippets before adding a new one.
+  evictExpiredSnippets(sessionId);
+
   const snippet: FileSnippet = {
     id,
     filePath: normalizeFilePath(filePath),
@@ -247,14 +382,23 @@ function createSnippetWithId(
     preview,
     fileVersion: getFileVersion(sessionId, filePath),
     scopeType,
+    createdAt: Date.now(),
   };
 
   let snippets = snippetsBySession.get(sessionId);
   if (!snippets) {
-    snippets = new Map<string, FileSnippet>();
+    snippets = createLruSnippetsMap();
     snippetsBySession.set(sessionId, snippets);
   }
+
+  const existed = snippets.has(snippet.id);
   snippets.set(snippet.id, snippet);
+
+  if (!existed && snippets.size < (snippets as LruMap<string, FileSnippet>).size) {
+    // LruMap already evicted if needed; log if it happened during this set.
+    // The LruMap.set() handles eviction silently, so we just track.
+  }
+
   return snippet;
 }
 
@@ -283,6 +427,10 @@ export function getSnippet(sessionId: string, snippetId: string): FileSnippet | 
   if (!sessionId || !snippetId) {
     return null;
   }
+
+  // Lazy TTL eviction on access.
+  evictExpiredSnippets(sessionId);
+
   return snippetsBySession.get(sessionId)?.get(snippetId) ?? null;
 }
 

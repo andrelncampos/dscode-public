@@ -1,0 +1,58 @@
+name: Feature Request
+description: Propose a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! Please provide as much context as possible.
+        **⚠️ Do NOT paste API keys, tokens, passwords, or personal data.**
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real problem does this feature solve? Describe your use case.
+      placeholder: "I need to... / I cannot..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like dscode to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or alternative solutions have you tried?
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who benefits from this feature? How broadly useful is it?
+
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - label: Windows
+        - label: Linux
+        - label: macOS
+        - label: Breaking change (requires migration)
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Perceived complexity
+      options:
+        - Simple (small change, few files)
+        - Medium (new module or refactor)
+        - Large (architectural change)

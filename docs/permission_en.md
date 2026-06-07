@@ -1,6 +1,6 @@
-# Deep Code Permission Mechanism
+# dscode Permission Mechanism
 
-Deep Code includes a fine-grained permission control mechanism. Before the AI assistant executes a tool call (such as running a shell command, reading/writing files, accessing the network, etc.), the system determines whether to auto-allow, auto-deny, or prompt for interactive confirmation based on your configured policy.
+dscode includes a fine-grained permission control mechanism. Before the AI assistant executes a tool call (such as running a shell command, reading/writing files, accessing the network, etc.), the system determines whether to auto-allow, auto-deny, or prompt for interactive confirmation based on your configured policy.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Each time the AI assistant invokes a tool, the system automatically analyzes the
 
 ## Permission Scopes
 
-Deep Code defines the following 10 permission scopes, covering various risk scenarios for tool calls:
+dscode defines the following 10 permission scopes, covering various risk scenarios for tool calls:
 
 | Permission Scope | Description |
 | ---------------- | ----------- |

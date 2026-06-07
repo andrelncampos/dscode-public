@@ -1,208 +1,620 @@
 <div align="center">
+
+**🌐 Idioma:** Português | [English](docs/i18n/README.en.md) | [Español](docs/i18n/README.es.md) | [简体中文](docs/i18n/README.zh-Hans.md) | [हिन्दी](docs/i18n/README.hi.md)
+
+</div>
+
+<br/>
+
+<div align="center">
 <br/>
 <br/>
 <p align="center">
-  <a href='https://deepcode.vegamo.cn/'>
-    <img src='https://avatars.githubusercontent.com/u/118287711?s=200&v=4' width='100' alt="deepcode-cli"/>
-  </a>
+  <img src='https://avatars.githubusercontent.com/u/118287711?s=200&v=4' width='100' alt="DsCode"/>
 </p>
-<h1>Deep Code CLI</h1>
+<h1>DsCode</h1>
 
-[![][npm-release-shield]][npm-release-link] [![][npm-downloads-shield]][npm-downloads-link] [![][github-contributors-shield]][github-contributors-link] [![][github-forks-shield]][github-forks-link] [![][github-stars-shield]][github-stars-link]
-[![][github-issues-shield]][github-issues-link] [![][github-issues-pr-shield]][github-issues-pr-link] [![][github-license-shield]][github-license-link]
+[![][github-license-shield]][github-license-link]
 
-[English](README-en.md) · 中文
+**Assistente de programação com IA no seu terminal.**
 
 <br/>
 </div>
 
-[Deep Code](https://github.com/lessweb/deepcode-cli) 是专为 `deepseek-v4` 模型优化的终端 AI 编码助手，支持深度思考、推理强度控制、Agent Skills 以及 MCP 集成。
+O **DsCode** é um assistente de programação que roda direto no terminal. Você conversa com um modelo de IA (como o DeepSeek V4) e ele analisa, sugere, revisa e escreve código no seu projeto. Funciona em Windows, Linux e macOS.
 
-## 安装
+O DsCode deriva do [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), mas tem evolução própria e é mantido por [André Campos](https://github.com/andrelncampos).
+
+---
+
+## Para quem é o DsCode
+
+O DsCode é útil para:
+
+- **Desenvolvedoras e desenvolvedores** que querem ajuda da IA para tarefas do dia a dia.
+- **Tech leads** que precisam revisar ou entender bases de código rapidamente.
+- **Quem já usa IA para programar** e quer um fluxo rápido, integrado ao terminal.
+- **Equipes que querem padronizar** o uso de prompts, skills e agentes para manter consistência.
+- **Pessoas que usam DeepSeek V4** e querem tirar proveito de thinking mode, reasoning effort e KV Cache.
+
+---
+
+## O que o DsCode ajuda a fazer
+
+| Tarefa | Como o DsCode ajuda |
+|---|---|
+| **Analisar uma codebase** | Peça "Explique a arquitetura deste projeto" e a IA lê os arquivos e responde. |
+| **Revisar código** | Peça "Revise as alterações deste diff antes de commitar". |
+| **Implementar funcionalidades** | Descreva o que precisa e a IA gera ou edita os arquivos. |
+| **Refatorar** | Peça "Simplifique esta função sem mudar o comportamento". |
+| **Investigar bugs** | Cole a stack trace e peça ajuda para encontrar a causa. |
+| **Criar ou usar skills** | Skills são guias que ensinam a IA a trabalhar de um jeito específico. |
+| **Trabalhar com Git** | A IA sugere branches, mensagens de commit e faz alterações versionadas. |
+| **Configurar raciocínio** | Ative o *thinking mode* para tarefas difíceis — a IA "pensa" antes de responder. |
+| **Integrar ferramentas externas** | Com MCP, conecte bancos de dados, navegadores, APIs e outras ferramentas. |
+
+---
+
+## Download rápido
+
+> ⚠️ **Ainda não há releases publicadas.** As instruções abaixo mostram como será o formato de download quando a primeira release for publicada. Enquanto isso, use a instalação via npm (próxima seção).
+
+**Quando houver uma release publicada**, acesse a [página de Releases do GitHub](https://github.com/andrelncampos/dscode/releases) e baixe o arquivo correspondente ao seu sistema:
+
+| Sistema operacional | Arquivo para baixar |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon / ARM64) | `dscode-macos-arm64.tar.gz` |
+
+Cada release inclui um arquivo `checksums.txt` para verificar a integridade do download.
+
+---
+
+## Instalação por sistema operacional
+
+### Instalação recomendada (qualquer sistema)
+
+A forma mais simples de instalar é via npm:
 
 ```bash
-npm install -g @vegamo/deepcode-cli
+npm install -g @andrelncampos/dscode
 ```
 
-在任意项目目录下运行 `deepcode` 即可启动。
+Depois execute `dscode` em qualquer pasta de projeto. Se ainda não tiver o Node.js instalado, veja os pré-requisitos abaixo.
 
-![intro2](resources/intro2.png)
+**Pré-requisito único**: [Node.js](https://nodejs.org) versão **22** ou superior.
 
-## 配置
+Verifique sua versão com:
 
-创建 `~/.deepcode/settings.json` 文件，内容如下：
+```bash
+node --version
+```
+
+A saída deve ser `v22.x.x` ou `v24.x.x`. Versões mais antigas (18, 20) não são compatíveis.
+
+---
+
+### Windows
+
+#### Opção 1: npm (recomendada)
+
+1. Instale o [Node.js 22+](https://nodejs.org).
+2. Abra o **PowerShell** (ou Git Bash, Terminal, CMD).
+3. Instale globalmente:
+
+   ```powershell
+   npm install -g @andrelncampos/dscode
+   ```
+
+4. Verifique a instalação:
+
+   ```powershell
+   dscode --version
+   ```
+
+   Deve mostrar o número da versão (ex: `1.0.1`).
+
+5. Execute em qualquer projeto:
+
+   ```powershell
+   cd C:\meu-projeto
+   dscode
+   ```
+
+#### Opção 2: Binário da release
+
+Quando houver releases publicadas:
+
+1. Baixe `dscode-windows-x64.zip` da página de Releases.
+2. Extraia em uma pasta de sua escolha (ex: `C:\dscode`).
+3. Adicione a pasta ao PATH do sistema.
+4. Execute `dscode.exe` no terminal.
+
+#### Problemas comuns no Windows
+
+- **Erro "comando não encontrado" após `npm install -g`**: O PATH do npm pode não estar configurado. Feche e reabra o terminal, ou verifique se `%APPDATA%\npm` está no PATH.
+- **Erro de permissão na instalação**: Execute o PowerShell como administrador ou use `npm install -g` sem admin configurando o prefixo do npm para uma pasta local.
+
+---
+
+### Linux
+
+#### Opção 1: npm (recomendada)
+
+1. Instale o [Node.js 22+](https://nodejs.org) (use `nvm` ou o gerenciador de pacotes da sua distribuição).
+
+   ```bash
+   # Exemplo com nvm
+   nvm install 22
+   nvm use 22
+   ```
+
+2. Instale globalmente:
+
+   ```bash
+   npm install -g @andrelncampos/dscode
+   ```
+
+3. Verifique:
+
+   ```bash
+   dscode --version
+   ```
+
+4. Execute:
+
+   ```bash
+   cd /caminho/do/projeto
+   dscode
+   ```
+
+#### Opção 2: Binário da release
+
+Quando houver releases:
+
+1. Baixe `dscode-linux-x64.tar.gz`.
+2. Extraia:
+
+   ```bash
+   tar -xzf dscode-linux-x64.tar.gz
+   ```
+
+3. Torne executável (se necessário):
+
+   ```bash
+   chmod +x dscode
+   ```
+
+4. Mova para o PATH:
+
+   ```bash
+   sudo mv dscode /usr/local/bin/
+   ```
+
+#### Problemas comuns no Linux
+
+- **Permissão negada (EACCES) ao instalar globalmente**: Configure o prefixo do npm para um diretório local ou use `sudo`.
+- **Shell não reconhece `dscode`**: Verifique se `/usr/local/bin` está no PATH. Reabra o terminal.
+
+---
+
+### macOS
+
+#### Opção 1: npm (recomendada)
+
+1. Instale o [Node.js 22+](https://nodejs.org) (use o instalador oficial, Homebrew ou nvm).
+
+   ```bash
+   # Exemplo com Homebrew
+   brew install node@22
+   ```
+
+2. Instale globalmente:
+
+   ```bash
+   npm install -g @andrelncampos/dscode
+   ```
+
+3. Verifique:
+
+   ```bash
+   dscode --version
+   ```
+
+4. Execute:
+
+   ```bash
+   cd /caminho/do/projeto
+   dscode
+   ```
+
+#### Opção 2: Binário da release
+
+Quando houver releases, baixe o arquivo correto para seu Mac:
+
+- **Mac com chip Intel**: `dscode-macos-x64.tar.gz`
+- **Mac com Apple Silicon (M1/M2/M3/M4)**: `dscode-macos-arm64.tar.gz`
+
+Extraia com:
+
+```bash
+tar -xzf dscode-macos-arm64.tar.gz
+chmod +x dscode
+sudo mv dscode /usr/local/bin/
+```
+
+#### Nota sobre Gatekeeper
+
+O macOS pode bloquear a execução de binários baixados da internet. Se isso acontecer, você precisará autorizar manualmente no painel **Segurança e Privacidade** das Preferências do Sistema. **Não desative o Gatekeeper permanentemente** — autorize apenas o DsCode.
+
+---
+
+## Instalação a partir do código-fonte
+
+Para quem quer a versão mais recente em desenvolvimento ou contribuir com o projeto:
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/andrelncampos/dscode.git
+cd dscode
+
+# 2. Instale as dependências
+npm ci
+
+# 3. Gere o build (typecheck + lint + format + bundle)
+npm run build
+
+# 4. Crie um link local (torna o comando dscode disponível globalmente)
+npm link
+
+# 5. Verifique
+dscode --version
+```
+
+Agora `dscode` está disponível como comando global no seu terminal.
+
+---
+
+## Configuração inicial
+
+O DsCode lê suas configurações do arquivo `~/.deepcode/settings.json` (na sua pasta de usuário). Você também pode ter um arquivo `.deepcode/settings.json` dentro de um projeto específico para configurações locais.
+
+### Criando sua primeira configuração
+
+Crie o arquivo `~/.deepcode/settings.json`:
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "sk-..."
+    "API_KEY": "coloque_sua_chave_aqui"
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
 }
 ```
 
-配置文件与 [Deep Code VSCode 插件](https://github.com/lessweb/deepcode) 共享，无需重复配置。
+### Onde conseguir sua chave de API
 
-完整配置说明（多层级优先级、环境变量等）请参阅 [docs/configuration.md](docs/configuration.md)。
+| Provedor | Onde obter a chave |
+|---|---|
+| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
+| **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys |
+| **Anthropic** | [console.anthropic.com](https://console.anthropic.com) → API Keys |
 
-## 主要功能
+### Configurando com variáveis de ambiente
 
-### **Skills**
-Deep Code CLI 支持 agent skills，允许您扩展助手的能力：
+Como alternativa ao arquivo `settings.json`, você pode usar variáveis de ambiente. O DsCode reconhece qualquer variável com prefixo `DEEPCODE_`:
 
-Skills 会按以下优先级扫描：
+```bash
+# Linux / macOS
+export DEEPCODE_MODEL="deepseek-v4-pro"
+export DEEPCODE_API_KEY="coloque_sua_chave_aqui"
 
-| Scope   | Path                  | Purpose                       |
-| :------ | :-------------------- | :---------------------------- |
-| Project | `./.deepcode/skills/` | Deep Code 原生位置            |
-| Project | `./.agents/skills/`   | 跨客户端互操作                |
-| User    | `~/.deepcode/skills/` | Deep Code 原生位置            |
-| User    | `~/.agents/skills/`   | 跨客户端互操作                |
+# Windows PowerShell
+$env:DEEPCODE_MODEL = "deepseek-v4-pro"
+$env:DEEPCODE_API_KEY = "coloque_sua_chave_aqui"
+```
 
-### **为 DeepSeek 优化**
-- 专门为 DeepSeek 模型性能调优。
-- 通过使用[上下文缓存](https://api-docs.deepseek.com/guides/kv_cache)来降低成本。
-- 原生支持[思考模式](https://api-docs.deepseek.com/guides/thinking_mode)和思考强度控制。
+### Opções de configuração disponíveis
 
-## 斜杠命令与按键功能
+| Campo | Tipo | Descrição | Padrão |
+|---|---|---|---|
+| `env.MODEL` | string | Modelo de IA a usar | `deepseek-v4-pro` |
+| `env.BASE_URL` | string | URL base da API do provedor | `https://api.deepseek.com` |
+| `env.API_KEY` | string | Chave de API do provedor | *(obrigatório)* |
+| `thinkingEnabled` | boolean | Ativa modo de raciocínio (a IA "pensa" antes de responder) | `true` para DeepSeek |
+| `reasoningEffort` | string | Intensidade do raciocínio: `"high"` ou `"max"` | `"max"` para V4 Pro |
+| `temperature` | number | Criatividade das respostas (0 a 2) | *(provedor define)* |
+| `maxTokens` | number | Limite de tokens por resposta | 65536 (Pro) / 32768 (Flash) |
+| `debugLogEnabled` | boolean | Salva logs de depuração em `~/.deepcode/logs/` | `false` |
+| `permissions` | object | Controle fino de permissões (leitura, escrita, rede, etc.) | *(tudo permitido)* |
+| `mcpServers` | object | Configuração de servidores MCP | *(nenhum)* |
+| `notify` | string | Script executado ao final de cada tarefa | *(nenhum)* |
+| `webSearchTool` | string | Script customizado de busca web | *(usa built-in)* |
 
-| 斜杠命令        | 操作                               |
-|-------------|----------------------------------|
-| `/`         | 打开 skills / 命令菜单                 |
-| `/new`      | 开始新对话                            |
-| `/resume`   | 选择历史对话继续                         |
-| `/continue` | 继续当前对话，或选择历史对话恢复                 |
-| `/model`    | 切换模型、思考模式和推理强度                   |
-| `/raw`      | 切换显示模式（Normal / Lite / Raw 滚动回溯） |
-| `/init`     | 初始化 AGENTS.md 文件                 |
-| `/skills`   | 列出可用 skills                      |
-| `/mcp`      | 查看 MCP 服务器状态和可用工具                |
-| `/undo`     | 将代码和/或对话恢复到之前的状态                 |
-| `/exit`     | 退出（也可用连续 `Ctrl+D`）               |
+⚠️ **Segurança**: Nunca compartilhe seu arquivo `settings.json` com outras pessoas. Ele contém sua chave de API. Se você usa Git, o `.gitignore` do DsCode já exclui `*.log` e `settings.json`.
 
-| 按键            | 操作                 |
-|---------------|--------------------|
-| `Enter`       | 发送消息               |
-| `Shift+Enter` | 插入换行（也可用 `Ctrl+J`） |
-| `Ctrl+V`      | 从剪贴板粘贴图片           |
-| `Esc`         | 中断当前模型回复           |
-| 连续 `Ctrl+D`   | 退出                 |
+---
 
-## 支持的模型
+## Primeiro uso em 5 minutos
 
-- `deepseek-v4-pro`（推荐使用）
-- `deepseek-v4-flash`
-- 任何其他 OpenAI 兼容模型
+### Passo 1: Instale
 
+```bash
+npm install -g @andrelncampos/dscode
+```
 
-## 常见问题
+### Passo 2: Configure sua chave
 
-### Deep Code 是否有 VSCode 插件？
+Crie `~/.deepcode/settings.json` com sua chave de API e modelo preferido (veja a seção de Configuração acima).
 
-有的。Deep Code 提供功能完整的 VSCode 插件，可在 [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=vegamo.deepcode-vscode) 安装。插件与 CLI 共享 `~/.deepcode/settings.json` 配置文件，可以在终端和编辑器之间无缝切换。
+### Passo 3: Abra uma pasta de projeto
 
-### Deep Code 是否支持理解图片？
+```bash
+cd /caminho/do/seu/projeto
+```
 
-Deep Code 支持多模态，可使用ctrl+v从剪贴板粘贴图片。但目前 deepseek-v4 不支持多模态。有些模型虽然有多模态能力，但对多轮对话请求的限制太严。目前多模态输入推荐使用火山方舟的 Doubao-Seed-2.0-pro 模型，适配效果最好。
+Pode ser qualquer projeto: um repo Git, um projeto pessoal, até uma pasta vazia.
 
-### 怎样在任务完成后自动给 Slack 发消息？
+### Passo 4: Inicie o DsCode
 
-编写一个调用 Slack webhook 的 Shell 通知脚本，然后在 `~/.deepcode/settings.json` 中将 `notify` 字段设为该脚本的完整路径即可。详细步骤请参考 [docs/notify.md](docs/notify.md)。
+```bash
+dscode
+```
 
-### 怎样启用联网搜索功能？
+Você verá uma tela de boas-vindas com um campo de texto. O assistente está pronto para receber comandos.
 
-Deep Code自带免费的、且大部分情况够用的Web Search工具。如果你希望使用自定义脚本进行联网搜索，可以在 `~/.deepcode/settings.json` 中将 `webSearchTool` 设为脚本的完整路径即可。详细步骤可参考：https://github.com/qorzj/web_search_cli
+### Passo 5: Peça algo simples
 
-### 如何配置 MCP？
+Digite no campo de texto:
 
-Deep Code 支持 MCP（Model Context Protocol），可以连接 GitHub、浏览器、数据库等外部服务。在 `settings.json` 中配置 `mcpServers` 字段即可启用，启动后使用 `/mcp` 命令查看已配置的 MCP 服务器状态和可用工具。
+```
+Explique a estrutura deste projeto em 3 frases.
+```
 
-详细配置指南：[docs/mcp.md](docs/mcp.md)
+Pressione **Enter**. A IA analisará os arquivos do projeto e responderá.
 
-### 如何配置 Deep Code 任务完成后发送通知？
+### Passo 6: Peça uma análise útil
 
-当 AI 助手完成一轮任务后，Deep Code 可以自动执行一个通知脚本，将任务结果发送到你指定的渠道（如 Slack、系统通知等）。
+```
+Analise o código-fonte e aponte possíveis melhorias, sem alterar nada.
+```
 
-详细配置指南：[docs/notify.md](docs/notify.md)
+A IA examinará a base de código e sugerirá melhorias. Use `Ctrl+O` para ver o output completo se precisar.
 
-### Deep Code 只支持 YOLO 模式吗？
+### Passo 7: Revisão e commit
 
-不是。Deep Code 内置了细粒度的权限控制机制，支持在 AI 助手执行 Shell 命令、读写文件、访问网络等操作前进行确认。你可以通过 `settings.json` 中的 `permissions` 字段按需配置每种权限范围的策略：始终允许、始终询问、或直接拒绝。详见 [docs/permission.md](docs/permission.md)。
+Quando a IA fizer alterações em arquivos, **revise cada diff** antes de commitar. O DsCode mostra o que foi alterado e você decide se aceita ou não.
 
-### 是否支持 Coding Plan？
+> 💡 **Dica**: Faça um commit (`git commit`) antes de pedir tarefas grandes. Se algo sair errado, você pode desfazer com `git reset --hard`.
 
-支持。只要把 `~/.deepcode/settings.json` 的 `env.BASE_URL` 配置为 OpenAI 兼容的接口地址就行。以火山方舟的 Coding Plan 为例：
+---
+
+## Exemplos práticos de uso
+
+Cada exemplo abaixo é algo que você pode digitar no campo de prompt do DsCode.
+
+| Tarefa | O que digitar |
+|---|---|
+| **Entender a arquitetura** | "Explique a arquitetura deste projeto, quais são os módulos principais e como se comunicam." |
+| **Encontrar bugs** | "Analise src/ em busca de possíveis bugs. Apenas aponte, não altere nada." |
+| **Sugerir melhorias** | "Sugira melhorias de performance e legibilidade para o código em src/." |
+| **Implementar feature** | "Adicione validação de email no formulário de cadastro em src/form.ts." |
+| **Refatorar** | "Refatore a função processData() em src/utils.ts para ficar mais clara, sem mudar o comportamento." |
+| **Revisar diff** | "Revise as alterações do último commit e aponte problemas." |
+| **Criar testes** | "Crie testes unitários para a função validateUser() em src/validators.ts." |
+| **Usar uma skill** | "Use a skill de revisão de segurança para auditar este código." |
+| **Iniciar um AGENTS.md** | Digite `/init` para criar um arquivo com instruções que a IA seguirá no projeto. |
+
+O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA responde e executa ferramentas (ler arquivos, rodar comandos, editar código). Você pode confirmar ou rejeitar cada ação.
+
+---
+
+## Conceitos essenciais
+
+| Conceito | O que é | Quando importa |
+|---|---|---|
+| **Sessão** | Uma conversa contínua entre você e a IA. Cada `/new` inicia uma sessão limpa. | Comece uma nova sessão quando mudar de tarefa para não misturar contextos. |
+| **Contexto** | Todo o histórico da conversa que a IA "lembra". Inclui suas mensagens, respostas e arquivos lidos. | Contextos muito longos gastam mais tokens. Use `/new` para resetar. |
+| **Skills** | Guias escritos em Markdown que ensinam a IA a seguir regras específicas. | Crie uma skill para padronizar revisões, estilo de código ou processos da sua equipe. |
+| **Tools** | Ferramentas que a IA pode usar: ler arquivos, executar comandos, editar código, buscar na web. | A IA decide quais ferramentas usar. Você pode bloquear as que considerar perigosas. |
+| **Provider** | A empresa que fornece o modelo de IA (DeepSeek, OpenAI, Anthropic etc.). | Escolha o provedor com base em custo, qualidade e privacidade. |
+| **Modelo** | O modelo específico de IA (ex: `deepseek-v4-pro`, `gpt-4o`). | Modelos diferentes têm qualidade, velocidade e custo diferentes. |
+| **Thinking mode** | A IA "pensa" (raciocina) antes de responder, gerando tokens internos que você pode ou não ver. | Ative para tarefas complexas (debug, arquitetura). Desative para agilidade. |
+| **Reasoning effort** | Controla a profundidade do raciocínio: `"high"` (bom, mais rápido) ou `"max"` (melhor, mais lento). | Use `"max"` para problemas difíceis e `"high"` para o dia a dia. |
+| **Prompt cache** | O DeepSeek armazena partes repetidas do contexto para cobrar menos tokens (KV Cache). | Acontece automaticamente. Mantenha prompts estáveis para economizar. |
+| **Logs** | Arquivos de depuração em `~/.deepcode/logs/` que registram as chamadas de API. | Ative `debugLogEnabled` apenas para diagnosticar problemas. |
+| **Permissões** | Controle do que a IA pode fazer: ler arquivos, escrever, acessar rede, executar comandos. | Configure permissões restritas se quiser revisar cada ação antes de executar. |
+| **Workspace** | A pasta raiz onde o DsCode está rodando. A IA só vê arquivos nessa pasta (a menos que você autorize acesso externo). | Abra o DsCode na raiz do projeto que você quer trabalhar. |
+| **Compactação** | Quando a conversa fica muito longa, o DsCode resume o histórico para caber no limite de tokens. | Automática. Você pode forçar uma sessão nova com `/new` se preferir. |
+
+---
+
+## Como usar com DeepSeek
+
+O DsCode é otimizado para os modelos DeepSeek V4.
+
+### Modelos suportados
+
+| Modelo | Melhor para | Velocidade | Custo |
+|---|---|---|---|
+| `deepseek-v4-pro` | Tarefas complexas, arquitetura, debug, raciocínio profundo | Normal | Maior |
+| `deepseek-v4-flash` | Tarefas simples, refatoração, revisão rápida | Rápido | Menor |
+
+### Configuração para DeepSeek
 
 ```json
 {
   "env": {
-    "MODEL": "ark-code-latest",
-    "BASE_URL": "https://ark.cn-beijing.volces.com/api/coding/v3",
-    "API_KEY": "**************"
+    "MODEL": "deepseek-v4-pro",
+    "BASE_URL": "https://api.deepseek.com",
+    "API_KEY": "coloque_sua_chave_aqui"
   },
-  "thinkingEnabled": true
+  "thinkingEnabled": true,
+  "reasoningEffort": "max"
 }
 ```
 
-## 贡献
+### Thinking mode
 
-欢迎贡献代码！以下是参与方式：
+O *thinking mode* permite que a IA raciocine antes de responder. Os tokens de raciocínio aparecem (dependendo do modo de exibição) e você pode ver como a IA chegou à conclusão.
 
-```bash
-# 克隆仓库
-git clone https://github.com/lessweb/deepcode-cli.git
-cd deepcode-cli
+- **Quando usar**: Tarefas que exigem análise profunda (arquitetura, debug complexo, decisões de design).
+- **Quando desativar**: Tarefas simples e rápidas (refatoração pequena, responder dúvidas pontuais).
+- **Controle de exibição**: Use `/raw` para alternar entre ver o raciocínio completo, resumido ou oculto.
 
-# 安装依赖
-npm install
+### Reasoning effort
 
-# 本地开发（类型检查 + lint + 格式检查 + 构建）
-npm run build
+- **`"max"`**: Raciocínio mais profundo. Ideal para o V4 Pro em tarefas complexas. Gasta mais tokens.
+- **`"high"`**: Bom equilíbrio. Suficiente para a maioria das tarefas do dia a dia.
 
-# 运行测试
-npm test
+### KV Cache (economia automática)
 
-# 链接到全局（即本地全局安装）
-npm link
-```
+O DeepSeek armazena partes repetidas do contexto em cache (KV Cache) e **não cobra** pelos tokens cacheados. Para aproveitar isso:
 
-- 提交 PR 前请确保 `npm run check` 通过（类型检查 + lint + 格式检查）
-- 建议在执行构建前，先执行 `npm run format` 自动格式化代码，避免构建报错
+- Mantenha o início das conversas estável (system prompt, instruções iniciais).
+- Evite reiniciar a sessão sem necessidade — manter a conversa reduz custo.
+- O DsCode gerencia o cache automaticamente; você não precisa fazer nada.
 
-## 获取帮助
+### Cuidados com custo
 
-- 在 GitHub Issues 上报告错误或请求功能 (https://github.com/lessweb/deepcode-cli/issues)
+- O V4 Pro gasta mais tokens por resposta. Use para tarefas que realmente precisam.
+- O V4 Flash é mais barato e rápido. Use para revisões, refatorações e tarefas cotidianas.
+- Monitore seu consumo na [plataforma DeepSeek](https://platform.deepseek.com).
 
-## 协议
+### Boas práticas para DeepSeek
 
-- MIT
+1. Use `deepseek-v4-pro` para tarefas estratégicas e `deepseek-v4-flash` para o dia a dia.
+2. Mantenha `thinkingEnabled: true` — o raciocínio melhora significativamente a qualidade.
+3. Se a resposta for truncada, peça "continue" — a IA retoma de onde parou.
+4. Evite prompts gigantescos. Seja específico sobre quais arquivos analisar.
 
-## 支持我们
+---
 
-如果你觉得这个工具对你有帮助，请考虑通过以下方式支持我们：
+## Boas práticas de segurança
 
-- 在 GitHub 上给我们一个 Star (https://github.com/lessweb/deepcode-cli)
-- 向我们提交反馈和建议
-- 分享给你的朋友和同事
+| O que fazer | Por quê |
+|---|---|
+| **Nunca cole API keys em issues do GitHub** | Issues são públicas. Chaves expostas podem ser usadas por outras pessoas e gerar cobrança. |
+| **Nunca faça commit do arquivo `settings.json`** | Ele contém sua chave de API. O `.gitignore` do projeto já o exclui, mas confira. |
+| **Revise comandos antes de permitir** | A IA pode sugerir comandos shell. Leia antes de confirmar, especialmente se envolver `rm`, `sudo` ou rede. |
+| **Faça commit antes de pedir alterações grandes** | Se a IA fizer algo errado, `git reset --hard` desfaz tudo. Sem commit prévio, isso não é possível. |
+| **Leia diffs antes de aceitar** | O DsCode mostra cada alteração. Revise — a IA pode cometer erros. |
+| **Não cole dados sensíveis nos prompts** | Informações como senhas, CPF, tokens ou dados de clientes podem aparecer em logs ou na resposta. |
+| **Sanitize logs antes de pedir ajuda** | Logs em `~/.deepcode/logs/` podem conter trechos do seu código. Remova informações confidenciais antes de compartilhar. |
+| **Use uma branch separada para experimentos** | Crie `git checkout -b experimento-ia` antes de pedir alterações grandes. Se algo der errado, descarte a branch. |
+
+---
+
+## Boas práticas para economizar tokens e créditos
+
+| Prática | Explicação |
+|---|---|
+| **Peça análise antes de implementação** | "Analise este código e sugira o que melhorar" gasta menos tokens do que "Implemente X" sem contexto. |
+| **Limite o escopo** | Em vez de "Melhore o projeto inteiro", diga "Melhore a função `processar()` em `src/utils.ts`". |
+| **Informe os arquivos relevantes** | Diga "Analise apenas os arquivos em `src/api/`" — a IA lê menos arquivos, gasta menos tokens. |
+| **Use Flash para tarefas simples** | O `deepseek-v4-flash` é muito mais barato. Use para tarefas rotineiras. |
+| **Use Pro com moderação** | Reserve o `deepseek-v4-pro` para tarefas que realmente exigem raciocínio profundo. |
+| **Mantenha prompts objetivos** | Prompts longos com informações desnecessárias gastam tokens à toa. |
+| **Reinicie a sessão com `/new` para tarefas novas** | Sessões muito longas acumulam contexto e cada mensagem subsequente custa mais caro. |
+
+---
+
+## Troubleshooting
+
+| Problema | Causa provável | Como resolver |
+|---|---|---|
+| **`dscode: comando não encontrado`** | O npm global não está no PATH | Reabra o terminal. No Windows, verifique `%APPDATA%\npm`. No Linux/macOS, verifique `~/.npm-global/bin`. |
+| **`Node.js version not supported`** | Node inferior à versão 22 | Instale ou atualize o [Node.js 22+](https://nodejs.org). |
+| **`npm ci` falhou** | Dependências inconsistentes | Delete `node_modules` e `package-lock.json`, depois rode `npm install`. |
+| **Erro 401 (Unauthorized)** | API key ausente ou inválida | Verifique se `API_KEY` está correto em `~/.deepcode/settings.json` ou na variável de ambiente. |
+| **Erro 429 (Too Many Requests)** | Limite de requisições do provedor excedido | Aguarde alguns segundos e tente novamente. Verifique seu plano na plataforma do provedor. |
+| **Resposta truncada** | Limite de tokens atingido | Aumente `maxTokens` em `settings.json` ou digite "continue" para a IA retomar. |
+| **Timeout / demora excessiva** | Servidor do provedor sobrecarregado ou problema de rede | Aguarde. Se persistir, troque o modelo: use Flash em vez de Pro temporariamente. |
+| **Erro de permissão no Windows** | npm sem permissão de escrita | Execute o PowerShell como administrador ou configure o prefixo do npm. |
+| **Erro de permissão no Linux/macOS (EACCES)** | npm global sem permissão | Configure o prefixo do npm para um diretório local ou use `sudo npm install -g`. |
+| **`npm run build` falhou** | Erro de typecheck ou lint | Rode os comandos separadamente para identificar o erro: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
+| **Logs não estão aparecendo** | `debugLogEnabled` está `false` (padrão) | Ative `"debugLogEnabled": true` em `settings.json`. Logs aparecem em `~/.deepcode/logs/debug.log`. |
+| **Modelo não reconhecido** | Nome do modelo incorreto | Use os nomes exatos: `deepseek-v4-pro`, `deepseek-v4-flash`, ou um modelo OpenAI-compatible válido. |
+| **Consumo de tokens muito alto** | Contexto longo ou tarefas muito amplas | Use `/new` para resetar a sessão. Seja específico sobre arquivos e escopo. Não peça para analisar o projeto inteiro. |
+| **Erro em repositórios grandes** | Arquivos ignorados não estão sendo pulados | O DsCode respeita `.gitignore`. Verifique se seu `.gitignore` está correto. |
+
+---
+
+## Como pedir ajuda
+
+Se você encontrar um problema, abra uma [issue no GitHub](https://github.com/andrelncampos/dscode/issues).
+
+Ao relatar um problema, inclua:
+
+- **Versão do DsCode**: `dscode --version`
+- **Sistema operacional**: Windows 11, Ubuntu 24.04, macOS 15, etc.
+- **Node.js**: `node --version`
+- **Modelo usado**: `deepseek-v4-pro`, `deepseek-v4-flash`, etc.
+- **Comando executado** e o erro completo
+- **Logs sanitizados**, se relevante (remova chaves, tokens e dados privados)
+
+⚠️ **Nunca envie**:
+- Chaves de API ou tokens
+- Seus prompts privados ou dados de projeto confidenciais
+- Arquivos `.env` ou `settings.json` completos
+- Logs completos sem revisão (contêm trechos do seu código)
+
+Para vulnerabilidades de segurança, siga as instruções em [SECURITY.md](./SECURITY.md). **Não abra issues públicas para falhas de segurança.**
+
+---
+
+## Contribuição
+
+Contribuições são bem-vindas! Veja o guia completo em [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+Resumo rápido:
+
+1. **Issues** são bem-vindas para bugs, features e dúvidas.
+2. **Pull requests** passam por CI obrigatório (typecheck + lint + format + tests + build).
+3. **PRs de segurança** ou mudanças em áreas sensíveis passam por revisão rigorosa.
+4. Contribuidores declaram ter o direito de contribuir com o código enviado.
+
+---
+
+## Segurança
+
+Veja [SECURITY.md](./SECURITY.md) para a política completa.
+
+- Reporte vulnerabilidades privadamente (não abra issue pública).
+- O DsCode mascara dados sensíveis em logs de depuração, mas revise sempre antes de compartilhar.
+- Mantenha sua chave de API segura: use variáveis de ambiente ou `settings.json` com permissões restritas (`chmod 600`).
+
+---
+
+## Licença e origem
+
+O DsCode é licenciado sob a **Licença MIT**.
+
+Este projeto deriva do [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado sob MIT. O aviso de copyright original está preservado no arquivo [LICENSE](./LICENSE) e em [NOTICE](./NOTICE).
+
+Dependências de terceiros mantêm suas próprias licenças. Consulte [NOTICE](./NOTICE) para a lista de dependências e suas licenças.
+
+---
+
+## Canais oficiais
+
+| Canal | Link |
+|---|---|
+| **GitHub** | [github.com/andrelncampos/dscode](https://github.com/andrelncampos/dscode) |
+| **Releases** | [github.com/andrelncampos/dscode/releases](https://github.com/andrelncampos/dscode/releases) |
+| **npm** | `npm install -g @andrelncampos/dscode` |
+| **Issues** | [github.com/andrelncampos/dscode/issues](https://github.com/andrelncampos/dscode/issues) |
+
+⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões publicadas em sites de terceiros ou links não verificados.
+
+---
 
 <!-- LINK GROUP -->
 
-[npm-release-link]: https://www.npmjs.com/package/@vegamo/deepcode-cli
-[npm-release-shield]: https://img.shields.io/npm/v/@vegamo/deepcode-cli?color=4d6BFE&labelColor=black&logo=npm&logoColor=white&style=flat-square&cacheSeconds=1800
-[npm-downloads-link]: https://www.npmjs.com/package/@vegamo/deepcode-cli
-[npm-downloads-shield]: https://img.shields.io/npm/dt/@vegamo/deepcode-cli?labelColor=black&style=flat-square&color=4d6BFE&cacheSeconds=1800
-[github-contributors-link]: https://github.com/lessweb/deepcode-cli/graphs/contributors
-[github-contributors-shield]: https://img.shields.io/github/contributors/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
-[github-forks-link]: https://github.com/lessweb/deepcode-cli/network/members
-[github-forks-shield]: https://img.shields.io/github/forks/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
-[github-stars-link]: https://github.com/lessweb/deepcode-cli/network/stargazers
-[github-stars-shield]: https://img.shields.io/github/stars/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
-[github-issues-link]: https://github.com/lessweb/deepcode-cli/issues
-[github-issues-shield]: https://img.shields.io/github/issues/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
-[github-issues-pr-link]: https://github.com/lessweb/deepcode-cli/pulls
-[github-issues-pr-shield]: https://img.shields.io/github/issues-pr/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
-[github-license-link]: https://github.com/lessweb/deepcode-cli/blob/main/LICENSE
-[github-license-shield]: https://img.shields.io/github/license/lessweb/deepcode-cli?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
+[github-license-link]: https://github.com/andrelncampos/dscode/blob/main/LICENSE
+[github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

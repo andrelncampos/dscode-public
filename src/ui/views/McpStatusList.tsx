@@ -11,17 +11,17 @@ type Props = {
 export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React.ReactElement {
   const { columns, rows } = useWindowSize();
 
-  // 视图模式：server-list（服务器列表） 或 server-detail（服务器详情）
+  // View mode: server-list or server-detail
   const [viewMode, setViewMode] = useState<"server-list" | "server-detail">("server-list");
-  // 选中的服务器索引
+  // Selected server index
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
 
-  // 返回服务器列表
+  // Return to server list
   const goBack = useCallback(() => {
     setViewMode("server-list");
   }, []);
 
-  // 进入服务器详情（允许 ready、failed、reconnecting 状态）
+  // Enter server detail (allows ready, failed, reconnecting states)
   const enterDetail = useCallback(() => {
     const server = statuses[selectedServerIndex];
     if (server && (server.status === "ready" || server.status === "failed" || server.status === "reconnecting")) {
@@ -29,7 +29,7 @@ export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React
     }
   }, [statuses, selectedServerIndex]);
 
-  // 当没有服务器时，监听 Esc 键退出
+  // When no servers, listen for Esc key to exit
   useInput((input, key) => {
     if (statuses.length === 0 && (key.escape || (key.ctrl && (input === "c" || input === "C")))) {
       onCancel();
@@ -80,7 +80,7 @@ export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React
   );
 }
 
-// ==================== 服务器列表视图 ====================
+// ==================== Server List View ====================
 function ServerListView({
   statuses,
   selectedIndex,
@@ -104,16 +104,16 @@ function ServerListView({
   const maxVisible = useMemo(() => {
     const reservedLines = 8; // header + footer + borders
     const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
-    // 每个服务器占用 1 行（标题）+ 1 行（错误信息或统计）+ 1 行（间隔）
+    // Each server occupies 1 row (title) + 1 row (error or stats) + 1 row (spacing)
     return Math.max(1, Math.floor(availableLines / 3));
   }, [rows]);
 
-  // 计算标签列宽度：找到最长的服务器名称，加上前缀和图标
+  // Calculate label column width: find the longest server name, plus prefix and icon
   const labelColumnWidth = useMemo(() => {
     if (serverCount === 0) return 0;
     const longestName = Math.max(...statuses.map((s) => s.name.length));
     const contentWidth = longestName + 5; // +2 for prefix "> " or "  ", +3 for icon "✓ "
-    const maxAllowed = Math.max(15, Math.floor((columns - 6) * 0.4)); // 容器40%宽度，至少15列
+    const maxAllowed = Math.max(15, Math.floor((columns - 6) * 0.4)); // 40% of container width, at least 15 cols
     return Math.min(contentWidth, maxAllowed);
   }, [statuses, serverCount, columns]);
 
@@ -122,7 +122,7 @@ function ServerListView({
     return Math.max(0, Math.min(selectedIndex, serverCount - 1));
   }, [selectedIndex, serverCount]);
 
-  // 自动滚动确保选中项可见
+  // Auto-scroll to keep selected item visible
   React.useEffect(() => {
     if (safeIndex < scrollOffset) {
       setScrollOffset(safeIndex);
@@ -166,7 +166,7 @@ function ServerListView({
     if (key.end) {
       onSelect(serverCount - 1);
     }
-    // Enter 键进入详情
+    // Enter key to open detail
     if (key.return) {
       onEnter();
       return;
@@ -266,7 +266,7 @@ function ServerRow({
           ? "#ff9900"
           : "yellow";
 
-  // 加载动画：循环显示 (空) → . → .. → ... → (空) → ...
+  // Loading animation: cycles through (empty) → . → .. → ... → (empty) → ...
   const [dots, setDots] = React.useState(0);
   React.useEffect(() => {
     if (status.status !== "starting" && status.status !== "reconnecting") return;
@@ -309,7 +309,7 @@ function ServerRow({
   );
 }
 
-// ==================== 服务器详情视图 ====================
+// ==================== Server Detail View ====================
 function ServerDetailView({
   server,
   onBack,
@@ -329,7 +329,7 @@ function ServerDetailView({
   const hasReconnect = server.status === "failed";
   const canScroll = server.status === "ready";
 
-  // 合并所有 items（tools, prompts, resources）+ Reconnect 选项
+  // Merge all items (tools, prompts, resources) + Reconnect option
   const allItems = useMemo(() => {
     const items: { type: string; name: string }[] = [];
     if (hasReconnect) {
@@ -529,7 +529,7 @@ function ItemRow({ item, selected }: { item: { type: string; name: string }; sel
 }
 
 function ErrorRow({ error }: { error: string }): React.ReactElement {
-  // 将错误消息按行分割，每行单独显示
+  // Split the error message by newline, display each line separately
   const lines = error.split("\n").filter((line) => line.trim().length > 0);
 
   return (

@@ -11,13 +11,16 @@ function mkCall(name: string, args: string): TurnInput["toolCalls"][number] {
 }
 
 describe("RuntimeReasoningEffortManager", () => {
-  test("starts at high", () => {
+  test("starts at max", () => {
     const m = new RuntimeReasoningEffortManager();
-    assert.equal(m.getCurrentEffort(), "high");
+    assert.equal(m.getCurrentEffort(), "max");
   });
 
-  test("escalates on 2 consecutive failures", () => {
+  test("escalates on 2 consecutive failures (from high)", () => {
     const m = new RuntimeReasoningEffortManager();
+    // Force to "high" so we can test escalation behaviour
+    (m as any).state.currentEffort = "high";
+    assert.equal(m.getCurrentEffort(), "high");
     assert.equal(
       m.evaluate({
         toolCalls: [mkCall("bash", '{"cmd":"x"}')],
@@ -36,42 +39,33 @@ describe("RuntimeReasoningEffortManager", () => {
     assert.equal(m.getCurrentEffort(), "max");
   });
 
-  test("resets failure counter on success", () => {
+  test("resets failure counter on success (from high)", () => {
     const m = new RuntimeReasoningEffortManager();
+    (m as any).state.currentEffort = "high";
     m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
     m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(true)] });
     m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
-    assert.equal(m.getCurrentEffort(), "high");
+    assert.equal(m.getCurrentEffort(), "high"); // success resets failure counter
   });
 
-  test("escalates on 3 identical tool calls", () => {
+  test("escalates on 3 identical tool calls (from high)", () => {
     const m = new RuntimeReasoningEffortManager();
+    (m as any).state.currentEffort = "high";
     const call = mkCall("read", '{"file_path":"/x"}');
     assert.equal(m.evaluate({ toolCalls: [call], toolExecutions: [mkExec(true)] }), null);
     assert.equal(m.evaluate({ toolCalls: [call], toolExecutions: [mkExec(true)] }), null);
     assert.equal(m.evaluate({ toolCalls: [call], toolExecutions: [mkExec(true)] }), "max");
   });
 
-  test("downgrades after 5 clean turns (default threshold)", () => {
+  test("downgrade from max is disabled (always returns null)", () => {
     const m = new RuntimeReasoningEffortManager();
-    // Escalate first
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
     assert.equal(m.getCurrentEffort(), "max");
-
-    // Cooldown: first 3 turns at "max" cannot downgrade
-    for (let i = 0; i < 3; i++) {
-      const call = mkCall("bash", `{"cmd":"cooldown${i}"}`);
+    // Even after many clean turns with different fingerprints, stays at max
+    for (let i = 0; i < 20; i++) {
+      const call = mkCall("bash", `{"cmd":"unique${i}"}`);
       assert.equal(m.evaluate({ toolCalls: [call], toolExecutions: [mkExec(true)] }), null);
     }
     assert.equal(m.getCurrentEffort(), "max");
-
-    // Now 5 clean turns with different fingerprints
-    for (let i = 0; i < 5; i++) {
-      const call = mkCall("bash", `{"cmd":"unique${i}"}`);
-      m.evaluate({ toolCalls: [call], toolExecutions: [mkExec(true)] });
-    }
-    assert.equal(m.getCurrentEffort(), "high");
   });
 
   test("fingerprint is independent of argument whitespace", () => {
@@ -84,72 +78,24 @@ describe("RuntimeReasoningEffortManager", () => {
     assert.equal(fp1, fp2);
   });
 
-  test("reset clears all state", () => {
+  test("reset clears all state back to max", () => {
     const m = new RuntimeReasoningEffortManager();
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
     assert.equal(m.getCurrentEffort(), "max");
-    m.reset();
+    // Force to "high" then reset
+    (m as any).state.currentEffort = "high";
     assert.equal(m.getCurrentEffort(), "high");
+    m.reset();
+    assert.equal(m.getCurrentEffort(), "max");
     assert.equal(m.getState().consecutiveFailures, 0);
     assert.equal(m.getState().cleanTurnStreak, 0);
   });
 
-  test("cooldown prevents immediate re-escalation after downgrade", () => {
+  test("no escalation from max (already at maximum)", () => {
     const m = new RuntimeReasoningEffortManager();
-    // Escalate
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
     assert.equal(m.getCurrentEffort(), "max");
-    // Downgrade via 8 clean turns (3 cooldown + 5 threshold)
-    for (let i = 0; i < 3; i++) {
-      m.evaluate({ toolCalls: [mkCall("bash", `{"c":"a${i}"}`)], toolExecutions: [mkExec(true)] });
-    }
-    for (let i = 0; i < 5; i++) {
-      m.evaluate({ toolCalls: [mkCall("bash", `{"c":"b${i}"}`)], toolExecutions: [mkExec(true)] });
-    }
-    assert.equal(m.getCurrentEffort(), "high");
-    // Immediate failure should NOT re-escalate (cooldown active)
+    // Failures at max should NOT escalate further (already at max)
     assert.equal(m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] }), null);
-    assert.equal(m.getCurrentEffort(), "high");
-  });
-
-  test("anti-flapping doubles downgrade threshold on repeated cycles", () => {
-    const m = new RuntimeReasoningEffortManager();
-    // First cycle: escalate
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
-    m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] });
+    assert.equal(m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [mkExec(false)] }), null);
     assert.equal(m.getCurrentEffort(), "max");
-    // Downgrade: 3 cooldown + 5 clean
-    for (let i = 0; i < 3; i++) {
-      m.evaluate({ toolCalls: [mkCall("b", `${i}`)], toolExecutions: [mkExec(true)] });
-    }
-    for (let i = 0; i < 5; i++) {
-      m.evaluate({ toolCalls: [mkCall("b", `d${i}`)], toolExecutions: [mkExec(true)] });
-    }
-    assert.equal(m.getCurrentEffort(), "high");
-    // Second cycle: escalate again (cooldown absorbs first 2 failures)
-    for (let i = 0; i < 2; i++) {
-      m.evaluate({ toolCalls: [mkCall("b", `e${i}`)], toolExecutions: [mkExec(false)] });
-    }
-    m.evaluate({ toolCalls: [mkCall("b", "e2")], toolExecutions: [mkExec(false)] });
-    m.evaluate({ toolCalls: [mkCall("b", "e3")], toolExecutions: [mkExec(false)] });
-    assert.equal(m.getCurrentEffort(), "max");
-    // Downgrade: 3 cooldown + now 10 clean turns needed (threshold doubled)
-    for (let i = 0; i < 3; i++) {
-      m.evaluate({ toolCalls: [mkCall("b", `f${i}`)], toolExecutions: [mkExec(true)] });
-    }
-    for (let i = 0; i < 9; i++) {
-      m.evaluate({ toolCalls: [mkCall("b", `g${i}`)], toolExecutions: [mkExec(true)] });
-    }
-    assert.equal(m.getCurrentEffort(), "max"); // still max, threshold not met
-    m.evaluate({ toolCalls: [mkCall("b", "g9")], toolExecutions: [mkExec(true)] }); // 10th clean
-    assert.equal(m.getCurrentEffort(), "high"); // now downgraded
-  });
-
-  test("no escalation on first turn (empty executions)", () => {
-    const m = new RuntimeReasoningEffortManager();
-    assert.equal(m.evaluate({ toolCalls: [mkCall("bash", "{}")], toolExecutions: [] }), null);
-    assert.equal(m.getCurrentEffort(), "high");
   });
 });

@@ -87,13 +87,13 @@ test("resolveSettings reads TEMPERATURE, THINKING_ENABLED, REASONING_EFFORT, and
   assert.equal(resolved.baseURL, "https://default.example.com");
 });
 
-test("resolveSettings defaults telemetryEnabled to true", () => {
+test("resolveSettings defaults telemetryEnabled to false", () => {
   const resolved = resolveSettings(
     {},
     { model: "default-model", baseURL: "https://default.example.com" },
     TEST_PROCESS_ENV
   );
-  assert.equal(resolved.telemetryEnabled, true);
+  assert.equal(resolved.telemetryEnabled, false);
 });
 
 test("resolveSettings reads TELEMETRY_ENABLED from env", () => {
@@ -348,7 +348,7 @@ test("resolveSettings defaults invalid reasoning effort to max", () => {
     TEST_PROCESS_ENV
   );
 
-  assert.equal(resolved.reasoningEffort, "max");
+  assert.equal(resolved.reasoningEffort, "high");
 });
 
 test("resolveSettings ignores invalid temperature values", () => {

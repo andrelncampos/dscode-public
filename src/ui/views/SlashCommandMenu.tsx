@@ -20,7 +20,7 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
   maxVisible = 6,
   width,
 }: SlashCommandMenuProps): React.ReactElement | null {
-  // 计算标签列最佳宽度：包含前缀"> "或"  "（2字符），不超过容器一半（扣除gap）
+  // Calculate optimal label column width: includes prefix "> " or "  " (2 chars), max half container (minus gap)
   const labelColumnWidth = React.useMemo(() => {
     if (items.length === 0) {
       return 0;
@@ -29,7 +29,7 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
       ...items.map((s) => s.label.length + (s.args ? s.args?.join(ARGS_SEPARATOR)?.length + 4 : 0))
     );
     const contentWidth = longestLabel + 2; // +2 for prefix "> " or "  "
-    const maxAllowed = Math.max(10, (width - 2) >> 1); // 容器50%宽度（减去gap），至少保留10列
+    const maxAllowed = Math.max(10, (width - 2) >> 1); // 50% of container width (minus gap), at least 10 cols
     return Math.min(contentWidth, maxAllowed);
   }, [items, width]);
 
@@ -37,7 +37,7 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
     return null;
   }
 
-  // 计算可见窗口起始位置，确保 activeIndex 始终在可见区域内
+  // Calculate visible window start position to keep activeIndex always visible
   const visibleStart = Math.min(
     Math.max(0, activeIndex - Math.floor((maxVisible - 1) / 2)),
     Math.max(0, items.length - maxVisible)

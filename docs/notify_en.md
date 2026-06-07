@@ -1,10 +1,10 @@
-# Deep Code Task Completion Notification
+# dscode Task Completion Notification
 
-When the AI assistant finishes a round of tasks, Deep Code can automatically execute a notification script to send task results to your chosen channel (Slack, system notifications, etc.).
+When the AI assistant finishes a round of tasks, dscode can automatically execute a notification script to send task results to your chosen channel (Slack, system notifications, etc.).
 
 ## How It Works
 
-Configure the `notify` field in `settings.json` with the full path to an executable script. Every time the AI assistant completes a task response, Deep Code executes that script and injects context as environment variables.
+Configure the `notify` field in `settings.json` with the full path to an executable script. Every time the AI assistant completes a task response, dscode executes that script and injects context as environment variables.
 
 ## Injected Environment Variables
 
@@ -68,7 +68,7 @@ BRANCH=$(git branch --show-current 2>/dev/null)
 curl -X POST "$SLACK_WEBHOOK_URL" \
   -H "Content-type: application/json" \
   --data "{
-      \"text\": \"✅ Deep Code task completed\n · cwd: $CURRENT_DIR\n · Branch: $BRANCH\n · Duration: $DURATION s\"
+      \"text\": \"✅ dscode task completed\n · cwd: $CURRENT_DIR\n · Branch: $BRANCH\n · Duration: $DURATION s\"
   }"
 ```
 
@@ -108,7 +108,7 @@ PAYLOAD=$(node -e "
 process.stdout.write(JSON.stringify({
   msg_type: 'interactive',
   card: {
-    header: { title: { tag: 'plain_text', content: 'DeepCode: ' + process.env.TITLE + ' ' + process.env.STATUS + ' [' + process.env.DURATION + 's]' } },
+    header: { title: { tag: 'plain_text', content: 'dscode: ' + process.env.TITLE + ' ' + process.env.STATUS + ' [' + process.env.DURATION + 's]' } },
     elements: [{ tag: 'markdown', content: (process.env.BODY || '').slice(0, 2000) || '(no output)' }]
   }
 }))
@@ -139,7 +139,7 @@ Create `~/.deepcode/notify.sh`:
 ```bash
 #!/bin/bash
 # iTerm2 / Windows Terminal OSC 9 notification
-printf '\x1b]9;DeepCode: task %s (%ss)\x07' "${STATUS:-completed}" "${DURATION}"
+printf '\x1b]9;dscode: task %s (%ss)\x07' "${STATUS:-completed}" "${DURATION}"
 ```
 
 ```json
@@ -153,7 +153,7 @@ Windows users on Git Bash can use the same script; alternatively, create a `.bat
 ```batch
 @echo off
 REM Windows Terminal OSC 9 notification
-echo \x1b]9;DeepCode: task %STATUS% (%DURATION%s)\x07
+echo \x1b]9;dscode: task %STATUS% (%DURATION%s)\x07
 ```
 
 ## macOS System Notification
@@ -161,7 +161,7 @@ echo \x1b]9;DeepCode: task %STATUS% (%DURATION%s)\x07
 ```bash
 #!/bin/bash
 # macOS system notification
-osascript -e "display notification \"Task ${STATUS:-completed}, took ${DURATION}s\" with title \"DeepCode\""
+osascript -e "display notification \"Task ${STATUS:-completed}, took ${DURATION}s\" with title \"dscode\""
 ```
 
 ```json
@@ -183,7 +183,7 @@ Create `~/.deepcode/notify.sh`:
 ```bash
 #!/bin/bash
 # Linux notify-send notification
-notify-send "DeepCode" "Task ${STATUS:-completed}, took ${DURATION}s"
+notify-send "dscode" "Task ${STATUS:-completed}, took ${DURATION}s"
 ```
 
 ```json
@@ -197,7 +197,7 @@ notify-send "DeepCode" "Task ${STATUS:-completed}, took ${DURATION}s"
 ```batch
 @echo off
 REM Windows msg popup notification
-msg %USERNAME% "DeepCode: task %STATUS% (%DURATION%s)"
+msg %USERNAME% "dscode: task %STATUS% (%DURATION%s)"
 ```
 
 ```json
