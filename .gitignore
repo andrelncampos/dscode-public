@@ -6,3 +6,6 @@ dist/
 *.tgz
 *.log
 .deepcode/settings.json
+
+# Local caches and generated data
+data/
