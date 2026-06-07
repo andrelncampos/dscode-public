@@ -277,12 +277,12 @@ O DsCode implementa um ciclo completo de desenvolvimento orientado a especifica�
 
 ```mermaid
 flowchart TD
-    INIT[/spec-init] --> PLAN[/spec-plan]
-    PLAN --> NEW[/spec-new &lt;n&gt;]
-    NEW --> VERIFY[/spec-verify &lt;n&gt;]
-    VERIFY -->|OK| IMPL[/spec-implement &lt;n&gt;]
+    INIT["/spec-init"] --> PLAN["/spec-plan"]
+    PLAN --> NEW["/spec-new &lt;n&gt;"]
+    NEW --> VERIFY["/spec-verify &lt;n&gt;"]
+    VERIFY -->|OK| IMPL["/spec-implement &lt;n&gt;"]
     VERIFY -->|Problemas| NEW
-    IMPL --> AUDIT[/spec-audit &lt;n&gt;]
+    IMPL --> AUDIT["/spec-audit &lt;n&gt;"]
     AUDIT -->|OK| DONE[✅ Spec concluído]
     AUDIT -->|Problemas| IMPL
 ```
