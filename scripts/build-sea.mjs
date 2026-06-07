@@ -1,6 +1,4 @@
-import {
-  readFileSync, writeFileSync, copyFileSync, mkdirSync, chmodSync, existsSync,
-} from "node:fs";
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, chmodSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
@@ -49,7 +47,9 @@ execSync(`node --experimental-sea-config "${SEA_CONFIG}"`, {
 console.log(`[sea] Blob generated → ${BLOB_FILE}`);
 
 // ── Step 3: Attempt SEA injection ────────────────────────────────
-let binName, binPath, seaSuccess = false;
+let binName,
+  binPath,
+  seaSuccess = false;
 if (platform === "win32") {
   binName = "dscode.exe";
 } else {
@@ -68,7 +68,10 @@ if (platform === "win32") {
   ];
   let signtool = null;
   for (const p of signtoolPaths) {
-    if (existsSync(p)) { signtool = p; break; }
+    if (existsSync(p)) {
+      signtool = p;
+      break;
+    }
   }
   if (signtool) {
     try {
@@ -83,15 +86,16 @@ if (platform === "win32") {
 // Attempt postject injection
 try {
   console.log(`[sea] Injecting blob with postject (sentinel: NODE_SEA_BLOB)...`);
-  execSync(
-    `npx postject "${binPath}" NODE_SEA_BLOB "${BLOB_FILE}"`,
-    { stdio: "pipe", cwd: root }
-  );
+  execSync(`npx postject "${binPath}" NODE_SEA_BLOB "${BLOB_FILE}"`, { stdio: "pipe", cwd: root });
   console.log(`[sea] ✅ SEA injection successful.`);
 
   // macOS post-processing
   if (platform === "darwin") {
-    try { execSync(`codesign --remove-signature "${binPath}"`, { stdio: "pipe" }); } catch { /* OK */ }
+    try {
+      execSync(`codesign --remove-signature "${binPath}"`, { stdio: "pipe" });
+    } catch {
+      /* OK */
+    }
     try {
       execSync(`codesign --sign - "${binPath}"`, { stdio: "pipe" });
       console.log("[sea] Ad-hoc signed macOS binary.");
@@ -115,13 +119,15 @@ try {
 // ── Step 4: Fallback — launcher-based package ────────────────────
 if (!seaSuccess) {
   // Remove the copied Node binary (not needed for fallback)
-  try { execSync(platform === "win32" ? `del "${binPath}"` : `rm -f "${binPath}"`, { stdio: "pipe" }); } catch { /* OK */ }
+  try {
+    execSync(platform === "win32" ? `del "${binPath}"` : `rm -f "${binPath}"`, { stdio: "pipe" });
+  } catch {
+    /* OK */
+  }
 
   // Use dist/cli.js (the working ESM bundle with external packages) as fallback
   const distBundle = resolve(root, "dist", "cli.js");
-  const launcherBin = platform === "win32"
-    ? resolve(BIN_DIR, "dscode.cmd")
-    : resolve(BIN_DIR, "dscode");
+  const launcherBin = platform === "win32" ? resolve(BIN_DIR, "dscode.cmd") : resolve(BIN_DIR, "dscode");
   const bundleDest = resolve(BIN_DIR, "dscode.js");
 
   if (!existsSync(distBundle)) {
@@ -132,15 +138,13 @@ if (!seaSuccess) {
   copyFileSync(distBundle, bundleDest);
 
   if (platform === "win32") {
-    writeFileSync(
-      launcherBin,
-      `@echo off\r\nnode "%~dp0\\dscode.js" %*\r\n`,
-      "utf8"
-    );
+    writeFileSync(launcherBin, `@echo off\r\nnode "%~dp0\\dscode.js" %*\r\n`, "utf8");
   } else {
     writeFileSync(
       launcherBin,
-      `#!/usr/bin/env bash\nDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexec node "$DIR/dscode.js" "$@"\n`,
+      "#!/usr/bin/env bash\n" +
+        'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' +
+        'exec node "$DIR/dscode.js" "$@"\n',
       "utf8"
     );
     chmodSync(launcherBin, 0o755);
@@ -151,8 +155,7 @@ if (!seaSuccess) {
 }
 
 // ── Report ───────────────────────────────────────────────────────
-const finalBin = existsSync(binPath) ? binPath
-  : resolve(BIN_DIR, platform === "win32" ? "dscode.cmd" : "dscode");
+const finalBin = existsSync(binPath) ? binPath : resolve(BIN_DIR, platform === "win32" ? "dscode.cmd" : "dscode");
 const method = seaSuccess ? "SEA (standalone)" : "launcher (requires Node.js)";
 
 console.log(`\n[sea] Done:`);

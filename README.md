@@ -55,127 +55,15 @@ O DsCode é útil para:
 
 ---
 
-## Instalação recomendada: baixar o binário pronto
+## Instalação
 
-> ⚠️ **Ainda não há releases publicadas.** As instruções abaixo mostram como será o formato de download quando a primeira release for publicada. Enquanto isso, use a instalação via npm (seção "Instalação alternativa via npm").
-
-A forma mais rápida de usar o DsCode é baixar o binário pronto da [página de Releases do GitHub](https://github.com/andrelncampos/dscode/releases). Não é necessário instalar Node.js — o binário é autossuficiente.
-
-Escolha o arquivo correspondente ao seu sistema:
-
-| Sistema operacional | Arquivo para baixar |
-|---|---|
-| Windows (x64) | `dscode-v1.0.1-windows-x64.zip` |
-| Linux (x64) | `dscode-v1.0.1-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-v1.0.1-macos-x64.tar.gz` |
-| macOS (Apple Silicon / ARM64) | `dscode-v1.0.1-macos-arm64.tar.gz` |
-
-### Windows x64
-
-1. Baixe `dscode-vX.Y.Z-windows-x64.zip` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
-2. Extraia em uma pasta de sua escolha (ex: `C:\dscode`).
-3. Execute no terminal:
-
-   ```powershell
-   C:\dscode\dscode.exe --version
-   ```
-
-4. **Opcional**: Adicione a pasta ao PATH do sistema para executar `dscode` de qualquer lugar:
-   - Pesquise "Variáveis de Ambiente" no Windows.
-   - Edite a variável `Path` e adicione `C:\dscode`.
-   - Reabra o terminal.
-
-> ⚠️ **Nota sobre o Windows Defender SmartScreen**: por ser um binário novo e gratuito, o Windows pode exibir um alerta de segurança na primeira execução. Isso é esperado para programas independentes. **Baixe apenas da página oficial de Releases.** Se o alerta aparecer, clique em "Mais informações" e depois em "Executar assim mesmo". **Não desative o SmartScreen.**
-
-### Linux x64
-
-1. Baixe `dscode-vX.Y.Z-linux-x64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
-2. Extraia e execute:
-
-   ```bash
-   tar -xzf dscode-vX.Y.Z-linux-x64.tar.gz
-   chmod +x dscode
-   ./dscode --version
-   ```
-
-3. **Opcional**: mova para um diretório no PATH:
-
-   ```bash
-   sudo mv dscode /usr/local/bin/
-   dscode --version
-   ```
-
-### macOS Intel x64
-
-1. Baixe `dscode-vX.Y.Z-macos-x64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
-2. Extraia e execute:
-
-   ```bash
-   tar -xzf dscode-vX.Y.Z-macos-x64.tar.gz
-   chmod +x dscode
-   ./dscode --version
-   ```
-
-3. **Opcional**: mova para um diretório no PATH:
-
-   ```bash
-   sudo mv dscode /usr/local/bin/
-   ```
-
-> ⚠️ **Nota sobre o Gatekeeper**: o macOS pode bloquear a execução de binários baixados da internet. Se isso acontecer, vá em **Preferências do Sistema → Segurança e Privacidade** e autorize o DsCode manualmente. **Não desative o Gatekeeper permanentemente.**
-
-### macOS Apple Silicon ARM64
-
-1. Baixe `dscode-vX.Y.Z-macos-arm64.tar.gz` da [página de Releases](https://github.com/andrelncampos/dscode/releases).
-2. Mesmas instruções do macOS Intel acima.
-
-### Verificação de integridade
-
-Cada release inclui um arquivo `checksums.txt` com os hashes SHA256 de todos os arquivos. Para verificar seu download:
-
-**Windows (PowerShell):**
-
-```powershell
-Get-FileHash .\dscode-vX.Y.Z-windows-x64.zip -Algorithm SHA256
-# Compare o hash com o checksums.txt
-```
-
-**Linux:**
-
-```bash
-sha256sum dscode-vX.Y.Z-linux-x64.tar.gz
-# Compare o hash com o checksums.txt
-```
-
-**macOS:**
-
-```bash
-shasum -a 256 dscode-vX.Y.Z-macos-arm64.tar.gz
-# Compare o hash com o checksums.txt
-```
-
-### Atualização
-
-Para atualizar o DsCode, baixe a nova versão da [página de Releases](https://github.com/andrelncampos/dscode/releases) e substitua o binário anterior.
-
-### Desinstalação
-
-Remova o binário e a pasta onde ele foi extraído:
-
-- **Windows**: Delete a pasta (ex: `C:\dscode`) e remova-a do PATH.
-- **Linux/macOS**: `sudo rm /usr/local/bin/dscode` e delete os arquivos extraídos.
-
-As configurações do DsCode ficam em `~/.deepcode/settings.json`. Esse arquivo **não** é removido automaticamente — delete-o manualmente se desejar limpar tudo.
-
----
-
-## Instalação alternativa via npm
-
-O DsCode também está disponível como pacote npm. Esta opção exige [Node.js](https://nodejs.org) versão **22** ou superior instalado no sistema.
+### Via npm (recomendado)
 
 ```bash
 npm install -g @andrelncampos/dscode
 ```
+
+**Pré-requisito**: [Node.js](https://nodejs.org) versão **22** ou superior.
 
 Verifique a instalação:
 
@@ -183,55 +71,53 @@ Verifique a instalação:
 dscode --version
 ```
 
-**Pré-requisito**: Node.js 22+. Verifique com `node --version`. A saída deve ser `v22.x.x` ou superior.
-
-### Atualização via npm
+**Atualização:**
 
 ```bash
 npm update -g @andrelncampos/dscode
 ```
 
-### Desinstalação via npm
+**Desinstalação:**
 
 ```bash
 npm uninstall -g @andrelncampos/dscode
 ```
 
----
+### Via binário (futuro)
 
-## Instalação a partir do código-fonte
+> ⚠️ **Ainda não há releases publicadas.** As instruções abaixo mostram como será o formato quando a primeira release for publicada. Enquanto isso, use a instalação via npm acima.
 
-Para quem quer a versão mais recente em desenvolvimento ou contribuir com o projeto:
+Baixe o binário da [página de Releases do GitHub](https://github.com/andrelncampos/dscode/releases). Não requer Node.js — o binário é autossuficiente.
+
+| Sistema operacional | Arquivo |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon / ARM64) | `dscode-macos-arm64.tar.gz` |
+
+Cada release inclui um `checksums.txt` com hashes SHA256.
+
+### Instalação a partir do código-fonte
 
 ```bash
-# 1. Clone o repositório
 git clone https://github.com/andrelncampos/dscode.git
 cd dscode
-
-# 2. Instale as dependências
 npm ci
-
-# 3. Gere o build (typecheck + lint + format + bundle)
 npm run build
-
-# 4. Crie um link local (torna o comando dscode disponível globalmente)
 npm link
-
-# 5. Verifique
 dscode --version
 ```
-
-Agora `dscode` está disponível como comando global no seu terminal.
 
 ---
 
 ## Configuração inicial
 
-O DsCode lê suas configurações do arquivo `~/.deepcode/settings.json` (na sua pasta de usuário). Você também pode ter um arquivo `.deepcode/settings.json` dentro de um projeto específico para configurações locais.
+O DsCode lê suas configurações de `~/.dscode/settings.json` (pasta do usuário). Também é possível ter um `.dscode/settings.json` dentro de um projeto específico para configurações locais.
 
 ### Criando sua primeira configuração
 
-Crie o arquivo `~/.deepcode/settings.json`:
+Crie `~/.dscode/settings.json`:
 
 ```json
 {
@@ -247,7 +133,7 @@ Crie o arquivo `~/.deepcode/settings.json`:
 
 ### Onde conseguir sua chave de API
 
-| Provedor | Onde obter a chave |
+| Provedor | Onde obter |
 |---|---|
 | **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys |
@@ -255,7 +141,7 @@ Crie o arquivo `~/.deepcode/settings.json`:
 
 ### Configurando com variáveis de ambiente
 
-Como alternativa ao arquivo `settings.json`, você pode usar variáveis de ambiente. O DsCode reconhece qualquer variável com prefixo `DEEPCODE_`:
+Como alternativa ao `settings.json`, use variáveis com prefixo `DEEPCODE_`:
 
 ```bash
 # Linux / macOS
@@ -274,17 +160,18 @@ $env:DEEPCODE_API_KEY = "coloque_sua_chave_aqui"
 | `env.MODEL` | string | Modelo de IA a usar | `deepseek-v4-pro` |
 | `env.BASE_URL` | string | URL base da API do provedor | `https://api.deepseek.com` |
 | `env.API_KEY` | string | Chave de API do provedor | *(obrigatório)* |
-| `thinkingEnabled` | boolean | Ativa modo de raciocínio (a IA "pensa" antes de responder) | `true` para DeepSeek |
+| `thinkingEnabled` | boolean | Ativa modo de raciocínio | `true` para DeepSeek |
 | `reasoningEffort` | string | Intensidade do raciocínio: `"high"` ou `"max"` | `"max"` para V4 Pro |
 | `temperature` | number | Criatividade das respostas (0 a 2) | *(provedor define)* |
 | `maxTokens` | number | Limite de tokens por resposta | 65536 (Pro) / 32768 (Flash) |
-| `debugLogEnabled` | boolean | Salva logs de depuração em `~/.deepcode/logs/` | `false` |
-| `permissions` | object | Controle fino de permissões (leitura, escrita, rede, etc.) | *(tudo permitido)* |
+| `debugLogEnabled` | boolean | Salva logs de depuração em `~/.dscode/logs/` | `false` |
+| `telemetryEnabled` | boolean | Envia estatísticas anônimas de uso | `false` |
+| `permissions` | object | Controle fino de permissões | *(tudo permitido)* |
 | `mcpServers` | object | Configuração de servidores MCP | *(nenhum)* |
 | `notify` | string | Script executado ao final de cada tarefa | *(nenhum)* |
 | `webSearchTool` | string | Script customizado de busca web | *(usa built-in)* |
 
-⚠️ **Segurança**: Nunca compartilhe seu arquivo `settings.json` com outras pessoas. Ele contém sua chave de API. Se você usa Git, o `.gitignore` do DsCode já exclui `*.log` e `settings.json`.
+⚠️ **Segurança**: Nunca compartilhe seu `settings.json`. Ele contém sua chave de API. O `.gitignore` do DsCode já exclui `*.log` e `settings.json`.
 
 ---
 
@@ -298,7 +185,7 @@ npm install -g @andrelncampos/dscode
 
 ### Passo 2: Configure sua chave
 
-Crie `~/.deepcode/settings.json` com sua chave de API e modelo preferido (veja a seção de Configuração acima).
+Crie `~/.dscode/settings.json` com sua chave de API e modelo preferido (veja a seção de Configuração acima).
 
 ### Passo 3: Abra uma pasta de projeto
 
@@ -314,7 +201,9 @@ Pode ser qualquer projeto: um repo Git, um projeto pessoal, até uma pasta vazia
 dscode
 ```
 
-Você verá uma tela de boas-vindas com um campo de texto. O assistente está pronto para receber comandos.
+Você verá uma tela de boas-vindas com um campo de texto. O assistente está pronto.
+
+**Dica:** Digite `@` para buscar e mencionar arquivos do projeto — a IA consegue ler e editar os arquivos que você referenciar.
 
 ### Passo 5: Peça algo simples
 
@@ -332,13 +221,58 @@ Pressione **Enter**. A IA analisará os arquivos do projeto e responderá.
 Analise o código-fonte e aponte possíveis melhorias, sem alterar nada.
 ```
 
-A IA examinará a base de código e sugerirá melhorias. Use `Ctrl+O` para ver o output completo se precisar.
+A IA examinará a base de código e sugerirá melhorias. Use `Ctrl+O` para expandir o output ou visualizar processos em execução.
 
 ### Passo 7: Revisão e commit
 
 Quando a IA fizer alterações em arquivos, **revise cada diff** antes de commitar. O DsCode mostra o que foi alterado e você decide se aceita ou não.
 
 > 💡 **Dica**: Faça um commit (`git commit`) antes de pedir tarefas grandes. Se algo sair errado, você pode desfazer com `git reset --hard`.
+
+---
+
+## Comandos e atalhos
+
+### Comandos slash
+
+Digite `/` no prompt para abrir o menu de comandos:
+
+| Comando | Ação |
+|---|---|
+| `/model` | Selecionar modelo, thinking mode e reasoning effort |
+| `/new` | Iniciar uma nova conversa (zera o contexto) |
+| `/init` | Criar arquivo `AGENTS.md` com instruções para a IA no projeto |
+| `/resume` | Retomar uma conversa anterior |
+| `/continue` | Continuar a conversa ativa (ou retomar se vazia) |
+| `/undo` | Restaurar código ou conversa para um ponto anterior |
+| `/mcp` | Mostrar status dos servidores MCP e ferramentas disponíveis |
+| `/raw` | Alternar modo de exibição do raciocínio (completo, resumido, oculto) |
+| `/exit` | Sair do DsCode |
+
+### Atalhos de teclado
+
+| Atalho | Ação |
+|---|---|
+| `Enter` | Enviar o prompt |
+| `Shift+Enter` | Inserir quebra de linha |
+| `@` | Buscar e mencionar arquivos do projeto |
+| `Tab` | Autocompletar (comandos e menções de arquivo) |
+| `/` | Abrir menu de comandos slash |
+| `Ctrl+O` | Expandir output / ver processos em execução |
+| `Ctrl+V` | Colar imagem do clipboard |
+| `Ctrl+X` | Limpar imagens coladas |
+| `Ctrl+C` | Cancelar prompt / interromper a IA |
+| `Esc` | Fechar modais / interromper |
+| `Ctrl+Z` | Desfazer última edição no prompt |
+| `Ctrl+Shift+Z` | Refazer edição no prompt |
+| `Ctrl+W` | Apagar palavra anterior |
+| `Ctrl+A` | Ir para o início da linha |
+| `Ctrl+E` | Ir para o fim da linha |
+| `Ctrl+K` | Apagar da posição do cursor até o fim da linha |
+| `Alt+←/→` | Navegar por palavra |
+| `↑/↓` | Navegar histórico (com prompt vazio) ou menus |
+| `PageUp/PageDown` | Rolar histórico de mensagens |
+| `?` | Abrir/fechar tela de ajuda com todos os atalhos |
 
 ---
 
@@ -358,7 +292,7 @@ Cada exemplo abaixo é algo que você pode digitar no campo de prompt do DsCode.
 | **Usar uma skill** | "Use a skill de revisão de segurança para auditar este código." |
 | **Iniciar um AGENTS.md** | Digite `/init` para criar um arquivo com instruções que a IA seguirá no projeto. |
 
-O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA responde e executa ferramentas (ler arquivos, rodar comandos, editar código). Você pode confirmar ou rejeitar cada ação.
+O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA responde e executa ferramentas. Você pode confirmar ou rejeitar cada ação.
 
 ---
 
@@ -369,13 +303,14 @@ O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA 
 | **Sessão** | Uma conversa contínua entre você e a IA. Cada `/new` inicia uma sessão limpa. | Comece uma nova sessão quando mudar de tarefa para não misturar contextos. |
 | **Contexto** | Todo o histórico da conversa que a IA "lembra". Inclui suas mensagens, respostas e arquivos lidos. | Contextos muito longos gastam mais tokens. Use `/new` para resetar. |
 | **Skills** | Guias escritos em Markdown que ensinam a IA a seguir regras específicas. | Crie uma skill para padronizar revisões, estilo de código ou processos da sua equipe. |
-| **Tools** | Ferramentas que a IA pode usar: ler arquivos, executar comandos, editar código, buscar na web. | A IA decide quais ferramentas usar. Você pode bloquear as que considerar perigosas. |
+| **Tools** | Ferramentas que a IA usa: `bash` (shell), `read`/`write`/`edit` (arquivos), `glob`/`grep` (busca), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (perguntas), `UpdatePlan` (tarefas). | A IA decide quais usar. Você pode bloquear as perigosas via `permissions`. |
+| **Menções `@`** | Digite `@` no prompt para buscar arquivos do projeto e referenciá-los. | Use para direcionar a IA: "Analise @src/utils.ts" — ela já sabe qual arquivo ler. |
 | **Provider** | A empresa que fornece o modelo de IA (DeepSeek, OpenAI, Anthropic etc.). | Escolha o provedor com base em custo, qualidade e privacidade. |
 | **Modelo** | O modelo específico de IA (ex: `deepseek-v4-pro`, `gpt-4o`). | Modelos diferentes têm qualidade, velocidade e custo diferentes. |
 | **Thinking mode** | A IA "pensa" (raciocina) antes de responder, gerando tokens internos que você pode ou não ver. | Ative para tarefas complexas (debug, arquitetura). Desative para agilidade. |
 | **Reasoning effort** | Controla a profundidade do raciocínio: `"high"` (bom, mais rápido) ou `"max"` (melhor, mais lento). | Use `"max"` para problemas difíceis e `"high"` para o dia a dia. |
 | **Prompt cache** | O DeepSeek armazena partes repetidas do contexto para cobrar menos tokens (KV Cache). | Acontece automaticamente. Mantenha prompts estáveis para economizar. |
-| **Logs** | Arquivos de depuração em `~/.deepcode/logs/` que registram as chamadas de API. | Ative `debugLogEnabled` apenas para diagnosticar problemas. |
+| **Logs** | Arquivos de depuração em `~/.dscode/logs/` que registram as chamadas de API. | Ative `debugLogEnabled` apenas para diagnosticar problemas. |
 | **Permissões** | Controle do que a IA pode fazer: ler arquivos, escrever, acessar rede, executar comandos. | Configure permissões restritas se quiser revisar cada ação antes de executar. |
 | **Workspace** | A pasta raiz onde o DsCode está rodando. A IA só vê arquivos nessa pasta (a menos que você autorize acesso externo). | Abra o DsCode na raiz do projeto que você quer trabalhar. |
 | **Compactação** | Quando a conversa fica muito longa, o DsCode resume o histórico para caber no limite de tokens. | Automática. Você pode forçar uma sessão nova com `/new` se preferir. |
@@ -422,7 +357,7 @@ O *thinking mode* permite que a IA raciocine antes de responder. Os tokens de ra
 
 ### KV Cache (economia automática)
 
-O DeepSeek armazena partes repetidas do contexto em cache (KV Cache) e **não cobra** pelos tokens cacheados. Para aproveitar isso:
+O DeepSeek armazena partes repetidas do contexto em cache (KV Cache) e **não cobra** pelos tokens cacheados. Para aproveitar:
 
 - Mantenha o início das conversas estável (system prompt, instruções iniciais).
 - Evite reiniciar a sessão sem necessidade — manter a conversa reduz custo.
@@ -453,7 +388,7 @@ O DeepSeek armazena partes repetidas do contexto em cache (KV Cache) e **não co
 | **Faça commit antes de pedir alterações grandes** | Se a IA fizer algo errado, `git reset --hard` desfaz tudo. Sem commit prévio, isso não é possível. |
 | **Leia diffs antes de aceitar** | O DsCode mostra cada alteração. Revise — a IA pode cometer erros. |
 | **Não cole dados sensíveis nos prompts** | Informações como senhas, CPF, tokens ou dados de clientes podem aparecer em logs ou na resposta. |
-| **Sanitize logs antes de pedir ajuda** | Logs em `~/.deepcode/logs/` podem conter trechos do seu código. Remova informações confidenciais antes de compartilhar. |
+| **Sanitize logs antes de pedir ajuda** | Logs em `~/.dscode/logs/` podem conter trechos do seu código. Remova informações confidenciais antes de compartilhar. |
 | **Use uma branch separada para experimentos** | Crie `git checkout -b experimento-ia` antes de pedir alterações grandes. Se algo der errado, descarte a branch. |
 
 ---
@@ -479,16 +414,16 @@ O DeepSeek armazena partes repetidas do contexto em cache (KV Cache) e **não co
 | **`dscode: comando não encontrado`** | O npm global não está no PATH | Reabra o terminal. No Windows, verifique `%APPDATA%\npm`. No Linux/macOS, verifique `~/.npm-global/bin`. |
 | **`Node.js version not supported`** | Node inferior à versão 22 | Instale ou atualize o [Node.js 22+](https://nodejs.org). |
 | **`npm ci` falhou** | Dependências inconsistentes | Delete `node_modules` e `package-lock.json`, depois rode `npm install`. |
-| **Erro 401 (Unauthorized)** | API key ausente ou inválida | Verifique se `API_KEY` está correto em `~/.deepcode/settings.json` ou na variável de ambiente. |
+| **Erro 401 (Unauthorized)** | API key ausente ou inválida | Verifique se `API_KEY` está correto em `~/.dscode/settings.json` ou na variável de ambiente. |
 | **Erro 429 (Too Many Requests)** | Limite de requisições do provedor excedido | Aguarde alguns segundos e tente novamente. Verifique seu plano na plataforma do provedor. |
 | **Resposta truncada** | Limite de tokens atingido | Aumente `maxTokens` em `settings.json` ou digite "continue" para a IA retomar. |
 | **Timeout / demora excessiva** | Servidor do provedor sobrecarregado ou problema de rede | Aguarde. Se persistir, troque o modelo: use Flash em vez de Pro temporariamente. |
 | **Erro de permissão no Windows** | npm sem permissão de escrita | Execute o PowerShell como administrador ou configure o prefixo do npm. |
 | **Erro de permissão no Linux/macOS (EACCES)** | npm global sem permissão | Configure o prefixo do npm para um diretório local ou use `sudo npm install -g`. |
 | **`npm run build` falhou** | Erro de typecheck ou lint | Rode os comandos separadamente para identificar o erro: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
-| **Logs não estão aparecendo** | `debugLogEnabled` está `false` (padrão) | Ative `"debugLogEnabled": true` em `settings.json`. Logs aparecem em `~/.deepcode/logs/debug.log`. |
+| **Logs não estão aparecendo** | `debugLogEnabled` está `false` (padrão) | Ative `"debugLogEnabled": true` em `settings.json`. Logs aparecem em `~/.dscode/logs/debug.log`. |
 | **Modelo não reconhecido** | Nome do modelo incorreto | Use os nomes exatos: `deepseek-v4-pro`, `deepseek-v4-flash`, ou um modelo OpenAI-compatible válido. |
-| **Consumo de tokens muito alto** | Contexto longo ou tarefas muito amplas | Use `/new` para resetar a sessão. Seja específico sobre arquivos e escopo. Não peça para analisar o projeto inteiro. |
+| **Consumo de tokens muito alto** | Contexto longo ou tarefas muito amplas | Use `/new` para resetar a sessão. Seja específico sobre arquivos e escopo. |
 | **Erro em repositórios grandes** | Arquivos ignorados não estão sendo pulados | O DsCode respeita `.gitignore`. Verifique se seu `.gitignore` está correto. |
 
 ---
