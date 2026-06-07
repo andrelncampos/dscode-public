@@ -56,14 +56,14 @@ jobs:
         run: npm run validate:binary
 
       - name: Upload package artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436ee6a3e # v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}
           path: release/packages/*
           if-no-files-found: error
 
       - name: Upload checksums artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436ee6a3e # v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: checksums-${{ matrix.platform }}
           path: release/checksums/checksums.txt
