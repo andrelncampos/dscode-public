@@ -4,7 +4,9 @@ import { handleAskUserQuestionTool } from "./ask-user-question-handler";
 import { handleBashTool } from "./bash-handler";
 import { handleEditTool } from "./edit-handler";
 import { handleGlobTool } from "./glob-handler";
+import { handleGrepTool } from "./grep-handler";
 import { handleReadTool } from "./read-handler";
+import { handleWebFetchTool } from "./web-fetch-handler";
 import { handleUpdatePlanTool } from "./update-plan-handler";
 import { handleWebSearchTool } from "./web-search-handler";
 import { handleWriteTool } from "./write-handler";
@@ -168,6 +170,8 @@ export class ToolExecutor {
     this.toolHandlers.set("write", handleWriteTool);
     this.toolHandlers.set("edit", handleEditTool);
     this.toolHandlers.set("glob", handleGlobTool);
+    this.toolHandlers.set("grep", handleGrepTool);
+    this.toolHandlers.set("WebFetch", handleWebFetchTool);
     this.toolHandlers.set("AskUserQuestion", handleAskUserQuestionTool);
     this.toolHandlers.set("UpdatePlan", handleUpdatePlanTool);
     this.toolHandlers.set("WebSearch", handleWebSearchTool);

@@ -658,6 +658,75 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
         },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "grep",
+        description:
+          "Search file contents within the project workspace using a regex pattern. " +
+          "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
+          "Returns matching file paths, line numbers, and line content as a JSON array. " +
+          "Prefer this over bash grep/rg for searching file contents.",
+        parameters: {
+          type: "object",
+          properties: {
+            pattern: {
+              type: "string",
+              description: "Regex pattern to search for in file contents (e.g., 'TODO', 'import.*from').",
+            },
+            path: {
+              type: "string",
+              description:
+                "Optional file or directory path relative to project root to search within (default: entire project).",
+            },
+            glob: {
+              type: "string",
+              description: "Optional glob pattern to filter which files to search (e.g., '*.ts', 'src/**/*.tsx').",
+            },
+          },
+          required: ["pattern"],
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "WebFetch",
+        description:
+          "Fetch content from a URL (documentation, API responses, etc.). " +
+          "HTML is automatically stripped to readable text. JSON and XML are returned as-is. " +
+          "Local/private addresses are blocked. Use this to read docs, fetch API data, or inspect web resources.",
+        parameters: {
+          type: "object",
+          properties: {
+            url: {
+              type: "string",
+              description: "The URL to fetch (must be http or https).",
+            },
+            method: {
+              type: "string",
+              description: "HTTP method (default: GET). Use POST/PUT with a body for API calls.",
+              enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"],
+            },
+            headers: {
+              type: "object",
+              description: 'Optional request headers as a JSON object (e.g., {"Authorization": "Bearer token"}).',
+            },
+            body: {
+              type: "string",
+              description: "Optional request body for POST/PUT/PATCH requests.",
+            },
+            maxChars: {
+              type: "number",
+              description: "Maximum characters to return (default: 50000).",
+            },
+          },
+          required: ["url"],
+          additionalProperties: false,
+        },
+      },
+    },
   ];
 
   tools.push({
