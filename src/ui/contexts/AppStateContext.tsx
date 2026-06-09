@@ -4,6 +4,8 @@ import chalk from "chalk";
 import type { ModelConfigSelection, ResolvedDeepcodingSettings } from "../../settings";
 import { resolveCurrentSettings, writeModelConfigSelection } from "../../settings";
 import { createOpenAIClient } from "../../common/openai-client";
+import { createLlmProvider } from "../../common/llm-provider-registry";
+import type { OpenAIMessageConverterOptions } from "../../common/openai-message-converter";
 import { SessionManager } from "../../session";
 import type {
   LlmStreamProgress,
@@ -264,6 +266,8 @@ export function AppStateProvider({
     return new SessionManager({
       projectRoot,
       createOpenAIClient: () => createOpenAIClient(projectRoot),
+      createLlmProvider: (converterOptions?: OpenAIMessageConverterOptions) =>
+        createLlmProvider(projectRoot, converterOptions),
       getResolvedSettings: () => resolveCurrentSettings(projectRoot),
       renderMarkdown: (text: string) => text,
       onAssistantMessage: (msg) => callbacksRef.current.onAssistantMessage(msg),

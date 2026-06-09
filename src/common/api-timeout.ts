@@ -20,26 +20,20 @@ export const MIN_API_TIMEOUT_MS = 1_000;
 
 /**
  * Resolves the API request timeout from the DEEPCODE_API_TIMEOUT_MS
- * environment variable, falling back to model-specific defaults.
+ * environment variable, falling back to DEFAULT_API_TIMEOUT_MS.
+ *
+ * Model-specific timeout logic has moved to DeepSeekProvider.getTimeoutMs().
+ * This function now returns a single global default.
  *
  * Values below MIN_API_TIMEOUT_MS are clamped to the minimum.
- * Invalid values fall back to the model-specific or global default.
+ * Invalid values fall back to the global default.
  */
-export function resolveApiTimeoutMs(model?: string): number {
+export function resolveApiTimeoutMs(_model?: string): number {
   const raw = process.env.DEEPCODE_API_TIMEOUT_MS;
   if (raw) {
     const parsed = Number(raw);
     if (Number.isFinite(parsed) && parsed >= MIN_API_TIMEOUT_MS) {
       return Math.round(parsed);
-    }
-  }
-
-  if (model) {
-    if (model === "deepseek-v4-pro") {
-      return PRO_API_TIMEOUT_MS;
-    }
-    if (model === "deepseek-v4-flash") {
-      return FLASH_API_TIMEOUT_MS;
     }
   }
 
