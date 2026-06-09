@@ -1,5 +1,6 @@
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
 import type { SessionMessage } from "../session";
+import { isMultimodalModel } from "./model-capabilities";
 
 export type OpenAIMessageConverterOptions = {
   /** Optional callback to render the /init command prompt template. */
@@ -106,11 +107,7 @@ export class OpenAIMessageConverter {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private convertMessage(
-    message: SessionMessage,
-    thinkingEnabled: boolean,
-    _model: string
-  ): ChatCompletionMessageParam {
+  private convertMessage(message: SessionMessage, thinkingEnabled: boolean, model: string): ChatCompletionMessageParam {
     const content = this.renderContent(message);
     const base: ChatCompletionMessageParam = {
       role: message.role,
@@ -127,20 +124,13 @@ export class OpenAIMessageConverter {
     if (messageParams?.tool_call_id) {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
-    const hasToolCalls =
-      Array.isArray(messageParams?.tool_calls) && (messageParams!.tool_calls as unknown[]).length > 0;
-    if (hasToolCalls) {
-      if (typeof messageParams?.reasoning_content === "string") {
-        (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
-      } else if (thinkingEnabled && message.role === "assistant") {
-        // Per DeepSeek V4 API docs: reasoning_content is only required to be
-        // passed back when the assistant performed a tool call in that turn.
-        // For turns without tool calls, it is ignored by the API and can be
-        // omitted to save input tokens.
-        (base as { reasoning_content?: string }).reasoning_content = "";
-      }
+    if (typeof messageParams?.reasoning_content === "string") {
+      (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
+    } else if (thinkingEnabled && message.role === "assistant") {
+      (base as { reasoning_content?: string }).reasoning_content = "";
     }
 
+    const supportsMultimodal = isMultimodalModel(model);
     if ((message.role === "user" || message.role === "system") && message.contentParams) {
       const contentParts: ChatCompletionContentPart[] = [];
       if (content) {
@@ -149,9 +139,13 @@ export class OpenAIMessageConverter {
       const params = Array.isArray(message.contentParams) ? message.contentParams : [message.contentParams];
       for (const param of params) {
         const part = param as ChatCompletionContentPart;
-        if (part) {
-          contentParts.push(part);
+        if (!part) {
+          continue;
         }
+        if (!supportsMultimodal && part.type === "image_url") {
+          continue;
+        }
+        contentParts.push(part);
       }
       const contentValue: string | ChatCompletionContentPart[] = contentParts.length > 0 ? contentParts : content;
       (base as { content: string | ChatCompletionContentPart[] }).content = contentValue;

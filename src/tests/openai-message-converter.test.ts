@@ -94,7 +94,7 @@ test("OpenAIMessageConverter preserves image content for multimodal models", () 
   ]);
 });
 
-test("OpenAIMessageConverter includes image content for all models (V4+ and GPT 5.4+)", () => {
+test("OpenAIMessageConverter filters image content for non-multimodal models (e.g., DeepSeek V4)", () => {
   const c = converter();
   const messages: SessionMessage[] = [
     msg({
@@ -107,20 +107,17 @@ test("OpenAIMessageConverter includes image content for all models (V4+ and GPT 
   const result = c.buildMessages(messages, false, "deepseek-v4-flash") as Array<{ role: string; content: unknown }>;
 
   assert.equal(result.length, 1);
-  assert.deepEqual(result[0]?.content, [
-    { type: "text", text: "Loaded pixel.png" },
-    { type: "image_url", image_url: { url: "data:image/png;base64,abc" } },
-  ]);
+  assert.deepEqual(result[0]?.content, [{ type: "text", text: "Loaded pixel.png" }]);
 });
 
-test("OpenAIMessageConverter does not inject reasoning_content for non-tool assistant messages", () => {
+test("OpenAIMessageConverter injects reasoning_content for assistant messages in thinking mode", () => {
   const c = converter();
   const messages: SessionMessage[] = [msg({ role: "assistant", content: "Final answer", messageParams: null })];
 
   const thinking = c.buildMessages(messages, true, "test-model") as Array<{ reasoning_content?: string }>;
   const nonThinking = c.buildMessages(messages, false, "test-model") as Array<{ reasoning_content?: string }>;
 
-  assert.equal(thinking[0]?.reasoning_content, undefined);
+  assert.equal(thinking[0]?.reasoning_content, "");
   assert.equal(Object.prototype.hasOwnProperty.call(nonThinking[0] ?? {}, "reasoning_content"), false);
 });
 
@@ -513,7 +510,7 @@ test("OpenAIMessageConverter.findToolFunction handles null/empty toolCalls", () 
   assert.equal(c.findToolFunction(toolCalls as unknown[], "call-1"), null);
 });
 
-test("omits reasoning_content when assistant message has no tool calls", () => {
+test("preserves reasoning_content when assistant message has no tool calls", () => {
   const c = converter();
   const messages: SessionMessage[] = [
     msg({ id: "sys-1", role: "system", content: "system", visible: false }),
@@ -526,7 +523,7 @@ test("omits reasoning_content when assistant message has no tool calls", () => {
   }>;
   const assistant = result.find((m) => m.role === "assistant");
   assert.ok(assistant);
-  assert.equal(assistant.reasoning_content, undefined);
+  assert.equal(assistant.reasoning_content, "some reasoning content");
 });
 
 test("includes reasoning_content when assistant message has tool calls", () => {

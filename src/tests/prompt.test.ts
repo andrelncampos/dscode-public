@@ -54,12 +54,12 @@ test("getTools requires bash sideEffects permission scopes", () => {
   assert.equal(runInBackground.type, "boolean");
 });
 
-test("getSystemPrompt returns base prompt without tool docs", () => {
+test("getSystemPrompt includes tool docs under Available Tools heading", () => {
   const prompt = getSystemPrompt("/tmp/project");
-  // Tool docs are removed from system prompt — they are already in the JSON function schema
-  assert.equal(prompt.includes("## WebSearch"), false);
-  assert.equal(prompt.includes("## UpdatePlan"), false);
-  assert.equal(prompt.includes("run_in_background"), false);
+  assert.equal(prompt.includes("# Available Tools"), true);
+  assert.equal(prompt.includes("## WebSearch"), true);
+  assert.equal(prompt.includes("## UpdatePlan"), true);
+  assert.equal(prompt.includes("run_in_background"), true);
 });
 
 test("getSystemPrompt does not include runtime context", () => {
@@ -161,10 +161,10 @@ test("getRuntimeContext includes model guidance but omits dynamic date for cache
   assert.equal(prompt.includes('"root path": "/tmp/project"'), true);
 });
 
-test("getSystemPrompt does not include Read docs inline", () => {
+test("getSystemPrompt renders read tool docs with model-appropriate multimodal notice", () => {
   const prompt = getSystemPrompt("/tmp/project", { model: "deepseek-v4-flash" });
-  // Tool docs are not in system prompt — they are in the JSON function schema
-  assert.equal(prompt.includes("not multimodal"), false);
+  // deepseek-v4-flash is non-multimodal — read docs say "not multimodal"
+  assert.equal(prompt.includes("not multimodal"), true);
   assert.equal(prompt.includes("the contents are presented visually"), false);
 });
 

@@ -4,8 +4,15 @@ import type { ModelUsage } from "../session";
 // model is added in the future, gating logic can reference this set.
 export const DEEPSEEK_V4_MODELS = new Set(["deepseek-v4-flash", "deepseek-v4-pro"]);
 
+const NON_MULTIMODAL_MODELS = new Set(["deepseek-v4-pro", "deepseek-v4-flash"]);
+
 export function defaultsToThinkingMode(_model: string): boolean {
   return true;
+}
+
+/** Whether the model supports image (vision) inputs. */
+export function isMultimodalModel(model: string): boolean {
+  return !NON_MULTIMODAL_MODELS.has(model.trim());
 }
 
 // ── Model pricing (USD per 1M tokens) ──────────────────────────────
