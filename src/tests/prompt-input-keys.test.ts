@@ -138,24 +138,69 @@ test("parseTerminalInput recognizes shifted return sequences", () => {
 });
 
 test("prompt return key action submits on plain enter", () => {
-  const { key } = parseTerminalInput("\r");
-  assert.equal(getPromptReturnKeyAction(key), "submit");
+  const { input, key } = parseTerminalInput("\r");
+  assert.equal(getPromptReturnKeyAction(key, input), "submit");
 });
 
 test("prompt return key action inserts newline on shift+enter", () => {
-  const { key } = parseTerminalInput("\u001B[13;2u");
+  const { input, key } = parseTerminalInput("\u001B[13;2u");
   assert.equal(key.return, true);
   assert.equal(key.shift, true);
-  assert.equal(getPromptReturnKeyAction(key), "newline");
+  assert.equal(getPromptReturnKeyAction(key, input), "newline");
 });
 
 test("parseTerminalInput recognizes alternate shifted return sequences", () => {
   for (const sequence of ["\u001B[13;2~", "\u001B[27;2;13~"]) {
-    const { key } = parseTerminalInput(sequence);
+    const { input, key } = parseTerminalInput(sequence);
     assert.equal(key.return, true);
     assert.equal(key.shift, true);
-    assert.equal(getPromptReturnKeyAction(key), "newline");
+    assert.equal(getPromptReturnKeyAction(key, input), "newline");
   }
+});
+
+test("\n (LF) is treated as Ctrl+J — newline intent, not Shift+Enter proof", () => {
+  // \n is Ctrl+J (newline intent). Whether the terminal sends it for
+  // Shift+Enter, Ctrl+J, or something else is irrelevant — the parser
+  // treats it as Ctrl+J and getPromptReturnKeyAction returns "newline".
+  const { input, key } = parseTerminalInput("\n");
+  assert.equal(input, "j");
+  assert.equal(key.return, false);
+  assert.equal(key.shift, false);
+  assert.equal(key.ctrl, true);
+  assert.equal(getPromptReturnKeyAction(key, input), "newline");
+});
+
+test("Ctrl+J continues to insert newline", () => {
+  // Simulate what happens when terminal sends \n (0x0A).
+  const { input, key } = parseTerminalInput("\n");
+  assert.equal(key.ctrl, true);
+  assert.equal(input, "j");
+  assert.equal(getPromptReturnKeyAction(key, input), "newline");
+});
+
+test("\x1B[13;130u (Windows Terminal Shift+Enter) inserts newline", () => {
+  // Windows Terminal with conpty may send modifier=130 (128 + 2).
+  // modifierBits = 130 - 1 = 129; 129 & 1 === 1 → Shift.
+  const { input, key } = parseTerminalInput("\x1B[13;130u");
+  assert.equal(key.return, true);
+  assert.equal(key.shift, true);
+  assert.equal(getPromptReturnKeyAction(key, input), "newline");
+});
+
+test("plain Enter (\r) is never confused with Shift+Enter", () => {
+  const { input, key } = parseTerminalInput("\r");
+  assert.equal(key.return, true);
+  assert.equal(key.shift, false);
+  assert.equal(key.ctrl, false);
+  assert.equal(getPromptReturnKeyAction(key, input), "submit");
+});
+
+test("CRLF (\\r\\n) in single chunk is normalized to a single Enter", () => {
+  const events = collectDispatchedInput("\r\n");
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.key.return, true);
+  assert.equal(events[0]?.key.shift, false);
+  assert.equal(getPromptReturnKeyAction(events[0]!.key, events[0]!.input), "submit");
 });
 
 test("terminal extended key helpers request and restore modifyOtherKeys mode", () => {

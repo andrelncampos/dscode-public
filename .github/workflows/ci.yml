@@ -21,7 +21,6 @@ jobs:
           - windows-latest
           - macos-latest
         node-version:
-          - "22"
           - "24"
 
     steps:

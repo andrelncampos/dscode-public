@@ -27,14 +27,30 @@ DsCode is derived from [DeepCode (lessweb/deepcode-cli)](https://github.com/less
 
 ---
 
-## Who DsCode is for
+## How DsCode works
 
-DsCode is useful for:
+```mermaid
+flowchart TD
+    U[👤 User types a prompt] --> S[🧠 LLM processes context]
+    S --> T{🛠️ Needs tools?}
+    T -->|Yes| F[📂 Reads/writes files<br/>💻 Runs bash commands<br/>🔍 Searches with glob/grep<br/>🌐 Accesses the web]
+    F --> P{🔐 Permission?}
+    P -->|Allowed| S
+    P -->|Denied/Ask| U
+    T -->|No| R[💬 Response in terminal]
+    R --> U
+```
+
+DsCode works in **sessions**. Each session is an ongoing conversation. The AI uses **tools** (read files, run commands, edit code, search the web) to accomplish tasks. You can **confirm, deny, or configure permissions** for each type of action.
+
+---
+
+## Who DsCode is for
 
 - **Developers** who want AI assistance with everyday tasks.
 - **Tech leads** who need to quickly review or understand codebases.
 - **People already using AI to code** who want a fast, terminal-integrated workflow.
-- **Teams that want to standardize** prompts, skills, and agents to maintain consistency.
+- **Teams that want to standardize** prompts, skills, agents, and steering to maintain consistency.
 - **DeepSeek V4 users** who want to take advantage of thinking mode, reasoning effort, and KV Cache.
 
 ---
@@ -65,36 +81,22 @@ npm install -g @andrelncampos/dscode
 
 **Prerequisite**: [Node.js](https://nodejs.org) version **22** or later.
 
-Verify installation:
-
 ```bash
-dscode --version
-```
-
-**Update:**
-
-```bash
-npm update -g @andrelncampos/dscode
-```
-
-**Uninstall:**
-
-```bash
-npm uninstall -g @andrelncampos/dscode
+dscode --version   # verify installation
+npm update -g @andrelncampos/dscode   # update
+npm uninstall -g @andrelncampos/dscode   # uninstall
 ```
 
 ### Via binary (future)
 
-> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published. In the meantime, use the npm installation above.
-
-Download the binary from the [GitHub Releases page](https://github.com/andrelncampos/dscode/releases). No Node.js required — the binary is self-contained.
+> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published.
 
 | Operating System | File |
 |---|---|
 | Windows (x64) | `dscode-windows-x64.zip` |
 | Linux (x64) | `dscode-linux-x64.tar.gz` |
 | macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon / ARM64) | `dscode-macos-arm64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
 
 Each release includes a `checksums.txt` with SHA256 hashes.
 
@@ -113,18 +115,16 @@ dscode --version
 
 ## Initial setup
 
-DsCode reads its configuration from `~/.dscode/settings.json` (your home directory). You can also have a `.dscode/settings.json` inside a specific project for local settings.
+DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscode/settings.json` (project). Environment variables with the `DEEPCODE_` prefix are also recognized.
 
-### Creating your first configuration
-
-Create `~/.dscode/settings.json`:
+### Minimum example
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "put_your_key_here"
+    "API_KEY": "your-key-here"
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
@@ -133,25 +133,11 @@ Create `~/.dscode/settings.json`:
 
 ### Where to get your API key
 
-| Provider | Where to get the key |
+| Provider | Link |
 |---|---|
 | **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys |
 | **Anthropic** | [console.anthropic.com](https://console.anthropic.com) → API Keys |
-
-### Configuring with environment variables
-
-As an alternative to `settings.json`, you can use environment variables. DsCode recognizes any variable with the `DEEPCODE_` prefix:
-
-```bash
-# Linux / macOS
-export DEEPCODE_MODEL="deepseek-v4-pro"
-export DEEPCODE_API_KEY="put_your_key_here"
-
-# Windows PowerShell
-$env:DEEPCODE_MODEL = "deepseek-v4-pro"
-$env:DEEPCODE_API_KEY = "put_your_key_here"
-```
 
 ### Available configuration options
 
@@ -169,9 +155,62 @@ $env:DEEPCODE_API_KEY = "put_your_key_here"
 | `permissions` | object | Fine-grained permission control | *(all allowed)* |
 | `mcpServers` | object | MCP server configuration | *(none)* |
 | `notify` | string | Script executed after each task completes | *(none)* |
-| `webSearchTool` | string | Custom web search script | *(uses built-in)* |
+| `modelPricing` | object | Custom model pricing overrides | *(DeepSeek V4 defaults)* |
 
-⚠️ **Security**: Never share your `settings.json` with anyone. It contains your API key. DsCode's `.gitignore` already excludes `*.log` and `settings.json`.
+### Model pricing (`modelPricing`)
+
+DsCode estimates session cost based on token usage. Default prices:
+
+| Model | Input (1M tokens) | Output (1M tokens) | Cache Read (1M tokens) |
+|---|---|---|---|
+| `deepseek-v4-pro` | $0.435 | $0.87 | $0.003625 |
+| `deepseek-v4-flash` | $0.14 | $0.28 | $0.0028 |
+
+To use custom pricing (or add an unsupported model):
+
+```json
+{
+  "modelPricing": {
+    "my-model": {
+      "inputPrice": 0.50,
+      "outputPrice": 1.00,
+      "cacheReadPrice": 0.05
+    }
+  }
+}
+```
+
+Cost is displayed in the top-right corner during a session: `⚡ 42.3K 💰 $0.15`.
+
+---
+
+## Files and structure
+
+DsCode organizes its data in `.dscode/` directories within the project and the user's home:
+
+```
+my-project/
+├── .dscode/                   # Project config and data
+│   ├── settings.json          # Local configuration (optional)
+│   ├── AGENTS.md              # Instructions and steering rules
+│   ├── sessions-index.json    # Session index
+│   ├── <session-id>.jsonl     # Messages for each session
+│   └── specs/                 # SDD documents
+│       ├── vision.md          # Product vision
+│       ├── arch.md            # Architecture
+│       ├── roadmap.md         # Roadmap with spec statuses
+│       ├── adr.md             # Architecture Decision Records
+│       └── lessons.md         # Lessons learned
+│
+~/.dscode/                     # User config
+├── settings.json              # API key, default model
+└── logs/debug.log             # Debug logs
+
+~/.agents/skills/<skill>/SKILL.md    # User skills
+./.agents/skills/<skill>/SKILL.md    # Project skills
+```
+
+⚠️ **Security**: Never commit `settings.json` (it contains your API key). The `.gitignore` already excludes it.
 
 ---
 
@@ -185,7 +224,7 @@ npm install -g @andrelncampos/dscode
 
 ### Step 2: Configure your key
 
-Create `~/.dscode/settings.json` with your API key and preferred model (see Configuration section above).
+Create `~/.dscode/settings.json` with your API key and preferred model (see the Configuration section above).
 
 ### Step 3: Open a project folder
 
@@ -231,48 +270,151 @@ When the AI makes changes to files, **review each diff** before committing. DsCo
 
 ---
 
-## Commands and shortcuts
+## All slash commands
 
-### Slash commands
+Type `/` in the prompt to open the menu. There are **20 built-in commands** + dynamic skills (`/<skill-name>`):
 
-Type `/` in the prompt to open the command menu:
+### Session
 
-| Command | Action |
+| Command | Description |
 |---|---|
-| `/model` | Select model, thinking mode, and reasoning effort |
-| `/new` | Start a fresh conversation (clears context) |
-| `/init` | Create `AGENTS.md` file with instructions for the AI in the project |
+| `/new` | New conversation — clears context |
 | `/resume` | Resume a previous conversation |
 | `/continue` | Continue the active conversation (or resume if empty) |
-| `/undo` | Restore code or conversation to a previous point |
+| `/undo` | Restore code and/or conversation to a previous checkpoint |
+
+### Model and display
+
+| Command | Description |
+|---|---|
+| `/model` | Select model, thinking mode, and reasoning effort |
+| `/raw` | Toggle display mode: `lite` (summarized), `normal` (full), `raw-scrollback` (scroll) |
+
+### Skills and agents
+
+| Command | Description |
+|---|---|
+| `/skills` | List all available skills (built-in + custom) |
+| `/<skill-name>` | Run a specific skill by name |
+| `/init` | Create `AGENTS.md` with instructions for the AI in the project |
+| `/steering-add` | Add a steering rule to the STEERINGS section of `AGENTS.md` |
+| `/steering-list` | List all steering rules from `AGENTS.md` |
+
+### SDD (Spec-Driven Development)
+
+| Command | Description |
+|---|---|
+| `/spec-init` | Initialize SDD structure: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
+| `/spec-plan` | Plan specs from a brainstorm, align with vision, and update roadmap |
+| `/spec-new <n>` | Create a new spec with requirements, design, and tasks |
+| `/spec-verify <n>` | Verify completeness and alignment with vision |
+| `/spec-implement <n>` | Implement all spec tasks sequentially |
+| `/spec-audit <n>` | Audit implementation quality and correctness |
+| `/spec-list` | List all specs with roadmap statuses |
+| `/spec-status [n]` | Show detailed status of a specific spec or all |
+
+### External tools
+
+| Command | Description |
+|---|---|
 | `/mcp` | Show MCP server status and available tools |
-| `/raw` | Toggle reasoning display mode (full, summarized, hidden) |
+
+### System
+
+| Command | Description |
+|---|---|
 | `/exit` | Quit DsCode |
 
-### Keyboard shortcuts
+---
+
+## Steering system
+
+**Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `STEERINGS` section of the `.dscode/AGENTS.md` file.
+
+```mermaid
+flowchart LR
+    U[👤 /steering-add] --> A[✏️ Adds rule to AGENTS.md]
+    A --> S[🧠 Next session loads the rule]
+    S --> B[✅ AI follows the rule automatically]
+    U2[👤 /steering-list] --> V[📋 Lists active rules]
+```
+
+**Example:**
+```
+/steering-add always respond in English
+/steering-add never push without explicit authorization
+```
+
+---
+
+## SDD — Spec-Driven Development
+
+DsCode implements a complete spec-driven development cycle. All files live in `.dscode/specs/`.
+
+```mermaid
+flowchart TD
+    INIT["/spec-init"] --> PLAN["/spec-plan"]
+    PLAN --> NEW["/spec-new &lt;n&gt;"]
+    NEW --> VERIFY["/spec-verify &lt;n&gt;"]
+    VERIFY -->|OK| IMPL["/spec-implement &lt;n&gt;"]
+    VERIFY -->|Issues| NEW
+    IMPL --> AUDIT["/spec-audit &lt;n&gt;"]
+    AUDIT -->|OK| DONE[✅ Spec complete]
+    AUDIT -->|Issues| IMPL
+```
+
+| File | Content |
+|---|---|
+| `vision.md` | Product vision, target audience, value proposition |
+| `arch.md` | Architecture decisions, stack, patterns |
+| `roadmap.md` | List of specs with status (planned/in-progress/done) |
+| `adr.md` | Architecture Decision Records |
+| `lessons.md` | Lessons learned throughout development |
+
+---
+
+## Skills
+
+Skills are Markdown guides that teach the AI to work in a specific way. DsCode loads skills from 3 sources:
+
+| Location | Usage |
+|---|---|
+| `templates/skills/` (built-in) | 3 skills always loaded |
+| `~/.agents/skills/<name>/SKILL.md` | User's personal skills |
+| `./.agents/skills/<name>/SKILL.md` | Project skills |
+
+### Built-in skills
+
+| Skill | Purpose |
+|---|---|
+| **agent-drift-guard** | Detects and corrects execution drift |
+| **karpathy-guidelines** | Best practices to reduce common LLM mistakes |
+| **plan-and-execute** | Structured planning with progress tracking |
+
+---
+
+## Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
 | `Enter` | Send prompt |
 | `Shift+Enter` | Insert newline |
 | `@` | Search and mention project files |
-| `Tab` | Autocomplete (commands and file mentions) |
-| `/` | Open slash command menu |
-| `Ctrl+O` | Expand output / view running processes |
+| `Tab` | Autocomplete commands and mentions |
+| `/` | Open command menu |
+| `?` | Help screen with all shortcuts |
+| `Ctrl+O` | Expand output / view processes |
 | `Ctrl+V` | Paste clipboard image |
 | `Ctrl+X` | Clear pasted images |
-| `Ctrl+C` | Cancel prompt / interrupt AI |
+| `Ctrl+C` | Cancel / interrupt AI |
 | `Esc` | Close modals / interrupt |
-| `Ctrl+Z` | Undo last prompt edit |
-| `Ctrl+Shift+Z` | Redo prompt edit |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo in prompt |
 | `Ctrl+W` | Delete previous word |
-| `Ctrl+A` | Go to start of line |
-| `Ctrl+E` | Go to end of line |
-| `Ctrl+K` | Delete from cursor to end of line |
+| `Ctrl+A` / `Ctrl+E` | Start / end of line |
+| `Ctrl+K` | Delete to end of line |
 | `Alt+←/→` | Navigate by word |
-| `↑/↓` | Navigate history (empty prompt) or menus |
-| `PageUp/PageDown` | Scroll message history |
-| `?` | Open/close help screen with all shortcuts |
+| `↑/↓` | History (empty prompt) or menus |
+| `PageUp/PageDown` | Scroll messages |
 
 ---
 
@@ -290,7 +432,7 @@ Each example below is something you can type in the DsCode prompt field.
 | **Review a diff** | "Review the last commit changes and point out problems." |
 | **Create tests** | "Create unit tests for the validateUser() function in src/validators.ts." |
 | **Use a skill** | "Use the security review skill to audit this code." |
-| **Initialize an AGENTS.md** | Type `/init` to create a file with instructions the AI will follow in the project. |
+| **Initialize AGENTS.md** | Type `/init` to create a file with instructions the AI will follow in the project. |
 
 DsCode works **conversationally**: you type what you need, the AI responds and uses tools. You can confirm or reject each action.
 
@@ -319,62 +461,61 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 
 ## Using with DeepSeek
 
-DsCode is optimized for DeepSeek V4 models.
-
-### Supported models
+DsCode is optimized for DeepSeek V4.
 
 | Model | Best for | Speed | Cost |
 |---|---|---|---|
-| `deepseek-v4-pro` | Complex tasks, architecture, debugging, deep reasoning | Normal | Higher |
-| `deepseek-v4-flash` | Simple tasks, refactoring, quick reviews | Fast | Lower |
+| `deepseek-v4-pro` | Architecture, debugging, deep reasoning | Normal | Higher |
+| `deepseek-v4-flash` | Refactoring, review, routine tasks | Fast | Lower |
 
-### DeepSeek configuration
+### Thinking mode
+- **Use**: Complex tasks (debugging, architecture, design)
+- **Disable**: Quick, simple tasks
+- **Display**: `/raw` toggles between full/summarized/hidden
+
+### KV Cache — DeepSeek **does not charge** for repeated tokens. Keep the system prompt stable.
+
+---
+
+## Using with OpenAI
+
+DsCode works with any OpenAI model compatible with the Chat Completions API.
+
+### OpenAI configuration
 
 ```json
 {
   "env": {
-    "MODEL": "deepseek-v4-pro",
-    "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "put_your_key_here"
+    "MODEL": "gpt-4o",
+    "BASE_URL": "https://api.openai.com/v1",
+    "API_KEY": "sk-your-openai-key"
   },
-  "thinkingEnabled": true,
-  "reasoningEffort": "max"
+  "thinkingEnabled": false
 }
 ```
 
-### Thinking mode
+### What changes compared to DeepSeek
 
-*Thinking mode* allows the AI to reason before responding. Reasoning tokens appear (depending on display mode) and you can see how the AI reached its conclusion.
+| Feature | With OpenAI |
+|---|---|
+| **Thinking mode** | ⚠️ Must be `false`. Reasoning effort is DeepSeek-proprietary |
+| **Built-in WebSearch** | ❌ Not available. Use MCP with a search server or ask the AI to use WebFetch on specific URLs |
+| **KV Cache** | ❌ Not available (DeepSeek-exclusive) |
+| **Images (Ctrl+V)** | ✅ Works with vision models (`gpt-5.5`, `gpt-5`, `gpt-4o`) |
+| **Supported models** | `gpt-5.5`, `gpt-5.4`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini` — any Chat Completions model |
 
-- **When to use**: Tasks requiring deep analysis (architecture, complex debugging, design decisions).
-- **When to disable**: Simple, fast tasks (minor refactoring, quick questions).
-- **Display control**: Use `/raw` to toggle between full reasoning view, summary, or hidden.
+### Example with a cheaper model
 
-### Reasoning effort
-
-- **`"max"`**: Deepest reasoning. Ideal for V4 Pro on complex tasks. Uses more tokens.
-- **`"high"`**: Good balance. Sufficient for most daily tasks.
-
-### KV Cache (automatic savings)
-
-DeepSeek caches repeated parts of the context (KV Cache) and **does not charge** for cached tokens. To benefit:
-
-- Keep the start of conversations stable (system prompt, initial instructions).
-- Avoid unnecessarily restarting sessions — keeping the conversation reduces cost.
-- DsCode manages caching automatically; you don't need to do anything.
-
-### Cost considerations
-
-- V4 Pro uses more tokens per response. Use for tasks that genuinely need it.
-- V4 Flash is cheaper and faster. Use for reviews, refactoring, and everyday tasks.
-- Monitor your usage on the [DeepSeek platform](https://platform.deepseek.com).
-
-### DeepSeek best practices
-
-1. Use `deepseek-v4-pro` for strategic tasks and `deepseek-v4-flash` for daily work.
-2. Keep `thinkingEnabled: true` — reasoning significantly improves quality.
-3. If the response is truncated, type "continue" — the AI picks up where it left off.
-4. Avoid massive prompts. Be specific about which files to analyze.
+```json
+{
+  "env": {
+    "MODEL": "gpt-4o-mini",
+    "BASE_URL": "https://api.openai.com/v1",
+    "API_KEY": "sk-your-openai-key"
+  },
+  "thinkingEnabled": false
+}
+```
 
 ---
 
@@ -411,20 +552,18 @@ DeepSeek caches repeated parts of the context (KV Cache) and **does not charge**
 
 | Problem | Likely cause | How to fix |
 |---|---|---|
-| **`dscode: command not found`** | Global npm not in PATH | Reopen terminal. On Windows, check `%APPDATA%\npm`. On Linux/macOS, check `~/.npm-global/bin`. |
-| **`Node.js version not supported`** | Node below version 22 | Install or upgrade to [Node.js 22+](https://nodejs.org). |
-| **`npm ci` failed** | Inconsistent dependencies | Delete `node_modules` and `package-lock.json`, then run `npm install`. |
-| **401 error (Unauthorized)** | API key missing or invalid | Check that `API_KEY` is correct in `~/.dscode/settings.json` or environment variable. |
-| **429 error (Too Many Requests)** | Provider rate limit exceeded | Wait a few seconds and try again. Check your plan on the provider's platform. |
-| **Truncated response** | Token limit reached | Increase `maxTokens` in `settings.json` or type "continue" to resume. |
-| **Timeout / excessive delay** | Provider server overloaded or network issue | Wait. If persistent, switch models: use Flash instead of Pro temporarily. |
-| **Windows permission error** | npm without write permission | Run PowerShell as administrator or configure npm's prefix. |
-| **Linux/macOS permission error (EACCES)** | Global npm without permission | Configure npm's prefix to a local directory or use `sudo npm install -g`. |
-| **`npm run build` failed** | Typecheck or lint error | Run commands separately to identify the error: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
-| **Logs not appearing** | `debugLogEnabled` is `false` (default) | Enable `"debugLogEnabled": true` in `settings.json`. Logs appear at `~/.dscode/logs/debug.log`. |
-| **Model not recognized** | Incorrect model name | Use exact names: `deepseek-v4-pro`, `deepseek-v4-flash`, or a valid OpenAI-compatible model. |
-| **Token consumption too high** | Long context or overly broad tasks | Use `/new` to reset session. Be specific about files and scope. |
-| **Error with large repositories** | Ignored files not being skipped | DsCode respects `.gitignore`. Check that your `.gitignore` is correct. |
+| `dscode: command not found` | Global npm not in PATH | Reopen terminal. On Windows, check `%APPDATA%\\npm`. On Linux/macOS, check `~/.npm-global/bin`. |
+| `Node.js version not supported` | Node below version 22 | Install or upgrade to [Node.js 22+](https://nodejs.org). |
+| 401 error | API key missing or invalid | Check that `API_KEY` is correct in `~/.dscode/settings.json` or environment variable. |
+| 429 error | Provider rate limit exceeded | Wait a few seconds and try again. Check your plan on the provider's platform. |
+| Truncated response | Token limit reached | Increase `maxTokens` in `settings.json` or type "continue" to resume. |
+| Timeout / excessive delay | Provider server overloaded or network issue | Wait. If persistent, switch models: use Flash instead of Pro temporarily. |
+| Windows permission error | npm without write permission | Run PowerShell as administrator or configure npm's prefix. |
+| Linux/macOS permission error (EACCES) | Global npm without permission | Configure npm's prefix to a local directory or use `sudo npm install -g`. |
+| `npm run build` failed | Typecheck or lint error | Run commands separately to identify the error: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
+| Logs not appearing | `debugLogEnabled` is `false` (default) | Enable `"debugLogEnabled": true` in `settings.json`. Logs appear at `~/.dscode/logs/debug.log`. |
+| Model not recognized | Incorrect model name | Use exact names: `deepseek-v4-pro`, `deepseek-v4-flash`, or a valid OpenAI-compatible model. |
+| Token consumption too high | Long context or overly broad tasks | Use `/new` to reset session. Be specific about files and scope. |
 
 ---
 
@@ -443,7 +582,7 @@ When reporting, include:
 
 ⚠️ **Never send**:
 - API keys or tokens
-- Private prompts or confidential project data
+- Your private prompts or confidential project data
 - Complete `.env` or `settings.json` files
 - Full unreviewed logs (they contain code snippets)
 

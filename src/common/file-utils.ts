@@ -141,3 +141,72 @@ function toDiffLines(content: string | null): string[] {
   }
   return lines;
 }
+
+// ── Atomic file writes ─────────────────────────────────────────────────
+
+function generateShortId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+/**
+ * Write data to a file atomically:
+ * 1. Write to a temp file in the same directory
+ * 2. Rename temp to target (atomic on most filesystems)
+ *
+ * This prevents file corruption if the process crashes mid-write.
+ */
+export function atomicWriteFileSync(filePath: string, data: string | Buffer): void {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const tmpPath = `${filePath}.tmp.${generateShortId()}`;
+  try {
+    fs.writeFileSync(tmpPath, data);
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {
+      // Best-effort cleanup
+    }
+    throw err;
+  }
+}
+
+/**
+ * Async variant of atomicWriteFileSync.
+ */
+export async function atomicWriteFile(filePath: string, data: Buffer): Promise<void> {
+  const { promises: fsp } = await import("fs");
+  const dir = path.dirname(filePath);
+  await fsp.mkdir(dir, { recursive: true });
+
+  const tmpPath = `${filePath}.tmp.${generateShortId()}`;
+  try {
+    await fsp.writeFile(tmpPath, data);
+    await fsp.rename(tmpPath, filePath);
+  } catch (err) {
+    try {
+      await fsp.unlink(tmpPath);
+    } catch {
+      // Best-effort cleanup
+    }
+    throw err;
+  }
+}
+
+/**
+ * Write JSON data atomically (sync).
+ */
+export function atomicWriteJsonFileSync(filePath: string, data: unknown): void {
+  const json = `${JSON.stringify(data, null, 2)}\n`;
+  atomicWriteFileSync(filePath, json);
+}
+
+/**
+ * Write JSON data atomically (async).
+ */
+export async function atomicWriteJsonFile(filePath: string, data: unknown): Promise<void> {
+  const json = `${JSON.stringify(data, null, 2)}\n`;
+  await atomicWriteFile(filePath, Buffer.from(json, "utf8"));
+}

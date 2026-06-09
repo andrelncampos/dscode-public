@@ -8,6 +8,8 @@ import { buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescripti
 import { ThemedGradient } from "./ThemedGradient";
 import { AsciiLogo } from "../ascii-art";
 import { useAppContext } from "../contexts";
+import { WELCOME_PANEL_MIN_WIDTH } from "../core/layout-constants";
+import { detectTerminalRuntime } from "../core/terminal-runtime";
 
 type WelcomeScreenProps = {
   projectRoot: string;
@@ -16,22 +18,29 @@ type WelcomeScreenProps = {
   width: number;
 };
 
-const PANEL_MIN_WIDTH = 58;
-
-const SHORTCUT_TIPS = [
-  { label: "Enter", description: "Send the prompt" },
-  { label: "Shift+Enter", description: "Insert a newline" },
-  { label: "Ctrl+V", description: "Paste an image from the clipboard" },
-  { label: "Esc", description: "Interrupt the current model turn" },
-  { label: "/", description: "Open the skills and commands menu" },
-  { label: "Ctrl+D twice", description: "Quit DsCode CLI" },
-];
+function getShortcutTips(): Array<{ label: string; description: string }> {
+  const profile = detectTerminalRuntime();
+  const tips: Array<{ label: string; description: string }> = [
+    { label: "Enter", description: "Send the prompt" },
+    { label: "Ctrl+J", description: "Insert a newline" },
+  ];
+  if (!profile.isClassicWindowsConsole) {
+    tips.push({ label: "Shift+Enter", description: "Insert a newline (terminal-dependent)" });
+  }
+  tips.push(
+    { label: "Ctrl+V", description: "Paste an image from the clipboard" },
+    { label: "Esc", description: "Interrupt the current model turn" },
+    { label: "/", description: "Open the skills and commands menu" },
+    { label: "Ctrl+D twice", description: "Quit DsCode CLI" }
+  );
+  return tips;
+}
 
 export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeScreenProps): React.ReactElement {
   const { version } = useAppContext();
   const tips = useMemo(() => buildWelcomeTips(skills), [skills]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
-  const compact = width < PANEL_MIN_WIDTH + 20;
+  const compact = width < WELCOME_PANEL_MIN_WIDTH + 20;
   const cwd = formatHomeRelativePath(projectRoot);
   const tip = tips[Math.min(tipIndex, Math.max(0, tips.length - 1))] ?? tips[0];
   const effortLabel = settings.thinkingEnabled ? settings.reasoningEffort : "--";
@@ -100,7 +109,7 @@ export function buildWelcomeTips(skills: SkillInfo[]): Array<{ label: string; de
 
   return [
     ...slashTips,
-    ...SHORTCUT_TIPS.filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
+    ...getShortcutTips().filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
   ];
 }
 

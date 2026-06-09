@@ -34,7 +34,41 @@ const mcpServerConfigSchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
 });
 
+const modelPricingSchema = z.object({
+  inputPrice: z.number().min(0),
+  outputPrice: z.number().min(0),
+  cacheReadPrice: z.number().min(0),
+});
+
+// ── Memory sub-schema ─────────────────────────────────────────────
+
+const memorySettingsSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    mode: z.enum(["turn-transcript"]).optional(),
+    recentTurns: z.number().int().min(1).max(100).optional(),
+    maxTurnFiles: z.number().int().min(1).max(10000).optional(),
+    maxContextChars: z.number().int().min(100).max(200000).optional(),
+    maxUserCharsPerTurn: z.number().int().min(100).max(50000).optional(),
+    maxAssistantCharsPerTurn: z.number().int().min(100).max(50000).optional(),
+    maxStdoutCharsPerTurn: z.number().int().min(100).max(50000).optional(),
+    maxStderrCharsPerTurn: z.number().int().min(100).max(50000).optional(),
+    maxDiffCharsPerTurn: z.number().int().min(100).max(50000).optional(),
+    compression: z.enum(["zstd", "brotli"]).optional(),
+    compressionLevel: z.number().int().min(1).max(22).optional(),
+    stripAnsi: z.boolean().optional(),
+    collapseWhitespace: z.boolean().optional(),
+    dedupeRepeatedLines: z.boolean().optional(),
+    storeTurnTranscripts: z.boolean().optional(),
+  })
+  .optional();
+
 // ── Root schema (strict — rejects unknown keys) ──────────────────
+
+const budgetSettingsSchema = z.object({
+  dailyLimit: z.number().nonnegative().optional(),
+  monthlyLimit: z.number().nonnegative().optional(),
+});
 
 export const deepcodingSettingsSchema = z.strictObject({
   env: z.record(z.string(), z.string()).optional(),
@@ -44,9 +78,13 @@ export const deepcodingSettingsSchema = z.strictObject({
   reasoningEffort: reasoningEffortSchema.optional(),
   debugLogEnabled: z.boolean().optional(),
   telemetryEnabled: z.boolean().optional(),
+  maxTokens: z.number().int().positive().optional(),
   notify: z.string().optional(),
   mcpServers: z.record(z.string(), mcpServerConfigSchema).optional(),
   permissions: permissionSettingsSchema.optional(),
+  modelPricing: z.record(z.string(), modelPricingSchema).optional(),
+  memory: memorySettingsSchema,
+  budget: budgetSettingsSchema.optional(),
 });
 
 export type DeepcodingSettingsValidated = z.infer<typeof deepcodingSettingsSchema>;

@@ -1,27 +1,7 @@
 import type { SkillInfo } from "../../session";
+import type { SlashCommandKind } from "../types/commands";
 
-export type SlashCommandKind =
-  | "skill"
-  | "skills"
-  | "model"
-  | "new"
-  | "init"
-  | "resume"
-  | "continue"
-  | "undo"
-  | "mcp"
-  | "raw"
-  | "steering-add"
-  | "steering-list"
-  | "spec-init"
-  | "spec-plan"
-  | "spec-new"
-  | "spec-verify"
-  | "spec-implement"
-  | "spec-audit"
-  | "spec-list"
-  | "spec-status"
-  | "exit";
+export type { SlashCommandKind } from "../types/commands";
 
 export type SlashCommandItem = {
   kind: SlashCommandKind;

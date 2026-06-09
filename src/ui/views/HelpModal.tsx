@@ -1,5 +1,13 @@
 import React, { useMemo } from "react";
 import { Box, Text, useInput, useWindowSize } from "ink";
+import {
+  HELP_MODAL_MAX_WIDTH,
+  HELP_MODAL_MIN_WIDTH,
+  HELP_MODAL_MAX_HEIGHT,
+  HELP_MODAL_KEY_COL_WIDTH,
+  HELP_MODAL_KEY_COL_MAX_RATIO,
+} from "../core/layout-constants";
+import { detectTerminalRuntime } from "../core/terminal-runtime";
 
 type HelpModalProps = {
   onClose: () => void;
@@ -10,7 +18,7 @@ type ShortcutEntry = {
   description: string;
 };
 
-const SHORTCUTS: ShortcutEntry[] = [
+const BASE_SHORTCUTS: ShortcutEntry[] = [
   { key: "?", description: "Toggle help (this screen)" },
   { key: "Esc", description: "Close current modal / cancel / interrupt" },
   { key: "Ctrl+C", description: "Cancel input / interrupt" },
@@ -27,7 +35,7 @@ const SHORTCUTS: ShortcutEntry[] = [
   { key: "Alt+Backspace", description: "Delete word before cursor" },
   { key: "Up/Down", description: "Navigate history (when prompt empty) / navigate menus" },
   { key: "Tab", description: "Autocomplete (slash commands, file mentions)" },
-  { key: "Shift+Enter", description: "Insert newline in prompt" },
+  { key: "Ctrl+J", description: "Insert newline in prompt (always available)" },
   { key: "Enter", description: "Submit prompt (when not in menu)" },
   { key: "@", description: "Trigger file mention autocomplete" },
   { key: "/", description: "Trigger slash command menu" },
@@ -41,10 +49,26 @@ const SHORTCUTS: ShortcutEntry[] = [
   { key: "PageUp/PageDown", description: "Scroll message history" },
 ];
 
-const KEY_COL_WIDTH = 20;
-
 export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalProps): React.ReactElement {
   const { columns, rows } = useWindowSize();
+
+  const shortcuts = useMemo(() => {
+    const profile = detectTerminalRuntime();
+    if (profile.isClassicWindowsConsole) {
+      // Omit Shift+Enter entirely in classic Windows console
+      return BASE_SHORTCUTS;
+    }
+    // Insert Shift+Enter with terminal-dependent qualifier after Ctrl+J
+    const ctrlJIndex = BASE_SHORTCUTS.findIndex((s) => s.key === "Ctrl+J");
+    const result = [...BASE_SHORTCUTS];
+    if (ctrlJIndex !== -1) {
+      result.splice(ctrlJIndex + 1, 0, {
+        key: "Shift+Enter",
+        description: "Insert newline in prompt (terminal-dependent)",
+      });
+    }
+    return result;
+  }, []);
 
   useInput((input, key) => {
     if (key.escape) {
@@ -61,9 +85,15 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
     }
   });
 
-  const modalWidth = useMemo(() => Math.min(60, Math.max(30, columns - 4)), [columns]);
-  const modalHeight = useMemo(() => Math.min(rows - 4, 24), [rows]);
-  const keyColWidth = useMemo(() => Math.min(KEY_COL_WIDTH, Math.floor(modalWidth * 0.35)), [modalWidth]);
+  const modalWidth = useMemo(
+    () => Math.min(HELP_MODAL_MAX_WIDTH, Math.max(HELP_MODAL_MIN_WIDTH, columns - 4)),
+    [columns]
+  );
+  const modalHeight = useMemo(() => Math.min(rows - 4, HELP_MODAL_MAX_HEIGHT), [rows]);
+  const keyColWidth = useMemo(
+    () => Math.min(HELP_MODAL_KEY_COL_WIDTH, Math.floor(modalWidth * HELP_MODAL_KEY_COL_MAX_RATIO)),
+    [modalWidth]
+  );
 
   return (
     <Box flexDirection="column" width={modalWidth} height={modalHeight} overflow="hidden" paddingX={1} marginTop={1}>
@@ -77,7 +107,7 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
 
         {/* Shortcut rows */}
         <Box flexDirection="column" flexGrow={1} overflow="hidden">
-          {SHORTCUTS.map((shortcut) => (
+          {shortcuts.map((shortcut) => (
             <Box key={shortcut.key} flexDirection="row" flexShrink={0} height={1}>
               <Box width={keyColWidth} flexShrink={0}>
                 <Text dimColor>{shortcut.key}</Text>

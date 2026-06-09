@@ -1,9 +1,12 @@
 import chalk from "chalk";
 import gradientString from "gradient-string";
 import type { ModelUsage, SessionEntry } from "../session";
+import { computeSessionCost, formatCost } from "../common/model-capabilities";
+import { getBudgetCosts } from "../common/budget-tracker";
 
 type ExitSummaryInput = {
   session: SessionEntry | null;
+  projectRoot?: string;
 };
 
 const ANSI_RE = /\u001b\[[0-9;]*[a-zA-Z]/g;
@@ -129,6 +132,26 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
       rows.push(dataRow);
     }
 
+    rows.push("");
+  }
+
+  // ── Cost summary ─────────────────────────────────────────────────
+  const sessionCost = computeSessionCost(session?.usagePerModel ?? null);
+  const showSessionCost = sessionCost !== null && sessionCost > 0;
+  const budgetCosts = input.projectRoot ? getBudgetCosts(input.projectRoot) : null;
+  const showBudget = budgetCosts !== null && (budgetCosts.todayCost > 0 || budgetCosts.projectTotal > 0);
+
+  if (showSessionCost || showBudget) {
+    rows.push(chalk.bold("Cost (USD)"));
+    const costDivider = "─".repeat(20);
+    rows.push(costDivider);
+    if (showSessionCost) {
+      rows.push(`Session:   ${formatCost(sessionCost!)}`);
+    }
+    if (showBudget) {
+      rows.push(`Today:     ${formatCost(budgetCosts!.todayCost)}`);
+      rows.push(`Project:   ${formatCost(budgetCosts!.projectTotal)}`);
+    }
     rows.push("");
   }
 

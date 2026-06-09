@@ -1,7 +1,6 @@
 import React from "react";
-import { AppContext } from "../contexts";
+import { AppContext, RawModeProvider, AppStateProvider } from "../contexts";
 import App from "./App";
-import { RawModeProvider } from "../contexts";
 
 const AppContainer: React.FC<{
   projectRoot: string;
@@ -12,7 +11,9 @@ const AppContainer: React.FC<{
   return (
     <AppContext.Provider value={{ version: version }}>
       <RawModeProvider>
-        <App initialPrompt={initialPrompt} projectRoot={projectRoot} onRestart={onRestart} />
+        <AppStateProvider projectRoot={projectRoot} initialPrompt={initialPrompt}>
+          <App onRestart={onRestart} />
+        </AppStateProvider>
       </RawModeProvider>
     </AppContext.Provider>
   );

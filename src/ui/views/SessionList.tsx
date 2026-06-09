@@ -2,6 +2,14 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Box, Text, useInput, useWindowSize } from "ink";
 import type { SessionEntry, SessionStatus } from "../../session";
 import { truncate } from "../components/MessageView/utils";
+import {
+  SESSION_LIST_ITEM_HEIGHT,
+  SESSION_LIST_RESERVED_LINES_WITH_SEARCH,
+  SESSION_LIST_RESERVED_LINES_NO_SEARCH,
+  SESSION_LIST_MAX_HEIGHT,
+  SESSION_LIST_MIN_WIDTH,
+  SESSION_LIST_PADDING_X,
+} from "../core/layout-constants";
 
 type Props = {
   sessions: SessionEntry[];
@@ -69,9 +77,9 @@ export function SessionList({
   const maxVisibleSessions = useMemo(() => {
     // Subtract space used by borders, header (2 lines with search bar), footer, scroll indicator, etc.
     // Outer container height=rows-1, outer border 2 + header 2 + search bar 1 + inner border 2 + footer 1 + scroll indicator 1 = 9
-    const reservedLines = searchQuery ? 12 : 9;
-    const linesPerSession = 3; // height=2 + marginBottom=1
-    const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
+    const reservedLines = searchQuery ? SESSION_LIST_RESERVED_LINES_WITH_SEARCH : SESSION_LIST_RESERVED_LINES_NO_SEARCH;
+    const linesPerSession = SESSION_LIST_ITEM_HEIGHT; // height=2 + marginBottom=1
+    const availableLines = Math.max(0, Math.min(rows, SESSION_LIST_MAX_HEIGHT) - reservedLines);
     return Math.max(1, Math.floor(availableLines / linesPerSession));
   }, [rows, searchQuery]);
 
@@ -271,8 +279,8 @@ export function SessionList({
   return (
     <Box
       flexDirection="column"
-      width={Math.max(20, columns - 6)}
-      height={Math.max(5, Math.min(rows - 1, 30))}
+      width={Math.max(SESSION_LIST_MIN_WIDTH, columns - SESSION_LIST_PADDING_X)}
+      height={Math.max(5, Math.min(rows - 1, SESSION_LIST_MAX_HEIGHT))}
       overflow="hidden"
       paddingX={1}
       marginTop={1}

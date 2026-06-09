@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import type { LlmStreamProgress } from "../../session";
+import { STREAMING_BAR_MIN_WIDTH, STREAMING_BAR_MAX_WIDTH, STREAMING_DONE_DISPLAY_MS } from "../core/layout-constants";
 
 type StreamingIndicatorProps = {
   progress: LlmStreamProgress | null;
@@ -10,8 +11,6 @@ type StreamingIndicatorProps = {
 };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-const DONE_DISPLAY_MS = 2000;
 
 export const StreamingIndicator = React.memo(function StreamingIndicator({
   progress,
@@ -29,7 +28,7 @@ export const StreamingIndicator = React.memo(function StreamingIndicator({
       const seconds = Number.isNaN(startedAt) ? 0 : Math.round((now - startedAt) / 1000);
       setDoneInfo({ tokens, seconds });
       setDoneVisible(true);
-      const timer = setTimeout(() => setDoneVisible(false), DONE_DISPLAY_MS);
+      const timer = setTimeout(() => setDoneVisible(false), STREAMING_DONE_DISPLAY_MS);
       return () => clearTimeout(timer);
     }
     setDoneVisible(false);
@@ -63,7 +62,7 @@ export const StreamingIndicator = React.memo(function StreamingIndicator({
   // approaches 100% as tokens accumulate, rather than being stuck at 33%.
   const estimatedTotal = progress.estimatedTokens + 4096;
   const ratio = Math.min(1, progress.estimatedTokens / estimatedTotal);
-  const barWidth = Math.max(10, Math.min(30, width - 45));
+  const barWidth = Math.max(STREAMING_BAR_MIN_WIDTH, Math.min(STREAMING_BAR_MAX_WIDTH, width - 45));
   const filled = Math.round(ratio * barWidth);
   const empty = barWidth - filled;
 

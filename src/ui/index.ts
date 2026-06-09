@@ -85,3 +85,4 @@ export {
 } from "./core/file-mentions";
 export { findExpandedThinkingId, isCollapsedThinking } from "./core/thinking-state";
 export { buildExitSummaryText } from "./exit-summary";
+export { detectTerminalRuntime, type TerminalRuntimeKind, type TerminalRuntimeProfile } from "./core/terminal-runtime";

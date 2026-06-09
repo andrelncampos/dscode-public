@@ -27,11 +27,11 @@
     "docs/i18n/README.hi.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
-    "bundle": "esbuild ./src/cli.tsx --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --packages=external --log-override:empty-import-meta=silent",
+    "bundle": "esbuild ./src/cli.tsx --bundle --platform=node --format=esm --target=node24 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --packages=external --log-override:empty-import-meta=silent",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
@@ -40,6 +40,8 @@
     "build": "npm run check && npm run bundle && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "node src/tests/run-tests.mjs",
     "test:single": "node --import tsx --test",
+    "debug:keys": "node scripts/debug-stdin.mjs",
+    "debug:keys:extended": "node scripts/debug-stdin-extended.mjs",
     "security:audit": "npm audit --audit-level=high",
     "security:secrets": "echo 'Run gitleaks locally: gitleaks detect --source . --verbose'",
     "security:all": "npm run security:audit",
