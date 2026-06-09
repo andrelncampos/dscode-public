@@ -86,7 +86,7 @@ function formatTurnCompact(t: TurnTranscript): string {
 
 /** Escape double quotes so they don't break attribute quoting in formatted output. */
 function escapeQuotes(s: string): string {
-  return s.replace(/"/g, '\\"');
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 /**

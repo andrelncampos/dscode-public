@@ -11,8 +11,6 @@
  * Press keys and observe the raw bytes. Ctrl+C to exit.
  */
 
-import { createInterface } from "node:readline";
-
 const ENABLE = "\x1B[>4;2m";
 const DISABLE = "\x1B[>4;0m";
 
@@ -39,8 +37,6 @@ if (process.stdin.isTTY) {
 console.log("Extended debug mode. modifyOtherKeys level 2 enabled.");
 console.log(`ENABLE sent: ${JSON.stringify(ENABLE)} (${ENABLE.length} bytes)`);
 console.log("Listening for stdin bytes. Press keys, Ctrl+C to exit.\n");
-
-let firstChunk = true;
 
 process.stdin.on("data", (chunk) => {
   const raw = typeof chunk === "string" ? chunk : chunk.toString();

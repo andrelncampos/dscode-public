@@ -4,10 +4,6 @@ import { detectTerminalRuntime, type TerminalRuntimeProfile } from "../ui/core/t
 
 // ---- Helpers ----
 
-function profile(overrides: Partial<Record<string, string>>): TerminalRuntimeProfile {
-  return detectTerminalRuntime(overrides);
-}
-
 function assertFooterContains(profile: TerminalRuntimeProfile, substring: string): void {
   assert.ok(
     profile.footerNewlineHint.includes(substring),

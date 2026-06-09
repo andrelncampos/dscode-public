@@ -31,7 +31,6 @@ test("getBudgetCosts returns zeroes when no budget file exists", () => {
 test("recordBudgetCost creates budget file and records cost", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const usage = makeUsage({ prompt_tokens: 1_000_000, completion_tokens: 500_000 });
-  const pricing = DEFAULT_MODEL_PRICING["deepseek-v4-pro"];
 
   recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
 
