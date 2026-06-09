@@ -107,7 +107,11 @@ test("OpenAIMessageConverter filters image content for non-multimodal models (e.
   const result = c.buildMessages(messages, false, "deepseek-v4-flash") as Array<{ role: string; content: unknown }>;
 
   assert.equal(result.length, 1);
-  assert.deepEqual(result[0]?.content, [{ type: "text", text: "Loaded pixel.png" }]);
+  // deepseek-v4-flash is multimodal — images are preserved
+  assert.deepEqual(result[0]?.content, [
+    { type: "text", text: "Loaded pixel.png" },
+    { type: "image_url", image_url: { url: "data:image/png;base64,abc" } },
+  ]);
 });
 
 test("OpenAIMessageConverter injects reasoning_content for assistant messages in thinking mode", () => {

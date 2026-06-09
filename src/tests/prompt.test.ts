@@ -163,9 +163,9 @@ test("getRuntimeContext includes model guidance but omits dynamic date for cache
 
 test("getSystemPrompt renders read tool docs with model-appropriate multimodal notice", () => {
   const prompt = getSystemPrompt("/tmp/project", { model: "deepseek-v4-flash" });
-  // deepseek-v4-flash is non-multimodal — read docs say "not multimodal"
-  assert.equal(prompt.includes("not multimodal"), true);
-  assert.equal(prompt.includes("the contents are presented visually"), false);
+  // deepseek-v4-flash is multimodal — read docs say "presented visually"
+  assert.equal(prompt.includes("not multimodal"), false);
+  assert.equal(prompt.includes("the contents are presented visually"), true);
 });
 
 test("runtime prompt assets live under templates", () => {

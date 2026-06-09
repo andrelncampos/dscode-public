@@ -48,7 +48,7 @@ export function PermissionPrompt({ requests, onSubmit, onCancel }: Props): React
     [requests]
   );
 
-  const prompts = useMemo(() => buildScopePrompts(requests), [requestsKey]);
+  const prompts = useMemo(() => buildScopePrompts(requests), [requests]);
   const [index, setIndex] = useState(0);
   const [cursor, setCursor] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, "allow" | "deny">>({});

@@ -21,7 +21,7 @@
 <br/>
 </div>
 
-**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA (como DeepSeek V4) y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS.
+**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA — **DeepSeek V4, OpenAI, Anthropic o cualquier API compatible con OpenAI** — y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS. Su arquitectura cuenta con una **capa LLM agnóstica de proveedor**, que permite cambiar entre proveedores sin modificar código.
 
 DsCode deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), pero tiene evolución propia, mantenido por [André Campos](https://github.com/andrelncampos).
 
@@ -51,7 +51,7 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 - **Tech leads** que necesitan revisar o entender bases de código rápidamente.
 - **Personas que ya usan IA para programar** y quieren un flujo rápido integrado en la terminal.
 - **Equipos que quieren estandarizar** prompts, skills, agentes y steering para mantener consistencia.
-- **Usuarios de DeepSeek V4** que quieren aprovechar el thinking mode, reasoning effort y KV Cache.
+- **Usuarios de cualquier proveedor LLM** — DeepSeek V4, OpenAI, Anthropic o APIs compatibles. La capa agnóstica de proveedor permite alternar sin esfuerzo.
 
 ---
 

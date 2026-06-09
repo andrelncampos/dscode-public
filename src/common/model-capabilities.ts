@@ -1,6 +1,8 @@
 import type { ModelUsage } from "../session";
 
-const NON_MULTIMODAL_MODELS = new Set(["deepseek-v4-pro", "deepseek-v4-flash"]);
+// All currently supported DeepSeek V4+ models are multimodal (support image/vision inputs).
+// If a future model is added that does NOT support vision, add it here.
+const NON_MULTIMODAL_MODELS: Set<string> = new Set();
 
 export function defaultsToThinkingMode(_model: string): boolean {
   return true;

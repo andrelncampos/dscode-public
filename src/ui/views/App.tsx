@@ -76,6 +76,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
 
   // Stable reference for activeAskPermissions — only changes when the content changes,
   // preventing PermissionPrompt from resetting on unrelated re-renders (e.g. nowTick).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableAskPermissions = useMemo(() => activeAskPermissions, [JSON.stringify(activeAskPermissions)]);
 
   const handleSubmit = useCallback(
@@ -204,6 +205,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
       if (!sessionId) return;
       actions.setPromptDraft(null);
       if (result.hasDeny) {
+        actions.setActiveAskPermissions(undefined);
         actions.setPendingPermissionReply({
           sessionId,
           permissions: result.permissions,

@@ -21,7 +21,7 @@
 <br/>
 </div>
 
-**DsCode** 是一个运行在终端中的 AI 编程助手。你可以与 AI 模型（如 DeepSeek V4）对话，它会分析、建议、审查并在你的项目中编写代码。支持 Windows、Linux 和 macOS。
+**DsCode** 是一个运行在终端中的 AI 编程助手。你可以与 AI 模型对话 — **支持 DeepSeek V4、OpenAI、Anthropic 及任何兼容 OpenAI 的 API** — 它会分析、建议、审查并在你的项目中编写代码。支持 Windows、Linux 和 macOS。其架构采用**与提供商无关的 LLM 抽象层**，让你无需修改代码即可在不同提供商之间切换。
 
 DsCode 源自 [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli)，但有自己的演进方向，由 [André Campos](https://github.com/andrelncampos) 维护。
 
@@ -57,7 +57,7 @@ DsCode 对以下人群有用：
 - **技术负责人**：需要快速审查或理解代码库。
 - **已经在使用 AI 编程的人**：想要一个快速、集成在终端中的工作流。
 - **希望标准化的团队**：统一 prompts、skills、agents 和 steering 以保持一致性。
-- **DeepSeek V4 用户**：想要充分利用 thinking mode、reasoning effort 和 KV Cache。
+- **任何 LLM 提供商的用户** — DeepSeek V4、OpenAI、Anthropic 或兼容的 API。与提供商无关的抽象层让你可以轻松切换。
 
 ---
 

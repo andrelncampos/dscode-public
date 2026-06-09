@@ -84,9 +84,23 @@ export function parseToolCallForPermissions(toolCall: unknown): PermissionToolCa
     type: "function",
     function: {
       name: record.function.name,
-      arguments: typeof record.function.arguments === "string" ? record.function.arguments : "",
+      arguments: normalizeToolArgumentsForPermissions(record.function.arguments),
     },
   };
+}
+
+function normalizeToolArgumentsForPermissions(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      // fall through to empty string
+    }
+  }
+  return "";
 }
 
 export function buildPermissionToolExecution(

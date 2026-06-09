@@ -117,6 +117,20 @@ const BUILT_IN_TOOL_NAME_ALIASES = new Map<string, string>([
   ["Edit", "edit"],
 ]);
 
+function normalizeToolArguments(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      // fall through to empty string
+    }
+  }
+  return "";
+}
+
 export type ToolCallExecution = {
   toolCallId: string;
   content: string;
@@ -200,7 +214,7 @@ export class ToolExecutor {
       return null;
     }
 
-    const rawArguments = typeof functionRecord.arguments === "string" ? functionRecord.arguments : "";
+    const rawArguments = normalizeToolArguments(functionRecord.arguments);
 
     return {
       id: record.id,

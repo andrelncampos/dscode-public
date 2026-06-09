@@ -4,9 +4,9 @@ import { DEFAULT_API_TIMEOUT_MS, FLASH_API_TIMEOUT_MS, PRO_API_TIMEOUT_MS } from
 import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm-provider";
 import type { ModelUsage } from "../session";
 import type { CreateOpenAIClient } from "../tools/executor";
+import { isMultimodalModel } from "../common/model-capabilities";
 
 const DEEPSEEK_MODEL_PREFIX = "deepseek-";
-const NON_MULTIMODAL_DEEPSEEK_MODELS = new Set(["deepseek-v4-pro", "deepseek-v4-flash"]);
 
 export class DeepSeekProvider implements ILlmProvider {
   readonly providerName = "deepseek";
@@ -30,7 +30,7 @@ export class DeepSeekProvider implements ILlmProvider {
   }
 
   isMultimodal(model: string): boolean {
-    return !NON_MULTIMODAL_DEEPSEEK_MODELS.has(model.trim());
+    return isMultimodalModel(model);
   }
 
   async *chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent> {
@@ -116,6 +116,12 @@ export class DeepSeekProvider implements ILlmProvider {
                 id: toolId,
                 arguments: tcFn.arguments as string,
               };
+            } else if (tcFn?.arguments !== null && typeof tcFn?.arguments === "object") {
+              yield {
+                type: "tool_call_delta",
+                id: toolId,
+                arguments: JSON.stringify(tcFn.arguments),
+              };
             }
           }
         }
@@ -124,6 +130,11 @@ export class DeepSeekProvider implements ILlmProvider {
     }
 
     const stream = rawResponse as unknown as AsyncIterable<Record<string, unknown>>;
+
+    // DeepSeek API only includes `id` on the first chunk of each tool call.
+    // Subsequent chunks carry only `index` + `function.arguments` (no `id`).
+    // This map tracks index→id so delta events always carry the correct id.
+    const toolIndexToId = new Map<number, string>();
 
     try {
       for await (const chunk of stream) {
@@ -155,6 +166,11 @@ export class DeepSeekProvider implements ILlmProvider {
               const tc = rawToolCall as Record<string, unknown>;
               const tcFn = tc.function as Record<string, unknown> | undefined;
 
+              // Track index→id mapping (DeepSeek only sends id on first chunk per tool call)
+              if (typeof tc.id === "string" && typeof tc.index === "number") {
+                toolIndexToId.set(tc.index, tc.id);
+              }
+
               if (typeof tc.id === "string") {
                 yield {
                   type: "tool_call_start",
@@ -163,11 +179,25 @@ export class DeepSeekProvider implements ILlmProvider {
                 };
               }
 
+              // Resolve the effective id: use tc.id directly if present, otherwise fallback to index→id map
+              const effectiveId =
+                typeof tc.id === "string"
+                  ? tc.id
+                  : typeof tc.index === "number"
+                    ? (toolIndexToId.get(tc.index) ?? "")
+                    : "";
+
               if (typeof tcFn?.arguments === "string") {
                 yield {
                   type: "tool_call_delta",
-                  id: typeof tc.id === "string" ? (tc.id as string) : "",
+                  id: effectiveId,
                   arguments: tcFn.arguments as string,
+                };
+              } else if (tcFn?.arguments !== null && typeof tcFn?.arguments === "object") {
+                yield {
+                  type: "tool_call_delta",
+                  id: effectiveId,
+                  arguments: JSON.stringify(tcFn.arguments),
                 };
               }
             }

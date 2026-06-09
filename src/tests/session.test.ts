@@ -151,7 +151,7 @@ test("SessionManager appends failed background log tail as XML", () => {
   assert.doesNotMatch(content, /<tail>/);
 });
 
-test("SessionManager filters image content for non-multimodal models", () => {
+test("SessionManager preserves image content for multimodal models (e.g., DeepSeek V4)", () => {
   const manager = new SessionManager({
     projectRoot: process.cwd(),
     createOpenAIClient: () => ({
@@ -190,7 +190,11 @@ test("SessionManager filters image content for non-multimodal models", () => {
   }>;
 
   assert.equal(openAIMessages.length, 1);
-  assert.deepEqual(openAIMessages[0]?.content, [{ type: "text", text: "The read tool has loaded `pixel.png`." }]);
+  // deepseek-v4-flash is multimodal — images are preserved
+  assert.deepEqual(openAIMessages[0]?.content, [
+    { type: "text", text: "The read tool has loaded `pixel.png`." },
+    { type: "image_url", image_url: { url: "data:image/png;base64,abc123" } },
+  ]);
 });
 
 test("SessionManager preserves empty reasoning content on assistant tool calls", () => {
