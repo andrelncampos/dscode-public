@@ -163,7 +163,7 @@ export function clearSessionState(sessionId: string): void {
 
   const fileMap = fileStatesBySession.get(sessionId);
   if (fileMap) {
-    totalFileStatesGlobal -= fileMap.size;
+    totalFileStatesGlobal = Math.max(0, totalFileStatesGlobal - fileMap.size);
   }
 
   fileStatesBySession.delete(sessionId);
@@ -247,7 +247,7 @@ export function recordFileState(
 
   if (!existed) {
     totalFileStatesGlobal += 1;
-    if (totalFileStatesGlobal > MAX_FILE_STATES_GLOBAL) {
+    while (totalFileStatesGlobal > MAX_FILE_STATES_GLOBAL) {
       evictGlobalOldestFileState();
     }
   }
@@ -391,14 +391,7 @@ function createSnippetWithId(
     snippetsBySession.set(sessionId, snippets);
   }
 
-  const existed = snippets.has(snippet.id);
   snippets.set(snippet.id, snippet);
-
-  if (!existed && snippets.size < (snippets as LruMap<string, FileSnippet>).size) {
-    // LruMap already evicted if needed; log if it happened during this set.
-    // The LruMap.set() handles eviction silently, so we just track.
-  }
-
   return snippet;
 }
 
@@ -431,7 +424,12 @@ export function getSnippet(sessionId: string, snippetId: string): FileSnippet | 
   // Lazy TTL eviction on access.
   evictExpiredSnippets(sessionId);
 
-  return snippetsBySession.get(sessionId)?.get(snippetId) ?? null;
+  const snippet = snippetsBySession.get(sessionId)?.get(snippetId) ?? null;
+  // Sliding TTL: renew timestamp on access so frequently-used snippets don't expire
+  if (snippet) {
+    snippet.createdAt = Date.now();
+  }
+  return snippet;
 }
 
 export function hasSnippetOutdatedFileVersion(sessionId: string, snippet: FileSnippet): boolean {

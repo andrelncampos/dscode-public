@@ -51,7 +51,7 @@ function disableBracketedPaste(): string {
 export function enableTerminalExtendedKeys(): string {
   // Level 2 (;2) reports all keys with modifiers (Shift, Ctrl, Alt, Meta),
   // including Shift+Enter. Level 1 (;1) only reports a subset and may not
-  // include Shift+Enter on some terminals (e.g. mintty / Git Bash on Windows).
+  // include Shift+Enter on some terminals.
   return "\u001B[>4;2m";
 }
 
@@ -265,9 +265,16 @@ export function useTerminalExtendedKeys(stdout: NodeJS.WriteStream | undefined, 
       return;
     }
 
-    stdout.write(enableTerminalExtendedKeys());
+    // Allow users to disable extended keys via environment variable.
+    if (process.env.DSCODE_DISABLE_EXTENDED_KEYS === "1") {
+      return;
+    }
+
+    const seq = enableTerminalExtendedKeys();
+    stdout.write(seq);
     return () => {
-      stdout.write(disableTerminalExtendedKeys());
+      const dis = disableTerminalExtendedKeys();
+      stdout.write(dis);
     };
   }, [isActive, stdout]);
 }

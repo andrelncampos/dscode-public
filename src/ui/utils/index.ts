@@ -87,7 +87,7 @@ export function buildStatusLine(entry: SessionEntry): string {
     parts.push(`cwd: ${entry.cwd}`);
   }
   if (entry.lastUserPrompt) {
-    parts.push(entry.lastUserPrompt);
+    parts.push(entry.lastUserPrompt.length > 80 ? entry.lastUserPrompt.slice(0, 80) + "..." : entry.lastUserPrompt);
   }
   if (entry.failReason) {
     parts.push(`fail: ${entry.failReason}`);

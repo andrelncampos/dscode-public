@@ -7,7 +7,7 @@ import ejs from "ejs";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { launchNotifyScript } from "./common/notify";
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { readTextFileWithMetadata } from "./common/file-utils";
+import { readTextFileWithMetadata, atomicWriteFileSync, atomicWriteJsonFileSync } from "./common/file-utils";
 import {
   buildSkillDocumentsPrompt,
   getCompactPrompt,
@@ -29,7 +29,7 @@ import {
 } from "./tools/executor";
 import { McpManager } from "./mcp/mcp-manager";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
-import type { McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
+import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
 import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
@@ -51,6 +51,20 @@ import {
 import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter } from "./common/openai-message-converter";
+import { recordBudgetCost } from "./common/budget-tracker";
+import type { ModelPricing } from "./common/model-capabilities";
+import { storeTurn, readRecentTurns } from "./memory/turn-memory-store";
+import { buildTurnContext } from "./memory/turn-memory-context-builder";
+import { canonicalizeText, canonicalizeShellOutput } from "./memory/turn-canonicalizer";
+import type { CanonicalizeOptions } from "./memory/turn-canonicalizer";
+import { redactSecrets } from "./memory/turn-secret-redactor";
+import type {
+  TurnTranscript,
+  TurnAction,
+  TurnFileRecord,
+  TurnErrorRecord,
+  MemorySettings,
+} from "./memory/turn-transcript-types";
 
 export type { PermissionScope } from "./settings";
 export type {
@@ -67,6 +81,7 @@ const MAX_PROJECT_CODE_LENGTH = 64;
 const PROJECT_CODE_HASH_LENGTH = 16;
 const BACKGROUND_FAILURE_LOG_TAIL_CHARS = 4000;
 const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 384 * 1024;
+const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
 
 type ChatCompletionDebugOptions = {
   enabled?: boolean;
@@ -75,8 +90,11 @@ type ChatCompletionDebugOptions = {
   params?: Record<string, unknown>;
 };
 
-export function getCompactPromptTokenThreshold(_model: string): number {
-  return DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD;
+export function getCompactPromptTokenThreshold(model: string): number {
+  if (model.startsWith("deepseek-v4")) {
+    return DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD;
+  }
+  return DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD;
 }
 
 // Keep project storage paths short enough for Git's internal files on Windows.
@@ -291,6 +309,9 @@ type SessionManagerOptions = {
     model: string;
     mcpServers?: Record<string, McpServerConfig>;
     permissions?: Required<PermissionSettings>;
+    modelPricing?: Record<string, ModelPricing>;
+    memory?: MemorySettings;
+    budget?: BudgetSettings;
   };
   renderMarkdown: (text: string) => string;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
@@ -316,6 +337,9 @@ export class SessionManager {
     model: string;
     mcpServers?: Record<string, McpServerConfig>;
     permissions?: Required<PermissionSettings>;
+    modelPricing?: Record<string, ModelPricing>;
+    memory?: MemorySettings;
+    budget?: BudgetSettings;
   };
   private readonly onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   private readonly onSessionEntryUpdated?: (entry: SessionEntry) => void;
@@ -333,6 +357,7 @@ export class SessionManager {
   private readonly messageConverter: OpenAIMessageConverter;
   private static systemPromptCache = new Map<string, string>();
   private lastInjectedAgentInstructionsHash: string | null = null;
+  private fileHistoryCheckpointCount = 0;
 
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -1089,6 +1114,11 @@ export class SessionManager {
       this.appendSessionMessage(sessionId, instructionsMessage);
     }
 
+    const memoryContext = await this.buildMemoryContextMessage();
+    if (memoryContext) {
+      this.appendSessionMessage(sessionId, memoryContext);
+    }
+
     this.recordUserPromptCheckpoint(sessionId);
     const userMessage = this.buildUserMessage(sessionId, userPrompt);
     this.appendSessionMessage(sessionId, userMessage);
@@ -1228,6 +1258,7 @@ export class SessionManager {
       env,
       maxTokens,
     } = this.createOpenAIClient();
+    const { modelPricing } = this.getResolvedSettings();
     const effortManager = new RuntimeReasoningEffortManager();
     let currentReasoningEffort: ReasoningEffort = reasoningEffort ?? "max";
     const now = new Date().toISOString();
@@ -1386,6 +1417,18 @@ export class SessionManager {
 
         let waitingForUser = false;
         const responseUsage = response.usage ?? null;
+        if (responseUsage) {
+          const budgetWarning = recordBudgetCost(
+            this.projectRoot,
+            model,
+            responseUsage,
+            modelPricing,
+            this.getResolvedSettings().budget
+          );
+          if (budgetWarning) {
+            this.addSessionSystemMessage(sessionId, budgetWarning, true);
+          }
+        }
         if (toolCalls) {
           if (permissionPlan?.askPermissions.length) {
             this.updateSessionEntry(sessionId, (entry) => ({
@@ -1452,6 +1495,7 @@ export class SessionManager {
 
         if (!toolCalls) {
           effortManager.reset();
+          await this.compressAndStoreMemory(sessionId);
           return;
         }
       }
@@ -1525,12 +1569,30 @@ export class SessionManager {
         break;
       }
     }
+    // Fallback: if no non-tool message found forward, walk backward from end
+    if (endIndex === -1) {
+      for (let i = sessionMessages.length - 1; i > startIndex; i -= 1) {
+        if (sessionMessages[i].role !== "tool") {
+          endIndex = i;
+          break;
+        }
+      }
+    }
     if (endIndex === -1 || endIndex <= startIndex) {
       return;
     }
 
-    const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, endIndex));
-    const compactionModel = "deepseek-v4-flash";
+    // Selective compaction: preserve high-importance messages (errors, recent reads)
+    // by adjusting the compaction boundary earlier.
+    const adjustedEndIndex = this.findCompactionBoundary(sessionMessages, startIndex, endIndex);
+    if (adjustedEndIndex <= startIndex) {
+      return;
+    }
+
+    const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, adjustedEndIndex));
+    // Use a cheaper model variant for compaction, falling back to the current model
+    const resolvedModel = this.getResolvedSettings().model;
+    const compactionModel = resolvedModel.includes("pro") ? resolvedModel.replace("pro", "flash") : resolvedModel;
     const response = await this.createChatCompletionStream(
       client,
       {
@@ -1562,6 +1624,18 @@ export class SessionManager {
 
     const now = new Date().toISOString();
     const responseUsage = response.usage ?? null;
+    if (responseUsage) {
+      const budgetWarning = recordBudgetCost(
+        this.projectRoot,
+        compactionModel,
+        responseUsage,
+        this.getResolvedSettings().modelPricing,
+        this.getResolvedSettings().budget
+      );
+      if (budgetWarning) {
+        this.addSessionSystemMessage(sessionId, budgetWarning, true);
+      }
+    }
     this.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       usage: accumulateUsage(entry.usage, responseUsage),
@@ -1570,7 +1644,7 @@ export class SessionManager {
       updateTime: now,
     }));
 
-    for (let i = startIndex; i < endIndex; i += 1) {
+    for (let i = startIndex; i < adjustedEndIndex; i += 1) {
       sessionMessages[i] = { ...sessionMessages[i], compacted: true, updateTime: now };
     }
 
@@ -1589,8 +1663,227 @@ export class SessionManager {
         isSummary: true,
       },
     };
-    sessionMessages.splice(endIndex, 0, summaryMessage);
+    sessionMessages.splice(adjustedEndIndex, 0, summaryMessage);
     this.saveSessionMessages(sessionId, sessionMessages);
+  }
+
+  /**
+   * Find the optimal compaction boundary by walking backward from endIndex
+   * and stopping before high-importance messages (errors, recent reads).
+   * Returns the adjusted end index (exclusive).
+   */
+  private findCompactionBoundary(messages: SessionMessage[], startIndex: number, endIndex: number): number {
+    let boundary = endIndex;
+    for (let i = endIndex - 1; i > startIndex; i -= 1) {
+      const msg = messages[i];
+      if (!msg) continue;
+
+      // Preserve tool messages that contain actual errors (not just the word in output)
+      if (msg.role === "tool" && msg.content && hasToolError(msg.content)) {
+        boundary = i;
+        break;
+      }
+
+      // Preserve recent user and assistant messages (last 5 messages before endIndex)
+      if (msg.role === "user" || msg.role === "assistant") {
+        const distanceFromEnd = endIndex - i;
+        if (distanceFromEnd <= 5) {
+          boundary = i;
+          break;
+        }
+      }
+    }
+    return boundary;
+  }
+
+  private async buildMemoryContextMessage(): Promise<SessionMessage | null> {
+    const memorySettings = this.getResolvedSettings().memory;
+
+    if (!memorySettings || !memorySettings.enabled) return null;
+
+    // readRecentTurns estimates raw chars (u + a + actions + files + errors),
+    // while buildTurnContext counts formatted output which adds prefixes, headers, and structure.
+    // The formatted output is typically 1.3–2× the raw estimate, so 2× provides a safe read budget.
+    const readBudget = memorySettings.maxContextChars * 2;
+    const transcripts = await readRecentTurns(this.projectRoot, memorySettings.recentTurns, readBudget);
+    const context = buildTurnContext(transcripts, memorySettings.maxContextChars);
+    if (!context) return null;
+    return this.buildSystemMessage(this.activeSessionId ?? "", context);
+  }
+
+  private async compressAndStoreMemory(sessionId: string): Promise<void> {
+    const memorySettings = this.getResolvedSettings().memory;
+    if (!memorySettings || !memorySettings.enabled || !memorySettings.storeTurnTranscripts) return;
+    await this.storeTurnTranscript(sessionId, memorySettings);
+  }
+
+  /**
+   * Capture turn data from session messages and persist as canonical transcript.
+   */
+  private async storeTurnTranscript(sessionId: string, memorySettings: MemorySettings): Promise<void> {
+    try {
+      const allMessages = this.listSessionMessages(sessionId);
+
+      // Find the last user message
+      let userContent = "";
+      let lastUserIndex = -1;
+
+      for (let i = allMessages.length - 1; i >= 0; i--) {
+        if (allMessages[i].role === "user") {
+          userContent = allMessages[i].content ?? "";
+          lastUserIndex = i;
+          break;
+        }
+      }
+
+      if (lastUserIndex < 0) return;
+
+      // Collect assistant response and tool results after the last user message
+      let assistantContent = "";
+      const actions: TurnAction[] = [];
+      const fileRecords: TurnFileRecord[] = [];
+      const errorRecords: TurnErrorRecord[] = [];
+
+      for (let i = lastUserIndex + 1; i < allMessages.length; i++) {
+        const msg = allMessages[i];
+        if (msg.role === "assistant" && msg.content) {
+          assistantContent = assistantContent ? `${assistantContent}\n\n${msg.content}` : msg.content;
+        }
+        if (msg.role === "tool") {
+          const action = parseToolMessageAction(msg);
+          if (action) actions.push(action);
+          const files = parseToolMessageFiles(msg);
+          for (const f of files) fileRecords.push(f);
+          const errors = parseToolMessageErrors(msg);
+          for (const e of errors) errorRecords.push(e);
+        }
+      }
+
+      // Skip turns with no tool calls — they add minimal contextual value
+      if (actions.length === 0 && fileRecords.length === 0) return;
+
+      // Deduplicate file records
+      const seen = new Set<string>();
+      const dedupedFiles: TurnFileRecord[] = [];
+      for (const f of fileRecords) {
+        const key = `${f.p}|${f.op}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          dedupedFiles.push(f);
+        } else if (f.diff) {
+          // Same path+op again: keep the latest diff
+          const existing = dedupedFiles.find((df) => df.p === f.p && df.op === f.op);
+          if (existing) existing.diff = f.diff;
+        }
+      }
+
+      // Build canonicalization options (needed for diffs + text below)
+      const limits = {
+        maxUserChars: memorySettings.maxUserCharsPerTurn,
+        maxAssistantChars: memorySettings.maxAssistantCharsPerTurn,
+        maxStdoutChars: memorySettings.maxStdoutCharsPerTurn,
+        maxStderrChars: memorySettings.maxStderrCharsPerTurn,
+        maxDiffChars: memorySettings.maxDiffCharsPerTurn,
+      };
+
+      const c14nOptions = {
+        stripAnsi: memorySettings.stripAnsi,
+        collapseWhitespace: memorySettings.collapseWhitespace,
+        dedupeRepeatedLines: memorySettings.dedupeRepeatedLines,
+        limits,
+      };
+
+      // Canonicalize diffs (normalize line endings, strip ANSI, truncate — but never collapse
+      // whitespace or dedupe inside diff content, as that would corrupt the diff format)
+      const diffC14nOptions: CanonicalizeOptions = {
+        ...c14nOptions,
+        collapseWhitespace: false,
+        dedupeRepeatedLines: false,
+      };
+      const maxDiffChars = memorySettings.maxDiffCharsPerTurn;
+      for (const f of dedupedFiles) {
+        if (f.diff) {
+          f.diff = canonicalizeText(f.diff, maxDiffChars, diffC14nOptions);
+        }
+      }
+
+      const redactedUser = redactSecrets(userContent);
+      const redactedAssistant = redactSecrets(assistantContent);
+
+      // Canonicalize actions
+      const canonicalActions: TurnAction[] = actions.map((act) => {
+        if (act.k === "shell") {
+          return {
+            ...act,
+            out: redactSecrets(canonicalizeShellOutput(act.out, limits.maxStdoutChars, c14nOptions)),
+            err: redactSecrets(canonicalizeShellOutput(act.err, limits.maxStderrChars, c14nOptions)),
+            cmd: redactSecrets(act.cmd),
+          };
+        }
+        return act;
+      });
+
+      // Redact secrets from error records (errors may contain tokens from tool output)
+      const redactedErrors: TurnErrorRecord[] = errorRecords.map((e) => ({
+        ...e,
+        message: redactSecrets(e.message),
+      }));
+
+      const gitBranch = await this.getCurrentBranch();
+
+      const transcript: TurnTranscript = {
+        v: 1,
+        id: "", // Will be assigned by storeTurn
+        ts: new Date().toISOString(),
+        cwd: this.projectRoot,
+        git: gitBranch ? { branch: gitBranch } : null,
+        env: {
+          terminal: process.env.TERM ?? "unknown",
+          platform: process.platform,
+          node: process.version,
+        },
+        u: canonicalizeText(redactedUser, limits.maxUserChars, c14nOptions),
+        a: canonicalizeText(redactedAssistant, limits.maxAssistantChars, c14nOptions),
+        act: canonicalActions,
+        files: dedupedFiles,
+        err: redactedErrors,
+      };
+
+      const result = await storeTurn(this.projectRoot, transcript, memorySettings);
+      if (!result.ok) {
+        process.stderr.write(`[memory] Failed to store turn transcript: ${result.error}\n`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[memory] Error storing turn transcript: ${message}\n`);
+    }
+  }
+
+  private async getCurrentBranch(): Promise<string | null> {
+    try {
+      const { execFile } = await import("node:child_process");
+      return new Promise<string | null>((resolve) => {
+        execFile(
+          "git",
+          ["branch", "--show-current"],
+          {
+            cwd: this.projectRoot,
+            encoding: "utf8",
+            timeout: 3000,
+          },
+          (err, stdout) => {
+            if (err) {
+              resolve(null);
+              return;
+            }
+            const trimmed = (stdout ?? "").trim();
+            resolve(trimmed || null);
+          }
+        );
+      });
+    } catch {
+      return null;
+    }
   }
 
   private getPromptToolOptions(): { model: string; webSearchEnabled: boolean } {
@@ -1910,6 +2203,14 @@ export class SessionManager {
     const fileHistory = this.getFileHistory();
     fileHistory.ensureSession(sessionId);
     fileHistory.recordCheckpoint(sessionId, [filePath], "File mutation checkpoint");
+    this.maybeGcFileHistory();
+  }
+
+  private maybeGcFileHistory(): void {
+    this.fileHistoryCheckpointCount += 1;
+    if (this.fileHistoryCheckpointCount % 50 === 0) {
+      this.getFileHistory().gc();
+    }
   }
 
   private updateLatestUserCheckpointHash(sessionId: string, previousHash: string | undefined, nextHash: string): void {
@@ -1985,7 +2286,7 @@ export class SessionManager {
       })),
       originalPath: this.projectRoot,
     };
-    fs.writeFileSync(sessionsIndexPath, JSON.stringify(normalized, null, 2), "utf8");
+    atomicWriteJsonFileSync(sessionsIndexPath, normalized);
   }
 
   private getSessionMessagesPath(sessionId: string): string {
@@ -2042,7 +2343,7 @@ export class SessionManager {
     this.ensureProjectDir();
     const messagePath = this.getSessionMessagesPath(sessionId);
     const payload = messages.map((message) => JSON.stringify(message)).join("\n");
-    fs.writeFileSync(messagePath, payload ? `${payload}\n` : "", "utf8");
+    atomicWriteFileSync(messagePath, payload ? `${payload}\n` : "");
   }
 
   private updateSessionEntry(sessionId: string, updater: (entry: SessionEntry) => SessionEntry): SessionEntry | null {
@@ -2930,4 +3231,200 @@ export class SessionManager {
     }
     return serialized;
   }
+}
+
+// ── Tool message parsing helpers for turn transcript capture ───────────
+
+interface ParsedToolMeta {
+  name: string;
+  args: Record<string, unknown>;
+}
+
+function extractToolMeta(msg: {
+  contentParams?: unknown | null;
+  meta?: { function?: unknown } | null;
+}): ParsedToolMeta | null {
+  // Try contentParams (structured tool definition)
+  if (msg.contentParams && typeof msg.contentParams === "object") {
+    const params = msg.contentParams as Record<string, unknown>;
+    if (typeof params.name === "string") {
+      return { name: params.name, args: (params.args as Record<string, unknown>) ?? {} };
+    }
+  }
+  // Try meta.function
+  if (msg.meta?.function && typeof msg.meta.function === "object") {
+    const fn = msg.meta.function as Record<string, unknown>;
+    if (typeof fn.name === "string") {
+      return { name: fn.name, args: (fn.arguments as Record<string, unknown>) ?? {} };
+    }
+  }
+  return null;
+}
+
+function parseToolMessageAction(msg: {
+  content?: string | null;
+  contentParams?: unknown | null;
+  meta?: { function?: unknown } | null;
+}): TurnAction | null {
+  const meta = extractToolMeta(msg);
+  if (!meta) return null;
+
+  const output = msg.content ?? "";
+  const name = meta.name;
+  const args = meta.args;
+
+  switch (name) {
+    case "bash": {
+      const cmd = typeof args.command === "string" ? args.command : "";
+      const cwd = typeof args.cwd === "string" ? args.cwd : "";
+      // Parse the tool result JSON to extract exit code, error, and clean output
+      const parsed = parseBashToolOutput(output);
+      return {
+        k: "shell",
+        cmd,
+        cwd,
+        exit: parsed.exitCode,
+        out: parsed.stdout,
+        err: parsed.stderr,
+      };
+    }
+    case "read": {
+      const filePath = typeof args.file_path === "string" ? args.file_path : "";
+      return { k: "read", path: filePath };
+    }
+    case "write": {
+      const filePath = typeof args.file_path === "string" ? args.file_path : "";
+      return { k: "write", path: filePath };
+    }
+    case "edit": {
+      const filePath = typeof args.file_path === "string" ? args.file_path : "";
+      return { k: "edit", path: filePath };
+    }
+    default:
+      return {
+        k: "other",
+        name,
+        summary: output.slice(0, 200).replace(/\n/g, " "),
+      };
+  }
+}
+
+function parseToolMessageFiles(msg: {
+  content?: string | null;
+  contentParams?: unknown | null;
+  meta?: { function?: unknown } | null;
+}): TurnFileRecord[] {
+  const meta = extractToolMeta(msg);
+  if (!meta) return [];
+
+  const files: TurnFileRecord[] = [];
+  const args = meta.args;
+  const diff = extractDiffFromToolContent(msg.content);
+
+  switch (meta.name) {
+    case "bash": {
+      // Bash can touch files but we can't determine which from the tool call alone
+      // The output may contain file paths, but we don't parse that here
+      break;
+    }
+    case "read": {
+      const p = typeof args.file_path === "string" ? args.file_path : "";
+      if (p) files.push({ p, op: "read" });
+      break;
+    }
+    case "write": {
+      const p = typeof args.file_path === "string" ? args.file_path : "";
+      if (p) files.push({ p, op: "write", diff });
+      break;
+    }
+    case "edit": {
+      const p = typeof args.file_path === "string" ? args.file_path : "";
+      if (p) files.push({ p, op: "edit", diff });
+      break;
+    }
+  }
+
+  return files;
+}
+
+function extractDiffFromToolContent(content: string | null | undefined): string | undefined {
+  if (!content) return undefined;
+  try {
+    const parsed = JSON.parse(content) as { metadata?: { diff_preview?: string } };
+    return typeof parsed.metadata?.diff_preview === "string" ? parsed.metadata.diff_preview : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasToolError(content: string): boolean {
+  try {
+    const parsed = JSON.parse(content) as { ok?: boolean; error?: string };
+    return parsed.ok === false || (typeof parsed.error === "string" && parsed.error.length > 0);
+  } catch {
+    return false;
+  }
+}
+
+type ParsedBashOutput = {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+};
+
+/**
+ * Parse a bash tool-result JSON string to extract the actual stdout,
+ * stderr, and exit code. Falls back to raw content if parsing fails.
+ */
+function parseBashToolOutput(raw: string): ParsedBashOutput {
+  try {
+    const parsed = JSON.parse(raw) as {
+      output?: string;
+      error?: string;
+      metadata?: { exitCode?: unknown; signal?: unknown };
+    };
+    const exitCode = typeof parsed.metadata?.exitCode === "number" ? parsed.metadata.exitCode : null;
+    const stdout = typeof parsed.output === "string" ? parsed.output : "";
+    const stderr = typeof parsed.error === "string" ? parsed.error : "";
+    return { stdout, stderr, exitCode };
+  } catch {
+    return { stdout: raw, stderr: "", exitCode: null };
+  }
+}
+
+function parseToolMessageErrors(msg: {
+  content?: string | null;
+  contentParams?: unknown | null;
+  meta?: { function?: unknown } | null;
+}): TurnErrorRecord[] {
+  const content = msg.content ?? "";
+  if (!content) return [];
+
+  const errors: TurnErrorRecord[] = [];
+
+  // Try to parse as JSON first to avoid false positives
+  // (the word "Error:" in successful output should not count as an error)
+  try {
+    const parsed = JSON.parse(content) as { ok?: boolean; error?: string };
+    if (parsed.ok === false || (typeof parsed.error === "string" && parsed.error.length > 0)) {
+      const errMsg =
+        typeof parsed.error === "string" && parsed.error.length > 0 ? parsed.error : "Tool returned ok: false";
+      errors.push({ kind: "command", message: errMsg.slice(0, 200) });
+    }
+  } catch {
+    // Non-JSON content — fall back to regex patterns
+    if (/Error:/i.test(content) || /ENOENT/i.test(content) || /MODULE_NOT_FOUND/i.test(content)) {
+      const firstLine = content.split("\n")[0].slice(0, 200);
+      errors.push({ kind: "command", message: firstLine });
+    }
+  }
+
+  if (/\[ERROR\]/i.test(content)) {
+    const match = content.match(/\[ERROR\]\s*(.+)/i);
+    if (match) {
+      errors.push({ kind: "runtime", message: match[1].slice(0, 200) });
+    }
+  }
+
+  return errors;
 }

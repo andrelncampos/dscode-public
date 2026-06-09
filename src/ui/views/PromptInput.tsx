@@ -35,6 +35,8 @@ import {
 } from "../core/prompt-undo-redo";
 import { buildSlashCommands, filterSlashCommands, findExactSlashCommand } from "../core/slash-commands";
 import type { SlashCommandItem } from "../core/slash-commands";
+import { executeSlashCommand, type CommandContext } from "../core/command-handlers";
+import { PromptFooter } from "../components/PromptFooter";
 import {
   filterFileMentionItems,
   getCurrentFileMentionToken,
@@ -57,66 +59,37 @@ import {
   useBracketedPaste,
   useTerminalFocusReporting,
 } from "../hooks";
+import { formatCost, formatTokenCount } from "../../common/model-capabilities";
+import { detectTerminalRuntime } from "../core/terminal-runtime";
 import SlashCommandMenu, { isSkillSelected } from "./SlashCommandMenu";
-import type { ModelConfigSelection, PermissionScope } from "../../settings";
+import type { ModelConfigSelection } from "../../settings";
 import { FileMentionMenu, ModelsDropdown, RawModelDropdown, SkillsDropdown } from "../components";
-import type { LlmStreamProgress, SessionEntry, SkillInfo } from "../../session";
-import type { UserToolPermission } from "../../common/permissions";
-import { StreamingIndicator } from "../components/StreamingIndicator";
+import type { SkillInfo } from "../../session";
+import type { PromptStreamState, PromptModelState, PromptDisplayState } from "../types/prompt-input-types";
+import type { PromptSubmission, PromptDraft } from "../types/commands";
 
-export type PromptSubmission = {
-  text: string;
-  imageUrls: string[];
-  selectedSkills?: SkillInfo[];
-  permissions?: UserToolPermission[];
-  alwaysAllows?: PermissionScope[];
-  command?:
-    | "new"
-    | "resume"
-    | "continue"
-    | "undo"
-    | "mcp"
-    | "steering-add"
-    | "steering-list"
-    | "spec-init"
-    | "spec-plan"
-    | "spec-new"
-    | "spec-verify"
-    | "spec-implement"
-    | "spec-audit"
-    | "spec-list"
-    | "spec-status"
-    | "exit";
-};
+// Re-export for consumers that import from this file
+export type { PromptSubmission, PromptDraft };
 
-export type PromptDraft = {
-  nonce: number;
-  text: string;
-  imageUrls: string[];
-};
-
-type Props = {
-  projectRoot: string;
-  skills: SkillInfo[];
-  modelConfig: ModelConfigSelection;
-  screenWidth: number;
-  promptHistory: string[];
-  busy: boolean;
-  loadingText?: string | null;
-  disabled?: boolean;
-  placeholder?: string;
-  runningProcesses?: SessionEntry["processes"];
-  promptDraft?: PromptDraft | null;
-  onSubmit: (submission: PromptSubmission) => void;
-  onModelConfigChange: (selection: ModelConfigSelection) => string | Promise<string>;
-  onRawModeChange?: (mode: string) => void;
-  onInterrupt: () => void;
-  onToggleProcessStdout?: () => void;
-  onToggleHelp?: () => void;
-  helpVisible?: boolean;
-  streamProgress?: LlmStreamProgress | null;
-  nowTick?: number;
-};
+type Props = PromptStreamState &
+  PromptModelState &
+  PromptDisplayState & {
+    projectRoot: string;
+    onSubmit: (submission: PromptSubmission) => void;
+    onModelConfigChange: (selection: ModelConfigSelection) => string | Promise<string>;
+    onRawModeChange?: (mode: string) => void;
+    onInterrupt: () => void;
+    onToggleProcessStdout?: () => void;
+    onToggleHelp?: () => void;
+    /** Current session token count, or 0. */
+    sessionTokens?: number;
+    /** Current session cost in USD, or null if unknown. */
+    sessionCost?: number | null;
+    /** Today's total cost in USD. */
+    dailyCost?: number;
+    /** Project lifetime total cost in USD. */
+    projectCost?: number;
+  };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -142,37 +115,6 @@ const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: 
   );
 });
 
-const KEY_COLOR = "cyan";
-
-function ColoredFooter({ text }: { text: string }): React.ReactElement {
-  // Split on " · " and color known key patterns (enter, esc, ctrl+x, @, /, etc.)
-  const parts = text.split(" · ");
-  return (
-    <Text>
-      {parts.map((part, i) => {
-        const match = part.match(/^(\S+)\s+(.+)$/);
-        if (match) {
-          const key = match[1]!;
-          const desc = match[2]!;
-          return (
-            <React.Fragment key={i}>
-              {i > 0 ? <Text dimColor> · </Text> : null}
-              <Text color={KEY_COLOR}>{key}</Text>
-              <Text dimColor> {desc}</Text>
-            </React.Fragment>
-          );
-        }
-        return (
-          <React.Fragment key={i}>
-            {i > 0 ? <Text dimColor> · </Text> : null}
-            <Text dimColor>{part}</Text>
-          </React.Fragment>
-        );
-      })}
-    </Text>
-  );
-}
-
 export const PromptInput = React.memo(function PromptInput({
   projectRoot,
   skills,
@@ -193,7 +135,11 @@ export const PromptInput = React.memo(function PromptInput({
   onToggleHelp,
   helpVisible,
   streamProgress,
-  nowTick,
+  nowTick: _nowTick,
+  sessionTokens = 0,
+  sessionCost = null,
+  dailyCost = 0,
+  projectCost = 0,
 }: Props): React.ReactElement {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -206,7 +152,8 @@ export const PromptInput = React.memo(function PromptInput({
   const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
   const [openRawModelDropdown, setOpenRawModelDropdown] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [fileMentionItems, setFileMentionItems] = useState<FileMentionItem[]>(() => scanFileMentionItems(projectRoot));
+  const [fileMentionItems, setFileMentionItems] = useState<FileMentionItem[]>([]);
+  const fileMentionScannedRef = React.useRef(false);
   const [dismissedFileMentionKey, setDismissedFileMentionKey] = useState<string | null>(null);
   const [hasTerminalFocus, setHasTerminalFocus] = useState(true);
   const lastCtrlDAt = React.useRef<number>(0);
@@ -257,13 +204,22 @@ export const PromptInput = React.memo(function PromptInput({
       : hasExpandedRegions
         ? " · ctrl+o collapse"
         : "";
-  const footerText = statusMessage
-    ? statusMessage
-    : busy
-      ? loadingText && loadingText.trim()
-        ? `${loadingText}${processOrPasteHint}`
-        : `esc to interrupt · ctrl+c to cancel input${processOrPasteHint}`
-      : `enter send · shift+enter newline · @ files · ctrl+v image · / commands · ctrl+d exit${processOrPasteHint}`;
+  const terminalProfile = React.useMemo(() => detectTerminalRuntime(), []);
+  const newlineHint = terminalProfile.footerNewlineHint;
+  const footerText = (() => {
+    if (statusMessage) return statusMessage;
+    if (busy) {
+      if (loadingText && loadingText.trim()) return `${loadingText}${processOrPasteHint}`;
+      return `esc to interrupt · ctrl+c to cancel input${processOrPasteHint}`;
+    }
+    // Build stats suffix
+    let stats = "";
+    if (sessionTokens > 0) stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
+    if (sessionCost !== null) stats += ` · 💰 ${formatCost(sessionCost)}`;
+    stats += ` · 📅 ${formatCost(dailyCost)}`;
+    stats += ` · 📦 ${formatCost(projectCost)}`;
+    return `${newlineHint} · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
+  })();
   const showFooterText = useMemo(
     () => showMenu || showSkillsDropdown || openRawModelDropdown || showModelDropdown || showFileMentionMenu,
     [showMenu, showSkillsDropdown, showModelDropdown, openRawModelDropdown, showFileMentionMenu]
@@ -282,11 +238,17 @@ export const PromptInput = React.memo(function PromptInput({
 
   const refreshFileMentionItems = React.useCallback(() => {
     setFileMentionItems(scanFileMentionItems(projectRoot));
+    fileMentionScannedRef.current = true;
   }, [projectRoot]);
 
   useEffect(() => {
-    refreshFileMentionItems();
-  }, [refreshFileMentionItems]);
+    if (hasFileMentionToken && !fileMentionScannedRef.current) {
+      refreshFileMentionItems();
+    } else if (hasFileMentionToken && !hadFileMentionTokenRef.current) {
+      refreshFileMentionItems();
+    }
+    hadFileMentionTokenRef.current = hasFileMentionToken;
+  }, [hasFileMentionToken, refreshFileMentionItems]);
 
   useEffect(() => {
     if (wasBusyRef.current && !busy) {
@@ -294,13 +256,6 @@ export const PromptInput = React.memo(function PromptInput({
     }
     wasBusyRef.current = busy;
   }, [busy, refreshFileMentionItems]);
-
-  useEffect(() => {
-    if (hasFileMentionToken && !hadFileMentionTokenRef.current) {
-      refreshFileMentionItems();
-    }
-    hadFileMentionTokenRef.current = hasFileMentionToken;
-  }, [hasFileMentionToken, refreshFileMentionItems]);
 
   useEffect(() => {
     if (!showMenu) {
@@ -353,10 +308,6 @@ export const PromptInput = React.memo(function PromptInput({
       }
       if (key.focusOut) {
         setHasTerminalFocus(false);
-        return;
-      }
-
-      if (disabled) {
         return;
       }
 
@@ -469,7 +420,7 @@ export const PromptInput = React.memo(function PromptInput({
       }
 
       const noModifier = !key.shift && !key.ctrl && !key.meta;
-      const returnAction = getPromptReturnKeyAction(key);
+      const returnAction = getPromptReturnKeyAction(key, input);
       const isPlainReturn = returnAction === "submit";
 
       if (showFileMentionMenu) {
@@ -622,10 +573,6 @@ export const PromptInput = React.memo(function PromptInput({
         updateBuffer((s) => deleteWordBefore(s));
         return;
       }
-      if (key.ctrl && (input === "j" || input === "J")) {
-        updateBuffer((s) => insertText(s, "\n"));
-        return;
-      }
       if (key.ctrl && key.shift && input === "-") {
         redo();
         return;
@@ -699,169 +646,23 @@ export const PromptInput = React.memo(function PromptInput({
   }
 
   function handleSlashSelection(item: SlashCommandItem): void {
-    if (busy && item.kind !== "exit") {
-      setStatusMessage("wait for the current response or press esc to interrupt");
-      return;
-    }
-
-    if (item.kind === "skill" && item.skill) {
-      addSelectedSkill(item.skill);
-      clearSlashToken();
-      setShowSkillsDropdown(false);
-      return;
-    }
-    if (item.kind === "skills") {
-      clearSlashToken();
-      setShowSkillsDropdown(true);
-      return;
-    }
-    if (item.kind === "model") {
-      clearSlashToken();
-      setShowSkillsDropdown(false);
-      setShowModelDropdown(true);
-      return;
-    }
-    if (item.kind === "raw") {
-      clearSlashToken();
-      setOpenRawModelDropdown(true);
-      return;
-    }
-    if (item.kind === "new") {
-      onSubmit({ text: "", imageUrls: [], command: "new" });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "init") {
-      onSubmit(buildInitPromptSubmission(selectedSkills));
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "resume") {
-      onSubmit({ text: "", imageUrls: [], command: "resume" });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "continue") {
-      onSubmit({ text: "/continue", imageUrls: [], command: "continue" });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "undo") {
-      onSubmit({ text: "/undo", imageUrls: [], command: "undo" });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "mcp") {
-      onSubmit({ text: "/mcp", imageUrls: [], command: "mcp" });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "steering-add") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "steering-add",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "steering-list") {
-      onSubmit({
-        text: "/steering-list",
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "steering-list",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-init") {
-      onSubmit({
-        text: "/spec-init",
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-init",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-plan") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-plan",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-new") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-new",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-verify") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-verify",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-implement") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-implement",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-audit") {
-      onSubmit({
-        text: buffer.text.trim(),
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-audit",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-list") {
-      onSubmit({
-        text: "/spec-list",
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-list",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "spec-status") {
-      onSubmit({
-        text: buffer.text.trim() || "/spec-status",
-        imageUrls: [],
-        selectedSkills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        command: "spec-status",
-      });
-      resetPromptInput();
-      return;
-    }
-    if (item.kind === "exit") {
-      onSubmit({ text: "/exit", imageUrls: [], command: "exit" });
-      setBuffer(EMPTY_BUFFER);
-      clearUndoRedoStacks();
-      return;
-    }
+    const ctx: CommandContext = {
+      buffer: { text: buffer.text },
+      busy,
+      selectedSkills,
+      // The command-handlers module uses string for command, but our
+      // onSubmit expects the PromptSubmission union — all values it
+      // emits are valid, so this assertion is safe.
+      onSubmit: onSubmit as CommandContext["onSubmit"],
+      resetPromptInput,
+      clearSlashToken,
+      addSelectedSkill,
+      setShowSkillsDropdown,
+      setShowModelDropdown,
+      setOpenRawModelDropdown,
+      setStatusMessage,
+    };
+    executeSlashCommand(item, ctx);
   }
 
   function submitCurrentBuffer(): void {
@@ -975,29 +776,13 @@ export const PromptInput = React.memo(function PromptInput({
         onSelect={insertFileMentionSelection}
       />
       <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
-      {!showFooterText &&
-        (busy && streamProgress ? (
-          <StreamingIndicator
-            progress={streamProgress}
-            now={nowTick ?? Date.now()}
-            width={screenWidth}
-            modelName={modelConfig.model}
-          />
-        ) : (
-          <Box>
-            {!busy && !statusMessage ? (
-              <>
-                <Text color="magenta">{modelConfig.model}</Text>
-                <Text dimColor> · </Text>
-              </>
-            ) : null}
-            {statusMessage || (busy && loadingText?.trim()) ? (
-              <Text dimColor>{footerText}</Text>
-            ) : (
-              <ColoredFooter text={footerText} />
-            )}
-          </Box>
-        ))}
+      <PromptFooter
+        busy={busy}
+        streamProgress={streamProgress ?? null}
+        statusMessage={statusMessage}
+        footerText={footerText}
+        showFooterText={showFooterText}
+      />
     </Box>
   );
 });
@@ -1059,7 +844,24 @@ export function isClearImageAttachmentsShortcut(input: string, key: Pick<InputKe
 
 export type PromptReturnKeyAction = "submit" | "newline" | null;
 
-export function getPromptReturnKeyAction(key: Pick<InputKey, "return" | "shift" | "meta">): PromptReturnKeyAction {
+/**
+ * Single entry point for deciding whether a key event should submit the prompt
+ * or insert a newline.
+ *
+ * Newline when:
+ *   a) Shift+Enter or Meta+Enter (key.return && (key.shift || key.meta))
+ *   b) Ctrl+J (key.ctrl && input === "j"/"J")
+ *
+ * Submit only for plain Enter (key.return with no modifiers).
+ */
+export function getPromptReturnKeyAction(
+  key: Pick<InputKey, "return" | "shift" | "meta" | "ctrl">,
+  input: string
+): PromptReturnKeyAction {
+  // Ctrl+J is always newline intent (regardless of key.return).
+  if (key.ctrl && (input === "j" || input === "J")) {
+    return "newline";
+  }
   if (!key.return) {
     return null;
   }

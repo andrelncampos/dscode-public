@@ -7,6 +7,7 @@ import { setShellIfWindows } from "./common/shell-utils";
 import { checkForNpmUpdate, promptForPendingUpdate, type PackageInfo } from "./common/update-check";
 import { migrateAllLevels } from "./common/dscode-paths";
 import { AppContainer } from "./ui";
+import { detectTerminalRuntime } from "./ui/core/terminal-runtime";
 
 const args = process.argv.slice(2);
 const packageInfo = readPackageInfo();
@@ -17,6 +18,10 @@ if (args.includes("--version") || args.includes("-v")) {
 }
 
 if (args.includes("--help") || args.includes("-h")) {
+  const rt = detectTerminalRuntime();
+  const newlineHintLine = rt.isClassicWindowsConsole
+    ? "  ctrl+j           Insert a newline (always available; Shift+Enter is not reliable in this terminal)"
+    : "  ctrl+j           Insert a newline (always available)\n  shift+enter      Insert a newline (terminal-dependent)";
   process.stdout.write(
     [
       "dscode - dscode CLI",
@@ -38,7 +43,7 @@ if (args.includes("--help") || args.includes("-h")) {
       "",
       "Inside the TUI:",
       "  enter            Send the prompt",
-      "  shift+enter      Insert a newline",
+      newlineHintLine,
       "  home/end         Move within the current line",
       "  alt+left/right   Move by word",
       "  ctrl+w           Delete the previous word",

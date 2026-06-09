@@ -201,6 +201,47 @@ export class GitFileHistory {
     this.runGit(["update-ref", branchRef, checkpointHash]);
   }
 
+  /**
+   * Preview what files would be changed by a restore without actually modifying them.
+   * Returns a list of { path, action } describing each change.
+   */
+  restoreDryRun(
+    sessionId: string,
+    checkpointHash: string
+  ): Array<{ path: string; action: "restore" | "delete" | "create" }> {
+    if (!isCommitHash(checkpointHash)) {
+      throw new Error("Invalid checkpoint hash.");
+    }
+    const branchRef = this.getSessionBranchRef(sessionId);
+    if (!branchRef || !fs.existsSync(this.gitDir)) {
+      throw new Error("File history Git repository was not found for this project.");
+    }
+    this.runGit(["cat-file", "-e", `${checkpointHash}^{commit}`]);
+
+    const currentHash = this.getCurrentCheckpointHash(sessionId);
+    const currentManifest = currentHash ? this.readManifest(currentHash) : emptyManifest();
+    const targetManifest = this.readManifest(checkpointHash);
+    const changes: Array<{ path: string; action: "restore" | "delete" | "create" }> = [];
+
+    // Files in current but not in target: will be deleted (or restored to first known)
+    for (const [key, entry] of Object.entries(currentManifest.files)) {
+      if (!targetManifest.files[key]) {
+        changes.push({ path: entry.path, action: "delete" });
+      }
+    }
+
+    // Files in target: will be created/restored
+    for (const [key, entry] of Object.entries(targetManifest.files)) {
+      if (!currentManifest.files[key]) {
+        changes.push({ path: entry.path, action: "create" });
+      } else if (currentManifest.files[key]?.blob !== entry.blob) {
+        changes.push({ path: entry.path, action: "restore" });
+      }
+    }
+
+    return changes;
+  }
+
   private restoreFirstKnownEntry(currentHash: string | undefined, key: string, fallbackPath: string): void {
     const firstEntry = currentHash ? this.findFirstKnownEntry(currentHash, key) : undefined;
     const entry = firstEntry ?? { path: fallbackPath, blob: null, mode: "100644" as const };
@@ -330,6 +371,18 @@ export class GitFileHistory {
       throw new Error(detail || `git ${args.join(" ")} failed`);
     }
     return result.stdout ?? (encoding === "buffer" ? Buffer.alloc(0) : "");
+  }
+
+  /** Run git gc to compact the repository and remove unreachable objects. */
+  gc(): void {
+    if (!fs.existsSync(this.gitDir)) {
+      return;
+    }
+    try {
+      this.runGit(["gc", "--auto", "--prune=now"]);
+    } catch {
+      // gc is best-effort; failures are non-fatal
+    }
   }
 }
 

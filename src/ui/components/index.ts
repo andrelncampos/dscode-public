@@ -7,3 +7,6 @@ export { default as FileMentionMenu } from "./FileMentionMenu";
 export { default as DropdownMenu } from "./DropdownMenu";
 export { StreamingIndicator } from "./StreamingIndicator";
 export { default as ErrorBanner } from "./ErrorBanner";
+export { StatusBar } from "./StatusBar";
+export { StatusHeader } from "./StatusHeader";
+export { PromptFooter } from "./PromptFooter";

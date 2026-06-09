@@ -257,7 +257,7 @@ function ServerRow({
 }): React.ReactElement {
   const icon =
     status.status === "ready" ? "✓" : status.status === "failed" ? "✗" : status.status === "reconnecting" ? "↻" : "●";
-  const color =
+  const steadyColor =
     status.status === "ready"
       ? "green"
       : status.status === "failed"
@@ -265,6 +265,32 @@ function ServerRow({
         : status.status === "reconnecting"
           ? "#ff9900"
           : "yellow";
+
+  // Flash animation: when a server just became ready, blink green ↔ gold for 5 s.
+  const [flashFrame, setFlashFrame] = React.useState(-1);
+  React.useEffect(() => {
+    if (status.status !== "ready") {
+      setFlashFrame(-1);
+      return;
+    }
+    // Only start flashing when transitioning into ready (flashFrame === -1).
+    if (flashFrame !== -1) return;
+    setFlashFrame(0);
+    const start = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      if (elapsed >= 5000) {
+        clearInterval(interval);
+        setFlashFrame(-1);
+        return;
+      }
+      setFlashFrame((f) => (f === -1 ? 0 : f + 1));
+    }, 400);
+    return () => clearInterval(interval);
+  }, [status.status, flashFrame]);
+
+  const flashing = flashFrame >= 0 && flashFrame < 13; // ~5 s / 400 ms ≈ 12.5
+  const color = flashing ? (flashFrame % 2 === 0 ? "green" : "#e6b800") : steadyColor;
 
   // Loading animation: cycles through (empty) → . → .. → ... → (empty) → ...
   const [dots, setDots] = React.useState(0);

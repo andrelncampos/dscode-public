@@ -1,6 +1,9 @@
-import { defaultsToThinkingMode } from "./common/model-capabilities";
+import { defaultsToThinkingMode, type ModelPricing } from "./common/model-capabilities";
 import { deepcodingSettingsSchema, formatZodErrors } from "./common/settings-schema";
 import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
+import { resolveMemorySettings } from "./memory/memory-settings";
+import type { MemorySettings } from "./memory/turn-transcript-types";
+import { atomicWriteJsonFileSync } from "./common/file-utils";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -46,6 +49,11 @@ export type PermissionSettings = {
   defaultMode?: PermissionDefaultMode;
 };
 
+export type BudgetSettings = {
+  dailyLimit?: number;
+  monthlyLimit?: number;
+};
+
 export type DeepcodingSettings = {
   env?: DeepcodingEnv;
   model?: string;
@@ -58,6 +66,9 @@ export type DeepcodingSettings = {
   notify?: string;
   mcpServers?: Record<string, McpServerConfig>;
   permissions?: PermissionSettings;
+  modelPricing?: Record<string, ModelPricing>;
+  memory?: Partial<MemorySettings>;
+  budget?: BudgetSettings;
 };
 
 export type ResolvedDeepcodingSettings = {
@@ -74,6 +85,9 @@ export type ResolvedDeepcodingSettings = {
   notify?: string;
   mcpServers?: Record<string, McpServerConfig>;
   permissions: Required<PermissionSettings>;
+  modelPricing?: Record<string, ModelPricing>;
+  memory: MemorySettings;
+  budget: BudgetSettings;
 };
 
 export type ModelConfigSelection = {
@@ -283,7 +297,7 @@ function mergeMcpServers(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function parseMaxTokens(value: unknown): number | undefined {
+function parsePositiveInt(value: unknown): number | undefined {
   if (typeof value === "number") {
     return Number.isFinite(value) && value >= 1 ? Math.round(value) : undefined;
   }
@@ -357,15 +371,22 @@ export function resolveSettingsSources(
     false;
 
   const maxTokens =
-    parseMaxTokens(systemEnv.MAX_TOKENS) ??
-    parseMaxTokens(projectSettings?.maxTokens) ??
-    parseMaxTokens(projectEnv.MAX_TOKENS) ??
-    parseMaxTokens(userSettings?.maxTokens) ??
-    parseMaxTokens(userEnv.MAX_TOKENS) ??
+    parsePositiveInt(systemEnv.MAX_TOKENS) ??
+    parsePositiveInt(projectSettings?.maxTokens) ??
+    parsePositiveInt(projectEnv.MAX_TOKENS) ??
+    parsePositiveInt(userSettings?.maxTokens) ??
+    parsePositiveInt(userEnv.MAX_TOKENS) ??
     (model === "deepseek-v4-pro" ? 65536 : 32768);
 
   const notify =
     trimString(systemEnv.NOTIFY) || trimString(projectSettings?.notify) || trimString(userSettings?.notify) || "";
+
+  const memory: MemorySettings = resolveMemorySettings(projectSettings?.memory ?? userSettings?.memory);
+
+  const budget: BudgetSettings = {
+    dailyLimit: projectSettings?.budget?.dailyLimit ?? userSettings?.budget?.dailyLimit,
+    monthlyLimit: projectSettings?.budget?.monthlyLimit ?? userSettings?.budget?.monthlyLimit,
+  };
 
   return {
     env,
@@ -381,6 +402,9 @@ export function resolveSettingsSources(
     notify: notify || undefined,
     mcpServers: mergeMcpServers(userSettings, projectSettings, userEnv, projectEnv, systemEnv),
     permissions: mergePermissions(userSettings, projectSettings),
+    modelPricing: projectSettings?.modelPricing ?? userSettings?.modelPricing,
+    memory,
+    budget,
   };
 }
 
@@ -429,6 +453,47 @@ export function applyModelConfigSelection(
 export const DEFAULT_MODEL = "deepseek-v4-pro";
 export const DEFAULT_BASE_URL = "https://api.deepseek.com";
 
+/**
+ * Canonical default settings with ALL recognised keys populated.
+ * Used as the reference to fill missing keys in user/project settings files
+ * and as documentation of every supported setting.
+ */
+export const DEFAULT_SETTINGS: DeepcodingSettings = {
+  model: DEFAULT_MODEL,
+  maxTokens: 65536,
+  thinkingEnabled: true,
+  reasoningEffort: "max",
+  debugLogEnabled: false,
+  telemetryEnabled: false,
+  permissions: {
+    allow: [],
+    deny: [],
+    ask: [],
+    defaultMode: "allowAll",
+  },
+  memory: {
+    enabled: true,
+    mode: "turn-transcript",
+    recentTurns: 10,
+    maxTurnFiles: 500,
+    maxContextChars: 30000,
+    maxUserCharsPerTurn: 6000,
+    maxAssistantCharsPerTurn: 8000,
+    maxStdoutCharsPerTurn: 4000,
+    maxStderrCharsPerTurn: 6000,
+    maxDiffCharsPerTurn: 8000,
+    compression: "zstd",
+    compressionLevel: 10,
+    stripAnsi: true,
+    collapseWhitespace: true,
+    dedupeRepeatedLines: true,
+    storeTurnTranscripts: true,
+  },
+  budget: {},
+  mcpServers: {},
+  modelPricing: {},
+};
+
 // ---------------------------------------------------------------------------
 // Settings file I/O
 // ---------------------------------------------------------------------------
@@ -441,7 +506,44 @@ export function getProjectSettingsPath(projectRoot: string): string {
   return path.join(getProjectDscodeDir(projectRoot), "settings.json");
 }
 
-export function readSettingsFile(settingsPath: string): DeepcodingSettings | null {
+/**
+ * Ensure a settings object has all canonical keys, filling in missing ones
+ * from DEFAULT_SETTINGS.  Existing values are never overwritten.
+ *
+ * Nested objects under `permissions`, `memory`, and `budget` are merged
+ * shallowly so that individual sub-keys (e.g. permissions.defaultMode)
+ * are filled when missing.
+ */
+export function ensureSettingsDefaults(settings: DeepcodingSettings): DeepcodingSettings {
+  const result = { ...settings };
+
+  // Fill missing top-level keys
+  for (const key of Object.keys(DEFAULT_SETTINGS) as Array<keyof DeepcodingSettings>) {
+    if (!(key in result)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (result as any)[key] = DEFAULT_SETTINGS[key];
+    }
+  }
+
+  // Shallow-merge known nested objects so their sub-keys are also guaranteed.
+  if (result.permissions) {
+    result.permissions = { ...DEFAULT_SETTINGS.permissions, ...result.permissions };
+  }
+  if (result.memory) {
+    result.memory = { ...DEFAULT_SETTINGS.memory, ...result.memory };
+  }
+  if (result.budget) {
+    result.budget = { ...DEFAULT_SETTINGS.budget, ...result.budget };
+  }
+
+  return result;
+}
+
+/**
+ * Read, validate, and fill in defaults for an on-disk settings file.
+ * Writes the enriched settings back if any keys were added.
+ */
+function readSettingsAndEnsureDefaults(settingsPath: string): DeepcodingSettings | null {
   try {
     if (!fs.existsSync(settingsPath)) {
       return null;
@@ -454,20 +556,36 @@ export function readSettingsFile(settingsPath: string): DeepcodingSettings | nul
     if (!result.success) {
       const errorMessage = formatZodErrors(result.error, settingsPath);
       process.stderr.write(errorMessage + "\n");
-      // Zod strips invalid fields and unknown keys, so the result only
-      // contains valid data.  Return it so the system degrades gracefully.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const partial = (result as any).data as DeepcodingSettings | undefined;
       return partial ?? ({} as DeepcodingSettings);
     }
 
-    return result.data as DeepcodingSettings;
+    const validated = result.data as DeepcodingSettings;
+    const enriched = ensureSettingsDefaults(validated);
+
+    // Write back only if keys were actually added
+    if (Object.keys(enriched).length > Object.keys(validated).length) {
+      try {
+        atomicWriteJsonFileSync(settingsPath, enriched);
+      } catch {
+        // Non-fatal — the in-memory enriched settings will be used regardless.
+      }
+    }
+
+    return enriched;
   } catch (error) {
     if (error instanceof SyntaxError) {
       process.stderr.write(`\x1b[31mInvalid JSON in settings file: ${settingsPath}\n  ${error.message}\x1b[0m\n`);
     }
     return null;
   }
+}
+
+export function readSettingsFile(settingsPath: string): DeepcodingSettings | null {
+  // Delegate to the ensure-defaults variant.  This also transparently upgrades
+  // any settings.json that was written before a key was introduced.
+  return readSettingsAndEnsureDefaults(settingsPath);
 }
 
 export function readSettings(): DeepcodingSettings | null {
@@ -485,18 +603,19 @@ export function readProjectSettings(projectRoot: string = process.cwd()): Deepco
 }
 
 function writeSettingsFile(settingsPath: string, settings: DeepcodingSettings): void {
-  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  atomicWriteJsonFileSync(settingsPath, settings);
 }
 
 export function writeSettings(settings: DeepcodingSettings): void {
   const settingsPath = getUserSettingsPath();
   writeSettingsFile(settingsPath, settings);
+  clearSettingsCache();
 }
 
 export function writeProjectSettings(settings: DeepcodingSettings, projectRoot: string = process.cwd()): void {
   const settingsPath = getProjectSettingsPath(projectRoot);
   writeSettingsFile(settingsPath, settings);
+  clearSettingsCache(projectRoot);
 }
 
 export function writeModelConfigSelection(
@@ -518,8 +637,43 @@ export function writeModelConfigSelection(
   return result;
 }
 
+// ── Settings cache with mtime-based invalidation ─────────────────────
+
+type SettingsCacheEntry = {
+  mtimeMs: number;
+  resolved: ResolvedDeepcodingSettings;
+};
+
+const settingsCache = new Map<string, SettingsCacheEntry>();
+
+function getSettingsMaxMtime(userSettingsPath: string, projectSettingsPath: string): number {
+  let maxMtime = 0;
+  try {
+    const userStat = fs.statSync(userSettingsPath);
+    maxMtime = Math.max(maxMtime, userStat.mtimeMs);
+  } catch {
+    // file doesn't exist
+  }
+  try {
+    const projStat = fs.statSync(projectSettingsPath);
+    maxMtime = Math.max(maxMtime, projStat.mtimeMs);
+  } catch {
+    // file doesn't exist
+  }
+  return maxMtime;
+}
+
 export function resolveCurrentSettings(projectRoot: string = process.cwd()): ResolvedDeepcodingSettings {
-  return resolveSettingsSources(
+  const userSettingsPath = getUserSettingsPath();
+  const projectSettingsPath = getProjectSettingsPath(projectRoot);
+  const currentMtime = getSettingsMaxMtime(userSettingsPath, projectSettingsPath);
+
+  const cached = settingsCache.get(projectRoot);
+  if (cached && cached.mtimeMs >= currentMtime) {
+    return cached.resolved;
+  }
+
+  const resolved = resolveSettingsSources(
     readSettings(),
     readProjectSettings(projectRoot),
     {
@@ -528,4 +682,16 @@ export function resolveCurrentSettings(projectRoot: string = process.cwd()): Res
     },
     process.env
   );
+
+  settingsCache.set(projectRoot, { mtimeMs: currentMtime, resolved });
+  return resolved;
+}
+
+/** Clear the in-memory settings cache (useful after writing new settings). */
+export function clearSettingsCache(projectRoot?: string): void {
+  if (projectRoot) {
+    settingsCache.delete(projectRoot);
+  } else {
+    settingsCache.clear();
+  }
 }

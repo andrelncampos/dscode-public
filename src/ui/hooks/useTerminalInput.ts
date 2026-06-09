@@ -28,8 +28,30 @@ const BACKSPACE_BYTES = new Set(["\u007F", "\b"]);
 const FORWARD_DELETE_SEQUENCES = new Set(["\u001B[3~", "\u001B[P"]);
 const HOME_SEQUENCES = new Set(["\u001B[H", "\u001B[1~", "\u001B[7~", "\u001BOH"]);
 const END_SEQUENCES = new Set(["\u001B[F", "\u001B[4~", "\u001B[8~", "\u001BOF"]);
+// Shift+Enter detection relies on modifyOtherKeys / CSI-u sequences sent by the
+// terminal. Terminals that do not support these protocols (e.g. mintty) may send
+// \n (0x0A) instead, which is treated as Ctrl+J (newline intent) by the prompt
+// handler — not as proof of Shift+Enter. See scripts/lessons.md for details.
 const SHIFT_RETURN_SEQUENCES = new Set(["\u001B\r", "\u001B[13;2u", "\u001B[13;2~", "\u001B[27;2;13~"]);
 const META_RETURN_SEQUENCES = new Set(["\u001B[13;3u", "\u001B[13;4u"]);
+
+// CSI-u Return with modifiers: ESC [ 13 ; <modifierParam> u
+// xterm modifyOtherKeys uses modifierParam = modifierBits + 1.
+// Shift = bit 1 in modifierBits, so: (modifierParam - 1) & 1 !== 0.
+const CSI_RETURN_U_RE = /^\x1B\[13;(\d+)u$/;
+
+function isShiftReturn(raw: string): boolean {
+  if (SHIFT_RETURN_SEQUENCES.has(raw)) return true;
+  // Dynamic parser for CSI-u sequences with non-canonical modifier values
+  // (e.g. Windows Terminal sends modifier=130 where 130-1=129, 129&1=1).
+  const m = raw.match(CSI_RETURN_U_RE);
+  if (m) {
+    const modifierParam = parseInt(m[1], 10);
+    const modifierBits = modifierParam - 1;
+    return (modifierBits & 1) !== 0; // Shift bit
+  }
+  return false;
+}
 const CTRL_LEFT_SEQUENCES = new Set(["\u001B[1;5D", "\u001B[5D"]);
 const CTRL_RIGHT_SEQUENCES = new Set(["\u001B[1;5C", "\u001B[5C"]);
 const META_LEFT_SEQUENCES = new Set(["\u001B[1;3D", "\u001B[3D", "\u001Bb"]);
@@ -124,10 +146,10 @@ export function parseTerminalInput(data: Buffer | string): { input: string; key:
     end: END_SEQUENCES.has(raw),
     pageDown: raw === "\u001B[6~",
     pageUp: raw === "\u001B[5~",
-    return: raw === "\r" || SHIFT_RETURN_SEQUENCES.has(raw) || META_RETURN_SEQUENCES.has(raw),
+    return: raw === "\r" || isShiftReturn(raw) || META_RETURN_SEQUENCES.has(raw),
     escape: raw === "\u001B",
     ctrl: CTRL_LEFT_SEQUENCES.has(raw) || CTRL_RIGHT_SEQUENCES.has(raw),
-    shift: SHIFT_RETURN_SEQUENCES.has(raw),
+    shift: isShiftReturn(raw),
     tab: raw === "\t" || raw === "\u001B[Z",
     backspace: BACKSPACE_BYTES.has(raw),
     delete: FORWARD_DELETE_SEQUENCES.has(raw),
@@ -185,7 +207,13 @@ export function dispatchTerminalInput(
   data: Buffer | string,
   inputHandler: (input: string, key: InputKey) => void
 ): void {
-  const raw = String(data);
+  let raw = String(data);
+
+  // CRLF normalization: Windows terminals may send \r\n for a single Enter.
+  // Normalize \r\n → \r before any parsing (does not affect CSI sequences).
+  if (raw.includes("\r\n")) {
+    raw = raw.replace(/\r\n/g, "\r");
+  }
 
   // Fix CJK composition bug on iOS terminals (Moshi, Blink, etc.).
   // iOS keyboards can send composed characters as a single packet like:
@@ -208,7 +236,7 @@ export function dispatchTerminalInput(
     return;
   }
 
-  const { input, key } = parseTerminalInput(data);
+  const { input, key } = parseTerminalInput(raw);
   inputHandler(input, key);
 }
 
@@ -255,6 +283,12 @@ export function useTerminalInput(
   // the next event lets us reconstruct the complete sequence.
   const escTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // CRLF split-chunk suppression: Windows terminals may send \r and \n as
+  // separate data events for a single Enter press. When \r is seen, a short
+  // timer window is opened. If \n arrives first in the next chunk, it is
+  // suppressed to avoid treating the pair as two separate events.
+  const crlfTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useLayoutEffect(() => {
     if (!isActive) {
       pasteRef.current.active = false;
@@ -262,6 +296,10 @@ export function useTerminalInput(
       if (escTimerRef.current !== null) {
         clearTimeout(escTimerRef.current);
         escTimerRef.current = null;
+      }
+      if (crlfTimerRef.current !== null) {
+        clearTimeout(crlfTimerRef.current);
+        crlfTimerRef.current = null;
       }
       return;
     }
@@ -344,9 +382,22 @@ export function useTerminalInput(
       }
 
       // ----- Normal (non-paste) input -----
+
+      // CRLF normalization: Windows terminals may send \r\n for a single Enter.
+      // Normalize \r\n → \r within a single chunk (preserving CSI sequences).
+      // Suppress residual \n from split CRLF (when \r and \n arrive as
+      // separate data events). The \r→timer is set after processing a lone \r.
+      let input = raw;
+      if (crlfTimerRef.current !== null && input.startsWith("\n")) {
+        clearTimeout(crlfTimerRef.current);
+        crlfTimerRef.current = null;
+        input = input.slice(1);
+        if (input.length === 0) return;
+      }
+
       // Buffer a lone ESC to handle split escape sequences (e.g. Shift+Enter
       // arriving as \u001B followed by \r on Windows terminals).
-      if (raw === "\u001B") {
+      if (input === "\u001B") {
         // Clear any previous ESC timer (shouldn't happen, but be safe).
         if (escTimerRef.current !== null) {
           clearTimeout(escTimerRef.current);
@@ -365,11 +416,21 @@ export function useTerminalInput(
       if (escTimerRef.current !== null) {
         clearTimeout(escTimerRef.current);
         escTimerRef.current = null;
-        dispatchTerminalInput("\u001B" + raw, handlerRef.current);
+        dispatchTerminalInput("\u001B" + input, handlerRef.current);
         return;
       }
 
-      dispatchTerminalInput(data, handlerRef.current);
+      // If the chunk ends with \r (Enter), open a short suppression window for
+      // a trailing \n from a split CRLF pair. The \n is suppressed at the top
+      // of handleData when it arrives within this window.
+      if (input.endsWith("\r")) {
+        if (crlfTimerRef.current !== null) clearTimeout(crlfTimerRef.current);
+        crlfTimerRef.current = setTimeout(() => {
+          crlfTimerRef.current = null;
+        }, 5);
+      }
+
+      dispatchTerminalInput(input, handlerRef.current);
     };
 
     stdin?.on("data", handleData);
