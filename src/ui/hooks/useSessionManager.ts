@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createOpenAIClient } from "../../common/openai-client";
+import { createLlmProvider } from "../../common/llm-provider-registry";
+import type { OpenAIMessageConverterOptions } from "../../common/openai-message-converter";
 import { resolveCurrentSettings } from "../../settings";
 import { SessionManager } from "../../session";
 import type { LlmStreamProgress, SessionEntry, SessionMessage, SkillInfo } from "../../session";
@@ -40,6 +42,8 @@ export function useSessionManager(projectRoot: string, callbacks: SessionManager
     return new SessionManager({
       projectRoot,
       createOpenAIClient: () => createOpenAIClient(projectRoot),
+      createLlmProvider: (converterOptions?: OpenAIMessageConverterOptions) =>
+        createLlmProvider(projectRoot, converterOptions),
       getResolvedSettings: () => resolveCurrentSettings(projectRoot),
       renderMarkdown: (text: string) => text,
       onAssistantMessage: (message: SessionMessage) => {

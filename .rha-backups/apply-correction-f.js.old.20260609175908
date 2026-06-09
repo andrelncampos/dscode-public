@@ -1,0 +1,37 @@
+// Temporary helper: reads session.ts, applies Correction F, writes back.
+// Correction F: add askPermissions: undefined to denySessionPermission method.
+const fs = require("fs");
+const path = require("path");
+
+const filePath = path.join(__dirname, "src", "session.ts");
+let content = fs.readFileSync(filePath, "utf8");
+
+const oldCode = `  denySessionPermission(sessionId: string, reason?: string): void {
+    const now = new Date().toISOString();
+    this.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      status: "permission_denied",
+      failReason: reason ?? "Permission denied by user",
+      updateTime: now,
+    }));
+  }`;
+
+const newCode = `  denySessionPermission(sessionId: string, reason?: string): void {
+    const now = new Date().toISOString();
+    this.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      status: "permission_denied",
+      askPermissions: undefined,
+      failReason: reason ?? "Permission denied by user",
+      updateTime: now,
+    }));
+  }`;
+
+if (!content.includes(oldCode)) {
+  console.error("ERROR: Could not find denySessionPermission method in session.ts");
+  process.exit(1);
+}
+
+content = content.replace(oldCode, newCode);
+fs.writeFileSync(filePath, content);
+console.log("OK: Correction F applied to session.ts");

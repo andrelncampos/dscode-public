@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box, Text } from "ink";
 import { useTerminalInput } from "../hooks";
 import type { AskPermissionRequest, AskPermissionScope, UserToolPermission } from "../../common/permissions";
@@ -42,33 +42,29 @@ const ALWAYS_ALLOWED_SCOPES = new Set<AskPermissionScope>([
 ]);
 
 export function PermissionPrompt({ requests, onSubmit, onCancel }: Props): React.ReactElement | null {
-  // Stable key derived from content, not reference
-  const requestsKey = useMemo(
-    () => requests.map((r) => `${r.toolCallId}:${r.name}:${r.command}:${r.scopes.join(",")}`).join("|"),
-    [requests]
-  );
-
   const prompts = useMemo(() => buildScopePrompts(requests), [requests]);
   const [index, setIndex] = useState(0);
   const [cursor, setCursor] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, "allow" | "deny">>({});
   const [alwaysAllows, setAlwaysAllows] = useState<PermissionScope[]>([]);
-  const submittedRef = useRef(false);
 
   const effectiveIndex = findNextPromptIndex(prompts, index, alwaysAllows);
   const prompt = prompts[effectiveIndex] ?? null;
   const options = prompt ? buildOptions(prompt.scope) : [];
 
-  // Reset only when the semantic content of requests changes
   useEffect(() => {
     setIndex(0);
     setCursor(0);
     setDecisions({});
     setAlwaysAllows([]);
-    submittedRef.current = false;
-  }, [requestsKey]);
+  }, [requests]);
 
-  // Clamp cursor when options change (e.g., after commit advances to next prompt)
+  useEffect(() => {
+    if (!prompt) {
+      onSubmit(buildResult(requests, decisions, alwaysAllows));
+    }
+  }, [alwaysAllows, decisions, onSubmit, prompt, requests]);
+
   useEffect(() => {
     if (cursor >= options.length) {
       setCursor(Math.max(0, options.length - 1));
@@ -108,42 +104,25 @@ export function PermissionPrompt({ requests, onSubmit, onCancel }: Props): React
   }
 
   function commit(kind: "allow" | "always" | "deny"): void {
-    if (!prompt) return;
-    if (submittedRef.current) return;
-
-    const toolCallId = prompt.request.toolCallId;
-    let newDecisions: Record<string, "allow" | "deny">;
-    let newAlwaysAllows: PermissionScope[];
-
+    if (!prompt) {
+      return;
+    }
     if (kind === "always" && isAlwaysAllowedScope(prompt.scope)) {
       const scope = prompt.scope;
-      newAlwaysAllows = alwaysAllows.includes(scope) ? alwaysAllows : [...alwaysAllows, scope];
-      newDecisions = {
-        ...decisions,
-        [toolCallId]: decisions[toolCallId] === "deny" ? "deny" : "allow",
-      };
+      setAlwaysAllows((prev) => (prev.includes(scope) ? prev : [...prev, scope]));
+      setDecisions((prev) => ({
+        ...prev,
+        [prompt.request.toolCallId]: prev[prompt.request.toolCallId] === "deny" ? "deny" : "allow",
+      }));
     } else {
-      newAlwaysAllows = alwaysAllows;
-      newDecisions = {
-        ...decisions,
-        [toolCallId]: kind === "deny" ? "deny" : decisions[toolCallId] === "deny" ? "deny" : "allow",
-      };
-    }
-
-    setDecisions(newDecisions);
-    if (kind === "always" && isAlwaysAllowedScope(prompt.scope)) {
-      setAlwaysAllows(newAlwaysAllows);
+      setDecisions((prev) => ({
+        ...prev,
+        [prompt.request.toolCallId]:
+          kind === "deny" ? "deny" : prev[prompt.request.toolCallId] === "deny" ? "deny" : "allow",
+      }));
     }
     setIndex(effectiveIndex + 1);
     setCursor(0);
-
-    // If this was the last prompt, submit immediately (no useEffect needed)
-    const nextIndex = effectiveIndex + 1;
-    const nextEffectiveIndex = findNextPromptIndex(prompts, nextIndex, newAlwaysAllows);
-    if (nextEffectiveIndex >= prompts.length) {
-      submittedRef.current = true;
-      onSubmit(buildResult(requests, newDecisions, newAlwaysAllows));
-    }
   }
 
   return (

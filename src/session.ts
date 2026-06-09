@@ -4,9 +4,9 @@ import * as os from "os";
 import * as crypto from "crypto";
 import matter from "gray-matter";
 import ejs from "ejs";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type { CreateLlmProviderReturn } from "./common/llm-provider-registry";
+import { DeepSeekProvider } from "./providers/deepseek-provider";
 import { launchNotifyScript } from "./common/notify";
-import { buildThinkingRequestOptions } from "./common/openai-thinking";
 import { readTextFileWithMetadata, atomicWriteFileSync, atomicWriteJsonFileSync } from "./common/file-utils";
 import {
   buildSkillDocumentsPrompt,
@@ -32,7 +32,7 @@ import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
 import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError } from "./common/error-logger";
-import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
+import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
 import { GitFileHistory, type FileHistoryCheckpointResult } from "./common/file-history";
 import { clearSessionState, getSnippet, rebuildSessionStateFromHistory } from "./common/state";
@@ -50,7 +50,7 @@ import {
 } from "./common/permissions";
 import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
-import { OpenAIMessageConverter } from "./common/openai-message-converter";
+import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
 import { recordBudgetCost } from "./common/budget-tracker";
 import type { ModelPricing } from "./common/model-capabilities";
 import { storeTurn, readRecentTurns } from "./memory/turn-memory-store";
@@ -129,16 +129,6 @@ function sanitizeProjectCodePart(value: string): string {
 
 function isUsageRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function summarizeCompletionOptions(options?: Record<string, unknown>): Record<string, unknown> | undefined {
-  if (!options) {
-    return undefined;
-  }
-  return {
-    ...options,
-    signal: options.signal instanceof AbortSignal ? { aborted: options.signal.aborted } : options.signal,
-  };
 }
 
 function addUsageValue(current: unknown, next: unknown): unknown {
@@ -305,6 +295,7 @@ export type SkillInfo = {
 type SessionManagerOptions = {
   projectRoot: string;
   createOpenAIClient: CreateOpenAIClient;
+  createLlmProvider?: (converterOptions?: OpenAIMessageConverterOptions) => CreateLlmProviderReturn;
   getResolvedSettings: () => {
     model: string;
     mcpServers?: Record<string, McpServerConfig>;
@@ -333,6 +324,8 @@ export type LlmStreamProgress = {
 export class SessionManager {
   private readonly projectRoot: string;
   private readonly createOpenAIClient: CreateOpenAIClient;
+  private readonly createLlmProvider: (converterOptions?: OpenAIMessageConverterOptions) => CreateLlmProviderReturn;
+  private readonly converterOptions: OpenAIMessageConverterOptions;
   private readonly getResolvedSettings: () => {
     model: string;
     mcpServers?: Record<string, McpServerConfig>;
@@ -362,6 +355,14 @@ export class SessionManager {
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
     this.createOpenAIClient = options.createOpenAIClient;
+    this.createLlmProvider =
+      options.createLlmProvider ??
+      ((converterOptions) => {
+        const oaiResult = this.createOpenAIClient();
+        if (!oaiResult.client) return { provider: null, createOpenAIClient: this.createOpenAIClient };
+        const deepseekProvider = new DeepSeekProvider(this.createOpenAIClient, converterOptions);
+        return { provider: deepseekProvider, createOpenAIClient: this.createOpenAIClient };
+      });
     this.getResolvedSettings = options.getResolvedSettings;
     this.onAssistantMessage = options.onAssistantMessage;
     this.onSessionEntryUpdated = options.onSessionEntryUpdated;
@@ -370,7 +371,7 @@ export class SessionManager {
     this.onProcessStdout = options.onProcessStdout;
     this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
-    this.messageConverter = new OpenAIMessageConverter({
+    const converterOptions: OpenAIMessageConverterOptions = {
       renderInitPrompt: () => this.renderInitCommandPrompt(),
       renderSteeringAddPrompt: (steeringText: string) => this.renderSteeringAddCommandPrompt(steeringText),
       renderSteeringListPrompt: () => this.renderSteeringListCommandPrompt(),
@@ -382,19 +383,18 @@ export class SessionManager {
       renderSpecAuditPrompt: (specNumber: number) => this.renderSpecAuditPrompt(specNumber),
       renderSpecListPrompt: () => this.renderSpecListPrompt(),
       renderSpecStatusPrompt: (specNumber: number | null) => this.renderSpecStatusPrompt(specNumber),
-    });
+    };
+    this.converterOptions = converterOptions;
+    this.messageConverter = new OpenAIMessageConverter(converterOptions);
   }
 
-  /**
-   * @deprecated Use messageConverter.buildMessages directly.
-   * Kept for test compatibility.
-   */
-  buildOpenAIMessages(
-    messages: SessionMessage[],
-    thinkingEnabled: boolean,
-    model: string
-  ): ChatCompletionMessageParam[] {
-    return this.messageConverter.buildMessages(messages, thinkingEnabled, model);
+  /** @deprecated Kept for test compatibility. Returns OpenAI-format messages as unknown[]. */
+  buildOpenAIMessages(messages: SessionMessage[], thinkingEnabled: boolean, model: string): unknown[] {
+    return this.messageConverter.buildMessages(messages, thinkingEnabled, model) as unknown[];
+  }
+
+  private buildConverterOptions(): OpenAIMessageConverterOptions {
+    return this.converterOptions;
   }
 
   async initMcpServers(servers?: Record<string, McpServerConfig>): Promise<void> {
@@ -518,250 +518,6 @@ export class SessionManager {
     const error = new Error("Request was aborted.");
     error.name = "AbortError";
     throw error;
-  }
-
-  private async createChatCompletionStream(
-    client: NonNullable<ReturnType<CreateOpenAIClient>["client"]>,
-    request: Record<string, unknown>,
-    options?: Record<string, unknown>,
-    sessionId?: string,
-    debug?: ChatCompletionDebugOptions
-  ): Promise<{
-    choices?: Array<{ message?: Record<string, unknown> }>;
-    usage?: ModelUsage | null;
-  }> {
-    const requestId = crypto.randomUUID();
-    const startedAt = new Date().toISOString();
-    const startedAtMs = Date.now();
-    let estimatedTokens = 0;
-    this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "start", sessionId);
-
-    // Combine user-provided abort signal with a global API request timeout.
-    // This prevents the session from hanging indefinitely when the API server
-    // accepts the connection but never sends a response.
-    let requestOptions = options;
-    if (options?.signal instanceof AbortSignal && !options.signal.aborted) {
-      const timeoutMs = resolveApiTimeoutMs(typeof request.model === "string" ? request.model : undefined);
-      const timeoutSignal = AbortSignal.timeout(timeoutMs);
-      const combinedSignal = AbortSignal.any([options.signal, timeoutSignal]);
-      requestOptions = { ...options, signal: combinedSignal };
-    }
-
-    const streamRequest = {
-      ...request,
-      stream: true,
-      stream_options: {
-        ...(isUsageRecord(request.stream_options) ? request.stream_options : {}),
-        include_usage: true,
-      },
-    };
-
-    let response: unknown;
-    try {
-      response = await (
-        client.chat.completions.create as unknown as (
-          body: Record<string, unknown>,
-          options?: Record<string, unknown>
-        ) => Promise<unknown>
-      )(streamRequest, requestOptions);
-    } catch (error) {
-      this.logChatCompletionDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "SessionManager.createChatCompletionStream:create",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL: debug?.baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        error: normalizeDebugError(error),
-      });
-      logApiError({
-        timestamp: new Date().toISOString(),
-        location: "SessionManager.createChatCompletionStream:create",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        error: {
-          name: error instanceof Error ? error.name : "UnknownError",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        request: streamRequest,
-      });
-      this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
-      throw error;
-    }
-
-    if (!response || typeof (response as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] !== "function") {
-      this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
-      this.logChatCompletionDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "SessionManager.createChatCompletionStream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL: debug?.baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        response,
-      });
-      return response as { choices?: Array<{ message?: Record<string, unknown> }>; usage?: ModelUsage | null };
-    }
-
-    let content = "";
-    let reasoningContent = "";
-    let refusal: string | null = null;
-    let usage: ModelUsage | null = null;
-    const responseChunks: unknown[] = [];
-    const toolCallsByIndex = new Map<
-      number,
-      {
-        id?: string;
-        type?: string;
-        function?: { name?: string; arguments?: string };
-      }
-    >();
-
-    const trackText = (value: unknown) => {
-      if (typeof value !== "string" || value.length === 0) {
-        return;
-      }
-      estimatedTokens += this.estimateStreamTokens(value);
-      this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "update", sessionId);
-    };
-
-    try {
-      for await (const chunk of response as AsyncIterable<Record<string, unknown>>) {
-        if (debug?.enabled) {
-          responseChunks.push(chunk);
-        }
-        if ("usage" in chunk && chunk.usage != null) {
-          usage = chunk.usage as ModelUsage;
-        }
-
-        const choices = Array.isArray(chunk.choices) ? chunk.choices : [];
-        for (const choice of choices) {
-          const delta = isUsageRecord(choice) && isUsageRecord(choice.delta) ? choice.delta : null;
-          if (!delta) {
-            continue;
-          }
-
-          const contentDelta = delta.content;
-          if (typeof contentDelta === "string") {
-            content += contentDelta;
-            trackText(contentDelta);
-          }
-
-          const reasoningDelta = delta.reasoning_content ?? delta.reasoning;
-          if (typeof reasoningDelta === "string") {
-            reasoningContent += reasoningDelta;
-            trackText(reasoningDelta);
-          }
-
-          if (typeof delta.refusal === "string") {
-            refusal = `${refusal ?? ""}${delta.refusal}`;
-            trackText(delta.refusal);
-          }
-
-          const rawToolCalls = delta.tool_calls;
-          if (Array.isArray(rawToolCalls)) {
-            for (const rawToolCall of rawToolCalls) {
-              if (!isUsageRecord(rawToolCall)) {
-                continue;
-              }
-              const index = typeof rawToolCall.index === "number" ? rawToolCall.index : toolCallsByIndex.size;
-              const current = toolCallsByIndex.get(index) ?? {};
-              if (typeof rawToolCall.id === "string") {
-                current.id = rawToolCall.id;
-              }
-              if (typeof rawToolCall.type === "string") {
-                current.type = rawToolCall.type;
-              }
-              const rawFunction = isUsageRecord(rawToolCall.function) ? rawToolCall.function : null;
-              if (rawFunction) {
-                current.function = current.function ?? {};
-                if (typeof rawFunction.name === "string") {
-                  current.function.name = `${current.function.name ?? ""}${rawFunction.name}`;
-                  trackText(rawFunction.name);
-                }
-                if (typeof rawFunction.arguments === "string") {
-                  current.function.arguments = `${current.function.arguments ?? ""}${rawFunction.arguments}`;
-                  trackText(rawFunction.arguments);
-                }
-              }
-              toolCallsByIndex.set(index, current);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.logChatCompletionDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "SessionManager.createChatCompletionStream:stream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL: debug?.baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        responseChunks,
-        error: normalizeDebugError(error),
-      });
-      logApiError({
-        timestamp: new Date().toISOString(),
-        location: "SessionManager.createChatCompletionStream:stream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        error: {
-          name: error instanceof Error ? error.name : "UnknownError",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        request: streamRequest,
-      });
-      throw error;
-    } finally {
-      this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
-    }
-
-    const toolCalls = Array.from(toolCallsByIndex.entries())
-      .sort(([left], [right]) => left - right)
-      .map(([, toolCall]) => toolCall);
-    const normalizedToolCalls = this.normalizeLlmToolCalls(toolCalls);
-    const message: Record<string, unknown> = { content };
-    if (normalizedToolCalls) {
-      message.tool_calls = normalizedToolCalls;
-    }
-    if (reasoningContent.length > 0) {
-      message.reasoning_content = reasoningContent;
-    }
-    if (refusal != null) {
-      message.refusal = refusal;
-    }
-
-    const finalResponse = {
-      choices: [{ message }],
-      usage,
-    };
-    this.logChatCompletionDebug(debug, {
-      timestamp: new Date().toISOString(),
-      location: debug?.location ?? "SessionManager.createChatCompletionStream",
-      requestId,
-      sessionId,
-      model: typeof request.model === "string" ? request.model : undefined,
-      baseURL: debug?.baseURL,
-      durationMs: Date.now() - startedAtMs,
-      params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-      request: streamRequest,
-      responseChunks,
-      response: finalResponse,
-    });
-    return finalResponse;
   }
 
   private logChatCompletionDebug(
@@ -1246,18 +1002,8 @@ export class SessionManager {
     permissionPrompt?: UserPromptContent
   ): Promise<void> {
     const startedAt = Date.now();
-    const {
-      client,
-      model,
-      baseURL,
-      temperature,
-      thinkingEnabled,
-      reasoningEffort,
-      debugLogEnabled,
-      notify,
-      env,
-      maxTokens,
-    } = this.createOpenAIClient();
+    const { client, model, temperature, thinkingEnabled, reasoningEffort, notify, env, maxTokens } =
+      this.createOpenAIClient();
     const { modelPricing } = this.getResolvedSettings();
     const effortManager = new RuntimeReasoningEffortManager();
     let currentReasoningEffort: ReasoningEffort = reasoningEffort ?? "max";
@@ -1355,41 +1101,128 @@ export class SessionManager {
           await this.compactSession(sessionId, sessionController.signal);
         }
 
-        const messages = this.messageConverter.buildMessages(
-          this.listSessionMessages(sessionId),
-          thinkingEnabled,
-          model
-        );
-        const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, currentReasoningEffort);
-        const response = await this.createChatCompletionStream(
-          client,
-          {
-            model,
-            ...(temperature !== undefined && !thinkingEnabled ? { temperature } : {}),
-            messages,
-            ...((maxTokens ?? 0) > 0 ? { max_tokens: maxTokens } : {}),
-            tools: cachedTools,
-            user_id: sessionId,
-            ...thinkingOptions,
-          },
-          { signal: sessionController.signal },
-          sessionId,
-          {
-            enabled: debugLogEnabled,
-            location: "SessionManager.activateSession",
-            baseURL,
-            params: { iteration, temperature, thinkingEnabled, reasoningEffort },
-          }
-        );
+        const { provider } = this.createLlmProvider(this.buildConverterOptions());
+        if (!provider) {
+          this.updateSessionEntry(sessionId, (entry) => ({
+            ...entry,
+            status: "failed",
+            failReason: "API key not found",
+            updateTime: new Date().toISOString(),
+          }));
+          this.onAssistantMessage(
+            this.buildAssistantMessage(
+              sessionId,
+              "API key not found. Please configure ~/.dscode/settings.json or ./.dscode/settings.json.",
+              null
+            ),
+            false
+          );
+          return;
+        }
 
-        const message = response.choices?.[0]?.message;
-        const rawContent = message?.content;
-        const content = typeof rawContent === "string" ? rawContent : "";
-        const rawToolCalls = (message as { tool_calls?: unknown[] } | undefined)?.tool_calls ?? null;
-        toolCalls = this.normalizeLlmToolCalls(rawToolCalls);
-        const rawThinking = (message as { reasoning_content?: unknown } | undefined)?.reasoning_content;
-        const thinking = typeof rawThinking === "string" ? rawThinking : null;
-        const refusal = (message as { refusal?: string } | undefined)?.refusal ?? null;
+        // Emit stream progress start
+        const requestId = crypto.randomUUID();
+        const streamStartedAt = new Date().toISOString();
+        let estimatedTokens = 0;
+        const trackText = (value: unknown) => {
+          if (typeof value !== "string" || value.length === 0) return;
+          estimatedTokens += this.estimateStreamTokens(value);
+          this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "update", sessionId);
+        };
+        this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "start", sessionId);
+
+        const stream = provider.chat({
+          model,
+          messages: this.listSessionMessages(sessionId),
+          tools: cachedTools,
+          temperature: thinkingEnabled ? undefined : temperature,
+          maxTokens: (maxTokens ?? 0) > 0 ? maxTokens : undefined,
+          signal: sessionController.signal,
+          providerOptions: { thinkingEnabled, reasoningEffort: currentReasoningEffort },
+        });
+
+        let content = "";
+        let reasoningContent = "";
+        let streamUsage: ModelUsage | null = null;
+        const toolCallsByIndex = new Map<
+          number,
+          { id?: string; type?: string; function?: { name?: string; arguments?: string } }
+        >();
+
+        try {
+          for await (const event of stream) {
+            if (event.type === "usage") {
+              streamUsage = event.usage;
+              continue;
+            }
+            if (event.type === "text_delta") {
+              content += event.text;
+              trackText(event.text);
+              continue;
+            }
+            if (event.type === "reasoning_delta") {
+              reasoningContent += event.text;
+              trackText(event.text);
+              continue;
+            }
+            if (event.type === "tool_call_start") {
+              const index = toolCallsByIndex.size;
+              toolCallsByIndex.set(index, {
+                id: event.id,
+                type: "function",
+                function: { name: event.name, arguments: "" },
+              });
+              trackText(event.name);
+              continue;
+            }
+            if (event.type === "tool_call_delta") {
+              // Match by id, preferring the most recently added entry
+              // (handles non-streaming responses where multiple tool calls share the same id)
+              let lastMatchedIndex = -1;
+              for (const [idx, tc] of toolCallsByIndex) {
+                if (tc.id === event.id) {
+                  lastMatchedIndex = idx;
+                }
+              }
+              if (lastMatchedIndex >= 0) {
+                const tc = toolCallsByIndex.get(lastMatchedIndex);
+                if (tc) {
+                  tc.function!.arguments! += event.arguments;
+                  trackText(event.arguments);
+                }
+              }
+              continue;
+            }
+            if (event.type === "error") {
+              throw event.error;
+            }
+          }
+        } catch (error) {
+          logApiError({
+            timestamp: new Date().toISOString(),
+            location: "SessionManager.activateSession:stream",
+            requestId,
+            sessionId,
+            model,
+            request: {},
+            error: {
+              name: error instanceof Error ? error.name : "UnknownError",
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            },
+          });
+          this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "end", sessionId);
+          throw error;
+        }
+
+        this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "end", sessionId);
+
+        const toolCallsArray = Array.from(toolCallsByIndex.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([, tc]) => tc);
+        toolCalls = this.normalizeLlmToolCalls(toolCallsArray);
+        const thinking = reasoningContent.length > 0 ? reasoningContent : null;
+        const refusal = null; // intentionally not tracked — refusal text merged into content
         // const html = content ? this.renderMarkdown(content) : "";
 
         if (this.isInterrupted(sessionId)) {
@@ -1416,7 +1249,7 @@ export class SessionManager {
         this.onAssistantMessage(assistantMessage, true);
 
         let waitingForUser = false;
-        const responseUsage = response.usage ?? null;
+        const responseUsage = streamUsage;
         if (responseUsage) {
           const budgetWarning = recordBudgetCost(
             this.projectRoot,
@@ -1547,8 +1380,8 @@ export class SessionManager {
 
   async compactSession(sessionId: string, signal?: AbortSignal): Promise<void> {
     this.throwIfAborted(signal);
-    const { client, baseURL, debugLogEnabled } = this.createOpenAIClient();
-    if (!client) {
+    const { provider } = this.createLlmProvider();
+    if (!provider) {
       return;
     }
     const sessionMessages = this.listSessionMessages(sessionId).filter((message) => !message.compacted);
@@ -1593,24 +1426,34 @@ export class SessionManager {
     // Use a cheaper model variant for compaction, falling back to the current model
     const resolvedModel = this.getResolvedSettings().model;
     const compactionModel = resolvedModel.includes("pro") ? resolvedModel.replace("pro", "flash") : resolvedModel;
-    const response = await this.createChatCompletionStream(
-      client,
-      {
-        model: compactionModel,
-        messages: [{ role: "user", content: compactPrompt }],
-      },
-      signal ? { signal } : undefined,
+
+    const compactMessage: SessionMessage = {
+      id: crypto.randomUUID(),
       sessionId,
-      {
-        enabled: debugLogEnabled,
-        location: "SessionManager.compactSession",
-        baseURL,
-        params: { compactionModel },
-      }
-    );
+      role: "user",
+      content: compactPrompt,
+      contentParams: null,
+      messageParams: null,
+      compacted: false,
+      visible: false,
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString(),
+    };
+
+    let compactedContent = "";
+    let compactionUsage: ModelUsage | null = null;
+    const stream = provider.chat({
+      model: compactionModel,
+      messages: [compactMessage],
+      signal: signal ?? undefined,
+    });
+    for await (const event of stream) {
+      if (event.type === "text_delta") compactedContent += event.text;
+      if (event.type === "usage") compactionUsage = event.usage;
+    }
+
     this.throwIfAborted(signal);
-    const rawLlmResponse = response.choices?.[0]?.message?.content;
-    const llmResponse = typeof rawLlmResponse === "string" ? rawLlmResponse : "";
+    const llmResponse = compactedContent;
     let compactedSummary: string;
     try {
       const parsed = JSON.parse(llmResponse);
@@ -1623,7 +1466,7 @@ export class SessionManager {
     }
 
     const now = new Date().toISOString();
-    const responseUsage = response.usage ?? null;
+    const responseUsage = compactionUsage;
     if (responseUsage) {
       const budgetWarning = recordBudgetCost(
         this.projectRoot,

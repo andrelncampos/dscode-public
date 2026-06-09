@@ -293,13 +293,7 @@ export function AppStateProvider({
       setSessionCwd(entry.cwd);
       setRunningProcesses(entry.processes);
       setActiveStatus(entry.status);
-      // Only keep askPermissions when status is ask_permission; clear otherwise
-      // to prevent stale arrays from retriggering the PermissionPrompt after submission
-      if (entry.status === "ask_permission") {
-        setActiveAskPermissions(entry.askPermissions);
-      } else {
-        setActiveAskPermissions(undefined);
-      }
+      setActiveAskPermissions(entry.askPermissions);
     },
     onLlmStreamProgress: (() => {
       let lastUpdate = 0;
