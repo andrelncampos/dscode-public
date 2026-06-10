@@ -122,7 +122,7 @@ test("OpenAIMessageConverter injects reasoning_content for assistant messages in
   const nonThinking = c.buildMessages(messages, false, "test-model") as Array<{ reasoning_content?: string }>;
 
   assert.equal(thinking[0]?.reasoning_content, "");
-  assert.equal(Object.prototype.hasOwnProperty.call(nonThinking[0] ?? {}, "reasoning_content"), false);
+  assert.equal(Object.hasOwn(nonThinking[0] ?? {}, "reasoning_content"), false);
 });
 
 test("OpenAIMessageConverter preserves existing reasoning_content when tool calls are present", () => {

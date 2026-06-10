@@ -5,6 +5,7 @@ import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm
 import type { ModelUsage } from "../session";
 import type { CreateOpenAIClient } from "../tools/executor";
 import { isMultimodalModel } from "../common/model-capabilities";
+import { withRetry } from "../common/api-retry";
 
 const DEEPSEEK_MODEL_PREFIX = "deepseek-";
 
@@ -50,9 +51,6 @@ export class DeepSeekProvider implements ILlmProvider {
 
     const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort);
 
-    const timeoutSignal = AbortSignal.timeout(this.getTimeoutMs(options.model));
-    const composedSignal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
-
     const streamRequest: Record<string, unknown> = {
       model: options.model,
       messages: openaiMessages,
@@ -69,10 +67,19 @@ export class DeepSeekProvider implements ILlmProvider {
       streamRequest.max_tokens = options.maxTokens;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawResponse = await client.chat.completions.create(streamRequest as any, {
-      signal: composedSignal,
-    });
+    // Retry transient failures (429, 502, 503, network errors) with exponential backoff.
+    // Timeout signals are recreated per attempt so each retry gets a fresh timeout window.
+    const rawResponse = await withRetry(
+      () => {
+        const attemptTimeout = AbortSignal.timeout(this.getTimeoutMs(options.model));
+        const attemptSignal = options.signal ? AbortSignal.any([options.signal, attemptTimeout]) : attemptTimeout;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return client.chat.completions.create(streamRequest as any, {
+          signal: attemptSignal,
+        });
+      },
+      { userSignal: options.signal }
+    );
 
     // Handle non-streaming responses (tests, older API versions)
     const response = rawResponse as unknown as Record<string, unknown>;

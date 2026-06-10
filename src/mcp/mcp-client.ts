@@ -1,6 +1,6 @@
-import { spawn, type ChildProcess } from "child_process";
-import { createInterface, type Interface } from "readline";
-import * as path from "path";
+import { spawn, type ChildProcess } from "node:child_process";
+import { createInterface, type Interface } from "node:readline";
+import * as path from "node:path";
 import { killProcessTree } from "../common/process-tree";
 
 type JsonRpcRequest = {
@@ -129,93 +129,91 @@ export class McpClient {
   }
 
   async connect(timeoutMs: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.intentionallyDisconnected = false;
-      const childEnv = {
-        ...process.env,
-        ...this.env,
-      };
-      const args = this.withNpxYesArg(this.command, this.args);
-      const spawnSpec = createMcpSpawnSpec(this.command, args);
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    this.intentionallyDisconnected = false;
+    const childEnv = {
+      ...process.env,
+      ...this.env,
+    };
+    const args = this.withNpxYesArg(this.command, this.args);
+    const spawnSpec = createMcpSpawnSpec(this.command, args);
 
-      this.process = spawn(spawnSpec.command, spawnSpec.args, {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: childEnv,
-        shell: spawnSpec.shell,
-        windowsHide: spawnSpec.windowsHide,
-      });
-
-      let resolved = false;
-      const safeReject = (err: Error) => {
-        if (!resolved) {
-          resolved = true;
-          reject(err);
-        }
-      };
-
-      this.process.on("error", (err) => {
-        safeReject(
-          this.withStderr(`Failed to start MCP server "${this.serverName}" (${this.command}): ${err.message}`)
-        );
-      });
-
-      this.process.on("close", (code) => {
-        const reason = `MCP server "${this.serverName}" exited with code ${code}`;
-        const error = this.withStderr(reason);
-        for (const [, pending] of this.pendingRequests) {
-          clearTimeout(pending.timer);
-          pending.reject(error);
-        }
-        this.pendingRequests.clear();
-        this.reader?.close();
-        this.reader = null;
-        this.process = null;
-        if (!this.intentionallyDisconnected && this.disconnectHandler) {
-          this.disconnectHandler(reason);
-        }
-        safeReject(error);
-      });
-
-      if (this.process.stderr) {
-        this.process.stderr.on("data", (data: Buffer) => {
-          this.appendStderr(data.toString("utf8"));
-        });
-      }
-
-      this.reader = createInterface({ input: this.process.stdout! });
-      this.reader.on("line", (line: string) => {
-        this.handleLine(line);
-      });
-
-      // Send initialize request (MCP protocol handshake)
-      this.sendRequest(
-        "initialize",
-        {
-          protocolVersion: "2025-03-26",
-          capabilities: {},
-          clientInfo: { name: "deepcode-cli", version: "0.1.0" },
-        },
-        timeoutMs
-      )
-        .then((result) => {
-          // Validate protocol version from server response (per MCP spec §4.2.1.2)
-          const initResult = result as { protocolVersion?: string } | undefined;
-          const serverVersion = initResult?.protocolVersion;
-          if (serverVersion && serverVersion !== "2025-03-26" && serverVersion !== "2024-11-05") {
-            reject(
-              new Error(
-                `Unsupported MCP protocol version "${serverVersion}" from server "${this.serverName}". ` +
-                  `Client supports 2025-03-26 and 2024-11-05.`
-              )
-            );
-            return;
-          }
-          // Send initialized notification
-          this.sendNotification("notifications/initialized");
-          resolve();
-        })
-        .catch(reject);
+    this.process = spawn(spawnSpec.command, spawnSpec.args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: childEnv,
+      shell: spawnSpec.shell,
+      windowsHide: spawnSpec.windowsHide,
     });
+
+    let resolved = false;
+    const safeReject = (err: Error) => {
+      if (!resolved) {
+        resolved = true;
+        reject(err);
+      }
+    };
+
+    this.process.on("error", (err) => {
+      safeReject(this.withStderr(`Failed to start MCP server "${this.serverName}" (${this.command}): ${err.message}`));
+    });
+
+    this.process.on("close", (code) => {
+      const reason = `MCP server "${this.serverName}" exited with code ${code}`;
+      const error = this.withStderr(reason);
+      for (const [, pending] of this.pendingRequests) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+      this.pendingRequests.clear();
+      this.reader?.close();
+      this.reader = null;
+      this.process = null;
+      if (!this.intentionallyDisconnected && this.disconnectHandler) {
+        this.disconnectHandler(reason);
+      }
+      safeReject(error);
+    });
+
+    if (this.process.stderr) {
+      this.process.stderr.on("data", (data: Buffer) => {
+        this.appendStderr(data.toString("utf8"));
+      });
+    }
+
+    this.reader = createInterface({ input: this.process.stdout! });
+    this.reader.on("line", (line: string) => {
+      this.handleLine(line);
+    });
+
+    // Send initialize request (MCP protocol handshake)
+    this.sendRequest(
+      "initialize",
+      {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "deepcode-cli", version: "0.1.0" },
+      },
+      timeoutMs
+    )
+      .then((result) => {
+        // Validate protocol version from server response (per MCP spec §4.2.1.2)
+        const initResult = result as { protocolVersion?: string } | undefined;
+        const serverVersion = initResult?.protocolVersion;
+        if (serverVersion && serverVersion !== "2025-03-26" && serverVersion !== "2024-11-05") {
+          reject(
+            new Error(
+              `Unsupported MCP protocol version "${serverVersion}" from server "${this.serverName}". ` +
+                `Client supports 2025-03-26 and 2024-11-05.`
+            )
+          );
+          return;
+        }
+        // Send initialized notification
+        this.sendNotification("notifications/initialized");
+        resolve();
+      })
+      .catch(reject);
+    return promise;
   }
 
   async listTools(timeoutMs: number): Promise<McpToolDefinition[]> {
@@ -302,25 +300,25 @@ export class McpClient {
   }
 
   private sendRequest(method: string, params: Record<string, unknown>, timeoutMs = 30_000): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      const id = this.nextId++;
-      const request: JsonRpcRequest = {
-        jsonrpc: "2.0",
-        id,
-        method,
-        params,
-      };
-      const timer = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(
-          this.withStderr(
-            `Timed out after ${timeoutMs}ms waiting for MCP server "${this.serverName}" to respond to ${method}`
-          )
-        );
-      }, timeoutMs);
-      this.pendingRequests.set(id, { resolve, reject, timer });
-      this.writeLine(JSON.stringify(request));
-    });
+    const { promise, resolve, reject } = Promise.withResolvers<unknown>();
+    const id = this.nextId++;
+    const request: JsonRpcRequest = {
+      jsonrpc: "2.0",
+      id,
+      method,
+      params,
+    };
+    const timer = setTimeout(() => {
+      this.pendingRequests.delete(id);
+      reject(
+        this.withStderr(
+          `Timed out after ${timeoutMs}ms waiting for MCP server "${this.serverName}" to respond to ${method}`
+        )
+      );
+    }, timeoutMs);
+    this.pendingRequests.set(id, { resolve, reject, timer });
+    this.writeLine(JSON.stringify(request));
+    return promise;
   }
 
   private sendNotification(method: string, params?: Record<string, unknown>): void {

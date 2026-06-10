@@ -275,6 +275,7 @@ export function AppStateProvider({
       onLlmStreamProgress: (progress) => callbacksRef.current.onLlmStreamProgress(progress),
       onMcpStatusChanged: () => callbacksRef.current.onMcpStatusChanged(),
       onProcessStdout: (pid, chunk) => callbacksRef.current.onProcessStdout(pid, chunk),
+      terminalTitleTemplate: resolveCurrentSettings(projectRoot).terminalTitleTemplate,
     });
   }, [projectRoot]);
 
@@ -291,6 +292,7 @@ export function AppStateProvider({
       setStatusLine(buildStatusLine(entry));
       setLastBashCommand(entry.lastBashCommand);
       setSessionCwd(entry.cwd);
+      sessionManager.updateTerminalTitle(entry.cwd);
       setRunningProcesses(entry.processes);
       setActiveStatus(entry.status);
       // Only keep askPermissions when status is ask_permission; clear otherwise

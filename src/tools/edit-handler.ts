@@ -1,4 +1,4 @@
-import * as fs from "fs";
+import * as fs from "node:fs";
 import { z } from "zod";
 import { buildThinkingRequestOptions } from "../common/openai-thinking";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
@@ -812,7 +812,7 @@ function parseCorrectedEditStrings(content: string): CorrectedEditStrings | null
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return RegExp.escape(value);
 }
 
 function normalizeLooseText(value: string): string {

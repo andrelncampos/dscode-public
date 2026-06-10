@@ -27,30 +27,28 @@ function detectZstd(): boolean {
   const candidate = zlib as ZstdCapableZlib;
   if (typeof candidate.zstdCompress === "function" && typeof candidate.zstdDecompress === "function") {
     zstdCompressFn = async (buffer: Buffer, level: number): Promise<Buffer> => {
-      return new Promise((resolve, reject) => {
-        (
-          candidate.zstdCompress as (
-            buf: Buffer,
-            level: number,
-            cb: (err: Error | null, result: Buffer) => void
-          ) => void
-        )(buffer, level, (err: Error | null, result: Buffer) => {
+      const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+      (candidate.zstdCompress as (buf: Buffer, level: number, cb: (err: Error | null, result: Buffer) => void) => void)(
+        buffer,
+        level,
+        (err: Error | null, result: Buffer) => {
           if (err) reject(err);
           else resolve(result);
-        });
-      });
+        }
+      );
+      return promise;
     };
 
     zstdDecompressFn = async (buffer: Buffer): Promise<Buffer> => {
-      return new Promise((resolve, reject) => {
-        (candidate.zstdDecompress as (buf: Buffer, cb: (err: Error | null, result: Buffer) => void) => void)(
-          buffer,
-          (err: Error | null, result: Buffer) => {
-            if (err) reject(err);
-            else resolve(result);
-          }
-        );
-      });
+      const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+      (candidate.zstdDecompress as (buf: Buffer, cb: (err: Error | null, result: Buffer) => void) => void)(
+        buffer,
+        (err: Error | null, result: Buffer) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+      return promise;
     };
 
     zstdAvailable = true;
@@ -99,16 +97,16 @@ export async function compressTurn(jsonString: string, settings: MemorySettings)
 }
 
 async function brotliCompressBuffer(buffer: Buffer, level: number): Promise<Buffer> {
-  return new Promise<Buffer>((resolve, reject) => {
-    zlib.brotliCompress(
-      buffer,
-      { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level } },
-      (err: Error | null, result: Buffer) => {
-        if (err) reject(err);
-        else resolve(result);
-      }
-    );
-  });
+  const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+  zlib.brotliCompress(
+    buffer,
+    { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level } },
+    (err: Error | null, result: Buffer) => {
+      if (err) reject(err);
+      else resolve(result);
+    }
+  );
+  return promise;
 }
 
 /**
@@ -139,12 +137,12 @@ export async function decompressTurn(buffer: Buffer, algorithm: "zstd" | "brotli
 }
 
 async function decompressBrotli(buffer: Buffer): Promise<string> {
-  const decompressed = await new Promise<Buffer>((resolve, reject) => {
-    zlib.brotliDecompress(buffer, (err: Error | null, result: Buffer) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
+  const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+  zlib.brotliDecompress(buffer, (err: Error | null, result: Buffer) => {
+    if (err) reject(err);
+    else resolve(result);
   });
+  const decompressed = await promise;
   return decompressed.toString("utf8");
 }
 

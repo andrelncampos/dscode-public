@@ -1,8 +1,8 @@
-import { spawn, type ChildProcess, type SpawnOptions } from "child_process";
+import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import React from "react";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { render, type Instance } from "ink";
 import { UpdatePrompt, type UpdatePromptChoice } from "../ui";
 import { killProcessTree } from "./process-tree";
@@ -133,48 +133,48 @@ async function promptUpdateChoice({
   latestVersion: string;
   installCommand: string;
 }): Promise<"install" | "ignore-once" | "ignore-version"> {
-  return new Promise<UpdatePromptChoice>((resolve) => {
-    let selected = false;
-    let instance: Instance | null = null;
-    const handleSelect = (choice: UpdatePromptChoice): void => {
-      if (selected) {
-        return;
-      }
-      selected = true;
-      resolve(choice);
-      instance?.unmount();
-    };
+  const { promise, resolve } = Promise.withResolvers<UpdatePromptChoice>();
+  let selected = false;
+  let instance: Instance | null = null;
+  const handleSelect = (choice: UpdatePromptChoice): void => {
+    if (selected) {
+      return;
+    }
+    selected = true;
+    resolve(choice);
+    instance?.unmount();
+  };
 
-    instance = render(
-      React.createElement(UpdatePrompt, {
-        currentVersion,
-        latestVersion,
-        installCommand,
-        onSelect: handleSelect,
-      }),
-      { exitOnCtrlC: false }
-    );
-  });
+  instance = render(
+    React.createElement(UpdatePrompt, {
+      currentVersion,
+      latestVersion,
+      installCommand,
+      onSelect: handleSelect,
+    }),
+    { exitOnCtrlC: false }
+  );
+  return promise;
 }
 
 async function runNpmInstallGlobal(installSpec: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const child = spawnNpm(["install", "-g", installSpec], {
-      stdio: "inherit",
-    });
-    child.on("error", (error) => {
-      process.stderr.write(`Failed to start npm install: ${error.message}\n`);
-      resolve(false);
-    });
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve(true);
-        return;
-      }
-      process.stderr.write(`npm install exited with code ${code ?? "unknown"}.\n`);
-      resolve(false);
-    });
+  const { promise, resolve } = Promise.withResolvers<boolean>();
+  const child = spawnNpm(["install", "-g", installSpec], {
+    stdio: "inherit",
   });
+  child.on("error", (error) => {
+    process.stderr.write(`Failed to start npm install: ${error.message}\n`);
+    resolve(false);
+  });
+  child.on("close", (code) => {
+    if (code === 0) {
+      resolve(true);
+      return;
+    }
+    process.stderr.write(`npm install exited with code ${code ?? "unknown"}.\n`);
+    resolve(false);
+  });
+  return promise;
 }
 
 async function fetchLatestNpmVersion(packageName: string): Promise<string | null> {
@@ -189,45 +189,45 @@ function runNpmViewLatestVersion(
   packageName: string,
   timeoutMs: number
 ): Promise<{ ok: true; stdout: string } | { ok: false }> {
-  return new Promise((resolve) => {
-    const args = ["view", packageName, "dist-tags.latest", "--json"];
-    const child = spawnNpm(args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    let settled = false;
-    const finish = (result: { ok: true; stdout: string } | { ok: false }): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      resolve(result);
-    };
-
-    const timer = setTimeout(() => {
-      if (typeof child.pid === "number") {
-        killProcessTree(child.pid, "SIGTERM", { killGroupOnNonWindows: false });
-      } else {
-        child.kill();
-      }
-      finish({ ok: false });
-    }, timeoutMs);
-
-    child.stdout?.on("data", (chunk: string | Buffer) => {
-      if (stdout.length >= MAX_NPM_VIEW_OUTPUT_CHARS) {
-        return;
-      }
-      const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
-      stdout += text.slice(0, MAX_NPM_VIEW_OUTPUT_CHARS - stdout.length);
-    });
-
-    child.on("error", () => finish({ ok: false }));
-    child.on("close", (code) => {
-      finish(code === 0 ? { ok: true, stdout } : { ok: false });
-    });
+  const { promise, resolve } = Promise.withResolvers<{ ok: true; stdout: string } | { ok: false }>();
+  const args = ["view", packageName, "dist-tags.latest", "--json"];
+  const child = spawnNpm(args, {
+    stdio: ["ignore", "pipe", "pipe"],
   });
+
+  let stdout = "";
+  let settled = false;
+  const finish = (result: { ok: true; stdout: string } | { ok: false }): void => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    clearTimeout(timer);
+    resolve(result);
+  };
+
+  const timer = setTimeout(() => {
+    if (typeof child.pid === "number") {
+      killProcessTree(child.pid, "SIGTERM", { killGroupOnNonWindows: false });
+    } else {
+      child.kill();
+    }
+    finish({ ok: false });
+  }, timeoutMs);
+
+  child.stdout?.on("data", (chunk: string | Buffer) => {
+    if (stdout.length >= MAX_NPM_VIEW_OUTPUT_CHARS) {
+      return;
+    }
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    stdout += text.slice(0, MAX_NPM_VIEW_OUTPUT_CHARS - stdout.length);
+  });
+
+  child.on("error", () => finish({ ok: false }));
+  child.on("close", (code) => {
+    finish(code === 0 ? { ok: true, stdout } : { ok: false });
+  });
+  return promise;
 }
 
 function spawnNpm(args: string[], options: SpawnOptions): ChildProcess {

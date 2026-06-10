@@ -1,5 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { ModelUsage } from "../session";
 import { computeUsageCost, formatCost, DEFAULT_MODEL_PRICING, type ModelPricing } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";

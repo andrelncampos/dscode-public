@@ -285,7 +285,7 @@ test("SessionManager repairs legacy thinking tool calls missing reasoning conten
   }>;
 
   assert.equal(thinkingMessages[0]?.reasoning_content, "");
-  assert.equal(Object.prototype.hasOwnProperty.call(nonThinkingMessages[0] ?? {}, "reasoning_content"), false);
+  assert.equal(Object.hasOwn(nonThinkingMessages[0] ?? {}, "reasoning_content"), false);
 });
 
 test("SessionManager replays normal assistant messages with reasoning content in thinking mode", () => {
@@ -324,7 +324,7 @@ test("SessionManager replays normal assistant messages with reasoning content in
   }>;
 
   assert.equal(thinkingMessages[0]?.reasoning_content, "");
-  assert.equal(Object.prototype.hasOwnProperty.call(nonThinkingMessages[0] ?? {}, "reasoning_content"), false);
+  assert.equal(Object.hasOwn(nonThinkingMessages[0] ?? {}, "reasoning_content"), false);
 });
 
 test("SessionManager normalizes legacy sessions without activeTokens to zero", () => {
@@ -3456,7 +3456,7 @@ const fs = require("fs");
 const keys = ["DURATION", "STATUS", "FAIL_REASON", "BODY", "TITLE"];
 const record = {};
 for (const key of keys) {
-  record[key] = Object.prototype.hasOwnProperty.call(process.env, key) ? process.env[key] : null;
+  record[key] = Object.hasOwn(process.env, key) ? process.env[key] : null;
 }
 fs.appendFileSync(process.env.NOTIFY_OUTPUT, JSON.stringify(record) + "\\n", "utf8");
 `,
@@ -3497,7 +3497,7 @@ async function waitForMcpStatus(manager: SessionManager, expectedStatus: string)
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return RegExp.escape(value);
 }
 
 async function flushPromises(): Promise<void> {

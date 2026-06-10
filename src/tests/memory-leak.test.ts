@@ -99,7 +99,8 @@ test("SessionManager.createSession auto-prune clears dropped session state cache
   state.recordFileState(firstSession, { filePath, content: "first", timestamp: Date.now() });
   assert.equal(state.wasFileRead(firstSession, filePath), true);
 
-  for (let i = 0; i < 60; i += 1) {
+  // MAX_SESSION_ENTRIES = 50; 55 extra sessions guarantees pruning of the first.
+  for (let i = 0; i < 55; i += 1) {
     await manager.createSession({ text: `session-${i}` });
   }
 

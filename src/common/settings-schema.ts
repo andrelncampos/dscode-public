@@ -85,6 +85,7 @@ export const deepcodingSettingsSchema = z.strictObject({
   modelPricing: z.record(z.string(), modelPricingSchema).optional(),
   memory: memorySettingsSchema,
   budget: budgetSettingsSchema.optional(),
+  terminalTitleTemplate: z.string().optional(),
 });
 
 export type DeepcodingSettingsValidated = z.infer<typeof deepcodingSettingsSchema>;
