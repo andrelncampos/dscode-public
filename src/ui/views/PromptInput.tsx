@@ -438,7 +438,14 @@ export const PromptInput = React.memo(function PromptInput({
           setMenuIndex((idx) => (idx + 1) % slashMenu.length);
           return;
         }
-        if (key.tab || returnAction === "submit") {
+        if (key.tab) {
+          const selected = slashMenu[menuIndex];
+          if (selected) {
+            completeSlashTokenWithLabel(selected);
+            return;
+          }
+        }
+        if (returnAction === "submit") {
           const selected = slashMenu[menuIndex];
           if (selected) {
             handleSlashSelection(selected);
@@ -703,6 +710,24 @@ export const PromptInput = React.memo(function PromptInput({
   function clearSlashToken(): void {
     exitHistoryBrowsing();
     setBuffer((state) => removeCurrentSlashToken(state));
+    clearUndoRedoStacks();
+  }
+
+  function completeSlashTokenWithLabel(item: SlashCommandItem): void {
+    exitHistoryBrowsing();
+    const label = item.kind === "skill" ? item.label : item.label;
+    updateBuffer((state) => {
+      let start = state.cursor;
+      while (start > 0 && !/\s/.test(state.text[start - 1] ?? "")) {
+        start -= 1;
+      }
+      const token = state.text.slice(start, state.cursor);
+      if (!token.startsWith("/")) {
+        return state;
+      }
+      const text = `${state.text.slice(0, start)}${label} ${state.text.slice(state.cursor)}`;
+      return { text, cursor: start + label.length + 1 };
+    });
     clearUndoRedoStacks();
   }
 
