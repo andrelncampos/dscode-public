@@ -1,8 +1,8 @@
-import { execFileSync, execSync } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { fileURLToPath } from "url";
+import { execFileSync, execSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import ejs from "ejs";
 import type { SessionMessage } from "./session";
 import { findGitBashPath, resolveShellPath } from "./common/shell-utils";
@@ -140,13 +140,19 @@ function readDefaultSkillDocs(extensionRoot: string): Array<{ name: string; cont
   }).filter((skill): skill is { name: string; content: string } => Boolean(skill?.content));
 }
 
+let _cachedDefaultSkillPrompt: string | null = null;
+
 export function getDefaultSkillPrompt(): string {
+  if (_cachedDefaultSkillPrompt !== null) return _cachedDefaultSkillPrompt;
+
   const skillDocs = readDefaultSkillDocs(getExtensionRoot());
   if (skillDocs.length === 0) {
+    _cachedDefaultSkillPrompt = "";
     return "";
   }
 
-  return buildSkillDocumentsPrompt(skillDocs);
+  _cachedDefaultSkillPrompt = buildSkillDocumentsPrompt(skillDocs);
+  return _cachedDefaultSkillPrompt;
 }
 
 export function buildSkillDocumentsPrompt(skills: SkillPromptDocument[]): string {
@@ -291,23 +297,36 @@ export function getCompactPrompt(sessionMessages: SessionMessage[]): string {
   return `${COMPACT_PROMPT_BASE}\n\nconversation below:\n\n\`\`\`jsonl\n${jsonl}\n\`\`\``;
 }
 
-export function getRuntimeContext(projectRoot: string, model?: string): string {
+// Lazily-computed system environment snapshot.  These values never change
+// during a process lifetime, so we compute them once and reuse.
+let _cachedEnvBase: Record<string, unknown> | null = null;
+
+function getEnvBase(): Record<string, unknown> {
+  if (_cachedEnvBase) return _cachedEnvBase;
+
   const uname = getUnameInfo();
   const shellPath = getShellPathInfo();
-  const shellModeOpts = process.platform === "win32" ? { "shell mode": "git-bash" } : {};
   const runtimeVersions = getRuntimeVersionInfo();
-  const env = {
-    "root path": projectRoot,
-    pwd: projectRoot,
+
+  _cachedEnvBase = {
     homedir: os.homedir(),
     "system info": uname,
     "shell path": shellPath,
-    ...shellModeOpts,
+    ...(process.platform === "win32" ? { "shell mode": "git-bash" } : {}),
     ...runtimeVersions,
     "command installed": {
       ripgrep: checkToolInstalled("rg"),
       jq: checkToolInstalled("jq"),
     },
+  } as Record<string, unknown>;
+  return _cachedEnvBase;
+}
+
+export function getRuntimeContext(projectRoot: string, model?: string): string {
+  const env = {
+    "root path": projectRoot,
+    pwd: projectRoot,
+    ...getEnvBase(),
   };
   return `${getCurrentDateAndModelPrompt(model)}
 

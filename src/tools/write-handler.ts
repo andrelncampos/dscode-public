@@ -1,4 +1,4 @@
-import * as fs from "fs";
+import * as fs from "node:fs";
 import { z } from "zod";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import {

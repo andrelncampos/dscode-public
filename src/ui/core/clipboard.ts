@@ -1,7 +1,7 @@
-import { spawnSync } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 export type ClipboardImage = {
   dataUrl: string;
@@ -144,15 +144,15 @@ export function readClipboardImage(): ClipboardImage | null {
 }
 
 export async function readClipboardImageAsync(): Promise<ClipboardImage | null> {
-  return new Promise((resolve, reject) => {
-    // Use setImmediate to avoid blocking the event loop
-    setImmediate(() => {
-      try {
-        const result = readClipboardImage();
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      }
-    });
+  const { promise, resolve, reject } = Promise.withResolvers<ClipboardImage | null>();
+  // Use setImmediate to avoid blocking the event loop
+  setImmediate(() => {
+    try {
+      const result = readClipboardImage();
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    }
   });
+  return promise;
 }

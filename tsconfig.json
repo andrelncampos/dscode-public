@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2025",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "ignoreDeprecations": "6.0",
-    "lib": ["ES2022"],
+    "lib": ["ES2025"],
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,

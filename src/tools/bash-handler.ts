@@ -1,10 +1,11 @@
-import { spawn } from "child_process";
-import { randomUUID } from "crypto";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { DEFAULT_BASH_TIMEOUT_MS, clampBashTimeoutMs } from "../common/bash-timeout";
 import { killProcessTree } from "../common/process-tree";
+import { isAuditMode } from "../common/audit-mode";
 import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "./executor";
 import {
   buildDisableExtglobCommand,
@@ -54,6 +55,14 @@ export async function handleBashTool(
       ok: false,
       name: "bash",
       error: 'Missing required "command" string.',
+    };
+  }
+
+  if (isAuditMode()) {
+    return {
+      ok: false,
+      name: "bash",
+      error: "Shell commands are disabled in audit mode. Use --audit to safely analyze code without execution.",
     };
   }
 
@@ -147,112 +156,121 @@ async function executeShellCommand(
   timeoutMs: number;
   deadlineAtMs: number;
 }> {
-  return new Promise((resolve) => {
-    const detached = process.platform !== "win32";
-    const configuredEnv = context.createOpenAIClient?.().env ?? {};
-    const minTimeoutMs = context.bashMinTimeoutMs;
-    const initialTimeoutMs = clampBashTimeoutMs(context.bashTimeoutMs ?? DEFAULT_BASH_TIMEOUT_MS, minTimeoutMs);
-    const startedAtMs = Date.now();
-    let timeoutMs = initialTimeoutMs;
-    let deadlineAtMs = startedAtMs + timeoutMs;
-    let timedOut = false;
-    let settled = false;
-    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
-    const child = spawn(shellPath, shellArgs, {
-      cwd,
-      env: buildShellEnv(shellPath, configuredEnv),
-      detached,
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const pid = child.pid;
+  const { promise, resolve } = Promise.withResolvers<{
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    signal: string | null;
+    error?: string;
+    timedOut: boolean;
+    timeoutMs: number;
+    deadlineAtMs: number;
+  }>();
+  const detached = process.platform !== "win32";
+  const configuredEnv = context.createOpenAIClient?.().env ?? {};
+  const minTimeoutMs = context.bashMinTimeoutMs;
+  const initialTimeoutMs = clampBashTimeoutMs(context.bashTimeoutMs ?? DEFAULT_BASH_TIMEOUT_MS, minTimeoutMs);
+  const startedAtMs = Date.now();
+  let timeoutMs = initialTimeoutMs;
+  let deadlineAtMs = startedAtMs + timeoutMs;
+  let timedOut = false;
+  let settled = false;
+  let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  const child = spawn(shellPath, shellArgs, {
+    cwd,
+    env: buildShellEnv(shellPath, configuredEnv),
+    detached,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const pid = child.pid;
 
-    const getTimeoutInfo = (): ProcessTimeoutInfo => ({
-      timeoutMs,
-      startedAtMs,
-      deadlineAtMs,
-      timedOut,
-    });
-    const stopTimeoutTimer = () => {
-      if (timeoutTimer) {
-        clearTimeout(timeoutTimer);
-        timeoutTimer = null;
-      }
-    };
-    const triggerTimeout = () => {
-      if (settled || timedOut || typeof pid !== "number") {
-        return;
-      }
-      timedOut = true;
-      stopTimeoutTimer();
-      killProcessTree(pid, "SIGKILL");
-    };
-    const scheduleTimeout = () => {
-      stopTimeoutTimer();
-      if (settled) {
-        return;
-      }
-      const remainingMs = Math.max(0, deadlineAtMs - Date.now());
-      timeoutTimer = setTimeout(triggerTimeout, remainingMs);
-    };
-    const timeoutControl: ProcessTimeoutControl = {
-      getInfo: getTimeoutInfo,
-      setTimeoutMs: (nextTimeoutMs) => {
-        timeoutMs = clampBashTimeoutMs(nextTimeoutMs, minTimeoutMs);
-        deadlineAtMs = startedAtMs + timeoutMs;
-        if (deadlineAtMs <= Date.now()) {
-          triggerTimeout();
-        } else {
-          scheduleTimeout();
-        }
-        return getTimeoutInfo();
-      },
-    };
-
-    if (typeof pid === "number") {
-      context.onProcessStart?.(pid, command);
-      context.onProcessTimeoutControl?.(pid, timeoutControl);
-      scheduleTimeout();
+  const getTimeoutInfo = (): ProcessTimeoutInfo => ({
+    timeoutMs,
+    startedAtMs,
+    deadlineAtMs,
+    timedOut,
+  });
+  const stopTimeoutTimer = () => {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      timeoutTimer = null;
     }
-
-    let stdout = "";
-    let stderr = "";
-    let error: string | undefined;
-
-    child.stdout?.on("data", (chunk: string | Buffer) => {
-      stdout = appendChunk(stdout, chunk);
-      const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
-      context.onProcessStdout?.(pid as number, text);
-    });
-    child.stderr?.on("data", (chunk: string | Buffer) => {
-      stderr = appendChunk(stderr, chunk);
-      const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
-      context.onProcessStdout?.(pid as number, text);
-    });
-
-    child.on("error", (spawnError) => {
-      error = spawnError.message;
-    });
-
-    child.on("close", (code, signal) => {
-      settled = true;
-      stopTimeoutTimer();
-      if (typeof pid === "number") {
-        context.onProcessTimeoutControl?.(pid, null);
-        context.onProcessExit?.(pid);
+  };
+  const triggerTimeout = () => {
+    if (settled || timedOut || typeof pid !== "number") {
+      return;
+    }
+    timedOut = true;
+    stopTimeoutTimer();
+    killProcessTree(pid, "SIGKILL");
+  };
+  const scheduleTimeout = () => {
+    stopTimeoutTimer();
+    if (settled) {
+      return;
+    }
+    const remainingMs = Math.max(0, deadlineAtMs - Date.now());
+    timeoutTimer = setTimeout(triggerTimeout, remainingMs);
+  };
+  const timeoutControl: ProcessTimeoutControl = {
+    getInfo: getTimeoutInfo,
+    setTimeoutMs: (nextTimeoutMs) => {
+      timeoutMs = clampBashTimeoutMs(nextTimeoutMs, minTimeoutMs);
+      deadlineAtMs = startedAtMs + timeoutMs;
+      if (deadlineAtMs <= Date.now()) {
+        triggerTimeout();
+      } else {
+        scheduleTimeout();
       }
-      resolve({
-        stdout,
-        stderr,
-        exitCode: typeof code === "number" ? code : null,
-        signal: signal ?? null,
-        error,
-        timedOut,
-        timeoutMs,
-        deadlineAtMs,
-      });
+      return getTimeoutInfo();
+    },
+  };
+
+  if (typeof pid === "number") {
+    context.onProcessStart?.(pid, command);
+    context.onProcessTimeoutControl?.(pid, timeoutControl);
+    scheduleTimeout();
+  }
+
+  let stdout = "";
+  let stderr = "";
+  let error: string | undefined;
+
+  child.stdout?.on("data", (chunk: string | Buffer) => {
+    stdout = appendChunk(stdout, chunk);
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    context.onProcessStdout?.(pid as number, text);
+  });
+  child.stderr?.on("data", (chunk: string | Buffer) => {
+    stderr = appendChunk(stderr, chunk);
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    context.onProcessStdout?.(pid as number, text);
+  });
+
+  child.on("error", (spawnError) => {
+    error = spawnError.message;
+  });
+
+  child.on("close", (code, signal) => {
+    settled = true;
+    stopTimeoutTimer();
+    if (typeof pid === "number") {
+      context.onProcessTimeoutControl?.(pid, null);
+      context.onProcessExit?.(pid);
+    }
+    resolve({
+      stdout,
+      stderr,
+      exitCode: typeof code === "number" ? code : null,
+      signal: signal ?? null,
+      error,
+      timedOut,
+      timeoutMs,
+      deadlineAtMs,
     });
   });
+  return promise;
 }
 
 function startBackgroundShellCommand(

@@ -1,7 +1,7 @@
-import * as childProcess from "child_process";
-import * as crypto from "crypto";
-import * as fs from "fs";
-import * as path from "path";
+import * as childProcess from "node:child_process";
+import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 const FILE_HISTORY_AUTHOR_NAME = "DeepCode Checkpoint";
 const FILE_HISTORY_AUTHOR_EMAIL = "deepcode-checkpoint@localhost";

@@ -6,11 +6,14 @@ import { render } from "ink";
 import { setShellIfWindows } from "./common/shell-utils";
 import { checkForNpmUpdate, promptForPendingUpdate, type PackageInfo } from "./common/update-check";
 import { migrateAllLevels } from "./common/dscode-paths";
+import { setAuditMode } from "./common/audit-mode";
 import { AppContainer } from "./ui";
 import { detectTerminalRuntime } from "./ui/core/terminal-runtime";
 
 const args = process.argv.slice(2);
 const packageInfo = readPackageInfo();
+
+const isAuditMode = args.includes("--audit") || args.includes("--safe");
 
 if (args.includes("--version") || args.includes("-v")) {
   process.stdout.write(`${packageInfo.version || "unknown"}\n`);
@@ -30,8 +33,14 @@ if (args.includes("--help") || args.includes("-h")) {
       "  dscode                              Launch the interactive TUI in the current directory",
       "  dscode -p <prompt>                  Launch with a pre-filled prompt",
       "  dscode --prompt <prompt>            Same as -p",
+      "  dscode --audit                      Safe audit mode (no file writes, no commands)",
       "  dscode --version                    Print the version",
       "  dscode --help                       Show this help",
+      "",
+      "Safe audit mode (--audit):",
+      "  Read-only analysis. No shell commands are executed, no files are",
+      "  modified. Combine with Node 24 Permission Model for OS-level sandbox:",
+      "    node --experimental-permission --permission-child-process=0 dscode.js --audit",
       "",
       "Configuration:",
       "  ~/.dscode/settings.json    User-level API key, model, base URL",
@@ -78,6 +87,13 @@ function extractInitialPrompt(args: string[]): string | undefined {
 let initialPrompt = extractInitialPrompt(args);
 const projectRoot = process.cwd();
 configureWindowsShell();
+
+// Initialize audit mode early, before any session or tool execution
+setAuditMode(isAuditMode);
+
+if (isAuditMode) {
+  process.stderr.write("[dscode] Running in safe audit mode — no shell commands, no file writes.\n");
+}
 
 if (!process.stdin.isTTY) {
   process.stderr.write("dscode requires an interactive terminal (TTY). " + "Re-run from a real terminal session.\n");

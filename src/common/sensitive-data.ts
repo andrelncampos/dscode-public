@@ -46,9 +46,22 @@ const X_API_KEY_HEADER_RE = /(x-api-key\s*:\s*)[^\s\r\n]+/gi;
 const KEY_VALUE_RE =
   /((?:api[_-]?key|api_key|client_secret|access_token|refresh_token)\s*"?\s*[:=]\s*['"]?)[^'"\s,;}\]>]+/gi;
 
+// ── Additional patterns for turn-memory and CLI output redaction ─────
+
+const GITHUB_TOKEN_RE = /(ghp_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,})/g;
+
+const GITLAB_TOKEN_RE = /(glpat-[A-Za-z0-9_-]{20,})/g;
+
+const ENV_VAR_SECRET_RE = /(?:^|[\s;])((?:[A-Za-z0-9]+_)?(?:API_KEY|TOKEN|SECRET|PASSWORD)=)([^\s;]{8,})/gim;
+
+const JSON_SECRET_RE = /("(?:api_key|apikey|token|secret|password|access_key|private_key)"\s*:\s*")([^"]{8,})/gi;
+
+const CLI_FLAG_SECRET_RE = /(--(?:password|token|api-key|apikey|secret)\s+)([^\s]{8,})/gi;
+
 /**
  * Redact sensitive patterns from a string value.
- * Call this on any string that might contain secrets (headers, URLs, JSON, etc.).
+ * Call this on any string that might contain secrets (headers, URLs, JSON, CLI output, etc.).
+ * This is the canonical redaction function — turn-secret-redactor delegates here.
  */
 export function maskSensitiveString(text: string): string {
   return text
@@ -56,8 +69,13 @@ export function maskSensitiveString(text: string): string {
     .replace(BEARER_RE, "Bearer [REDACTED]")
     .replace(BASIC_RE, "Basic [REDACTED]")
     .replace(OPENAI_KEY_RE, "[REDACTED]")
+    .replace(GITHUB_TOKEN_RE, "[REDACTED]")
+    .replace(GITLAB_TOKEN_RE, "[REDACTED]")
     .replace(X_API_KEY_HEADER_RE, "$1[REDACTED]")
-    .replace(KEY_VALUE_RE, "$1[REDACTED]");
+    .replace(JSON_SECRET_RE, "$1[REDACTED]")
+    .replace(KEY_VALUE_RE, "$1[REDACTED]")
+    .replace(CLI_FLAG_SECRET_RE, "$1[REDACTED]")
+    .replace(ENV_VAR_SECRET_RE, "$1[REDACTED]");
 }
 
 // ---------------------------------------------------------------------------

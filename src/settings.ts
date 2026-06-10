@@ -4,9 +4,9 @@ import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import { resolveMemorySettings } from "./memory/memory-settings";
 import type { MemorySettings } from "./memory/turn-transcript-types";
 import { atomicWriteJsonFileSync } from "./common/file-utils";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 export type DeepcodingEnv = Record<string, string | undefined> & {
   MODEL?: string;
@@ -69,6 +69,7 @@ export type DeepcodingSettings = {
   modelPricing?: Record<string, ModelPricing>;
   memory?: Partial<MemorySettings>;
   budget?: BudgetSettings;
+  terminalTitleTemplate?: string;
 };
 
 export type ResolvedDeepcodingSettings = {
@@ -88,6 +89,7 @@ export type ResolvedDeepcodingSettings = {
   modelPricing?: Record<string, ModelPricing>;
   memory: MemorySettings;
   budget: BudgetSettings;
+  terminalTitleTemplate?: string;
 };
 
 export type ModelConfigSelection = {
@@ -388,6 +390,11 @@ export function resolveSettingsSources(
     monthlyLimit: projectSettings?.budget?.monthlyLimit ?? userSettings?.budget?.monthlyLimit,
   };
 
+  const terminalTitleTemplate =
+    trimString(projectSettings?.terminalTitleTemplate) ||
+    trimString(userSettings?.terminalTitleTemplate) ||
+    DEFAULT_SETTINGS.terminalTitleTemplate;
+
   return {
     env,
     apiKey: trimString(env.API_KEY) || undefined,
@@ -405,6 +412,7 @@ export function resolveSettingsSources(
     modelPricing: projectSettings?.modelPricing ?? userSettings?.modelPricing,
     memory,
     budget,
+    terminalTitleTemplate,
   };
 }
 
@@ -432,7 +440,7 @@ export function applyModelConfigSelection(
     return { settings: next, changed: false };
   }
 
-  if (selected.model !== current.model || Object.prototype.hasOwnProperty.call(next, "model")) {
+  if (selected.model !== current.model || Object.hasOwn(next, "model")) {
     next.model = selected.model;
   } else {
     delete next.model;
@@ -492,6 +500,7 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
   budget: {},
   mcpServers: {},
   modelPricing: {},
+  terminalTitleTemplate: "DsCode - {{cwd}}",
 };
 
 // ---------------------------------------------------------------------------

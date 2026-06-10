@@ -25,16 +25,15 @@ export async function handleWebFetchTool(
     };
   }
 
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(url);
-  } catch {
+  if (!URL.canParse(url)) {
     return {
       ok: false,
       name: "WebFetch",
       error: `Invalid URL: "${url}". Provide a valid http or https URL.`,
     };
   }
+
+  const parsedUrl = new URL(url);
 
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     return {

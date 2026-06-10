@@ -67,7 +67,8 @@ export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeS
       {/* Version line */}
       <Box justifyContent="center" marginTop={compact ? 0 : 0}>
         <Text color="gray" dimColor>
-          v{version || "unknown"} — {settings.thinkingEnabled ? "thinking mode active" : "non-thinking mode"}
+          v{version || "unknown"} <Text dimColor>by Andre LN Campos</Text> —{" "}
+          {settings.thinkingEnabled ? "thinking mode active" : "non-thinking mode"}
         </Text>
       </Box>
 

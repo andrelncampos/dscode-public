@@ -61,6 +61,7 @@ export function useSessionManager(projectRoot: string, callbacks: SessionManager
       onProcessStdout: (pid: number, chunk: string | Buffer) => {
         callbacksRef.current.onProcessStdout(pid, chunk);
       },
+      terminalTitleTemplate: resolveCurrentSettings(projectRoot).terminalTitleTemplate,
     });
   }, [projectRoot]);
 

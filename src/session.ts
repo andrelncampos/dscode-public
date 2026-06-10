@@ -1,7 +1,7 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
-import * as crypto from "crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import * as crypto from "node:crypto";
 import matter from "gray-matter";
 import ejs from "ejs";
 import type { CreateLlmProviderReturn } from "./common/llm-provider-registry";
@@ -53,6 +53,8 @@ import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
 import { recordBudgetCost } from "./common/budget-tracker";
 import type { ModelPricing } from "./common/model-capabilities";
+import { runWithExecCtx } from "./common/execution-context";
+import { TerminalTitleManager } from "./common/terminal-title";
 import { storeTurn, readRecentTurns } from "./memory/turn-memory-store";
 import { buildTurnContext } from "./memory/turn-memory-context-builder";
 import { canonicalizeText, canonicalizeShellOutput } from "./memory/turn-canonicalizer";
@@ -310,6 +312,7 @@ type SessionManagerOptions = {
   onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
+  terminalTitleTemplate?: string;
 };
 
 export type LlmStreamProgress = {
@@ -351,6 +354,8 @@ export class SessionManager {
   private static systemPromptCache = new Map<string, string>();
   private lastInjectedAgentInstructionsHash: string | null = null;
   private fileHistoryCheckpointCount = 0;
+  private readonly terminalTitleTemplate: string | undefined;
+  private readonly titleManager: TerminalTitleManager | null = null;
 
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -369,6 +374,13 @@ export class SessionManager {
     this.onLlmStreamProgress = options.onLlmStreamProgress;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
+    this.terminalTitleTemplate = options.terminalTitleTemplate;
+    this.titleManager = options.terminalTitleTemplate
+      ? new TerminalTitleManager(options.terminalTitleTemplate, {
+          cwd: path.basename(process.cwd()),
+          model: this.getResolvedSettings().model,
+        })
+      : null;
     this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
     const converterOptions: OpenAIMessageConverterOptions = {
@@ -433,6 +445,17 @@ export class SessionManager {
     this.sessionControllers.clear();
     this.processTimeoutControls.clear();
     this.mcpManager.disconnect();
+    this.titleManager?.dispose();
+  }
+
+  /** Update the terminal window title, typically after a CWD change. */
+  updateTerminalTitle(cwd: string | null): void {
+    if (!this.terminalTitleTemplate || !this.titleManager) return;
+    const dirName = cwd ? path.basename(cwd) : path.basename(this.projectRoot);
+    this.titleManager.update(this.terminalTitleTemplate, {
+      cwd: dirName,
+      model: this.getResolvedSettings().model,
+    });
   }
 
   private estimateStreamTokens(text: string): number {
@@ -820,6 +843,13 @@ export class SessionManager {
       updateTime: now,
       processes: null,
     };
+
+    this.titleManager?.update(this.terminalTitleTemplate!, {
+      session: entry.summary ?? undefined,
+      model: this.getResolvedSettings().model,
+      cwd: path.basename(process.cwd()),
+    });
+
     index.entries.push(entry);
     const sortedEntries = index.entries.slice().sort((a, b) => {
       const aTime = Date.parse(a.updateTime);
@@ -1150,53 +1180,55 @@ export class SessionManager {
         >();
 
         try {
-          for await (const event of stream) {
-            if (event.type === "usage") {
-              streamUsage = event.usage;
-              continue;
-            }
-            if (event.type === "text_delta") {
-              content += event.text;
-              trackText(event.text);
-              continue;
-            }
-            if (event.type === "reasoning_delta") {
-              reasoningContent += event.text;
-              trackText(event.text);
-              continue;
-            }
-            if (event.type === "tool_call_start") {
-              const index = toolCallsByIndex.size;
-              toolCallsByIndex.set(index, {
-                id: event.id,
-                type: "function",
-                function: { name: event.name, arguments: "" },
-              });
-              trackText(event.name);
-              continue;
-            }
-            if (event.type === "tool_call_delta") {
-              // Match by id, preferring the most recently added entry
-              // (handles non-streaming responses where multiple tool calls share the same id)
-              let lastMatchedIndex = -1;
-              for (const [idx, tc] of toolCallsByIndex) {
-                if (tc.id === event.id) {
-                  lastMatchedIndex = idx;
-                }
+          await runWithExecCtx({ sessionId, requestId, model, turnNumber: iteration }, async () => {
+            for await (const event of stream) {
+              if (event.type === "usage") {
+                streamUsage = event.usage;
+                continue;
               }
-              if (lastMatchedIndex >= 0) {
-                const tc = toolCallsByIndex.get(lastMatchedIndex);
-                if (tc) {
-                  tc.function!.arguments! += event.arguments;
-                  trackText(event.arguments);
-                }
+              if (event.type === "text_delta") {
+                content += event.text;
+                trackText(event.text);
+                continue;
               }
-              continue;
+              if (event.type === "reasoning_delta") {
+                reasoningContent += event.text;
+                trackText(event.text);
+                continue;
+              }
+              if (event.type === "tool_call_start") {
+                const index = toolCallsByIndex.size;
+                toolCallsByIndex.set(index, {
+                  id: event.id,
+                  type: "function",
+                  function: { name: event.name, arguments: "" },
+                });
+                trackText(event.name);
+                continue;
+              }
+              if (event.type === "tool_call_delta") {
+                // Match by id, preferring the most recently added entry
+                // (handles non-streaming responses where multiple tool calls share the same id)
+                let lastMatchedIndex = -1;
+                for (const [idx, tc] of toolCallsByIndex) {
+                  if (tc.id === event.id) {
+                    lastMatchedIndex = idx;
+                  }
+                }
+                if (lastMatchedIndex >= 0) {
+                  const tc = toolCallsByIndex.get(lastMatchedIndex);
+                  if (tc) {
+                    tc.function!.arguments! += event.arguments;
+                    trackText(event.arguments);
+                  }
+                }
+                continue;
+              }
+              if (event.type === "error") {
+                throw event.error;
+              }
             }
-            if (event.type === "error") {
-              throw event.error;
-            }
-          }
+          });
         } catch (error) {
           logApiError({
             timestamp: new Date().toISOString(),
@@ -1705,25 +1737,25 @@ export class SessionManager {
   private async getCurrentBranch(): Promise<string | null> {
     try {
       const { execFile } = await import("node:child_process");
-      return new Promise<string | null>((resolve) => {
-        execFile(
-          "git",
-          ["branch", "--show-current"],
-          {
-            cwd: this.projectRoot,
-            encoding: "utf8",
-            timeout: 3000,
-          },
-          (err, stdout) => {
-            if (err) {
-              resolve(null);
-              return;
-            }
-            const trimmed = (stdout ?? "").trim();
-            resolve(trimmed || null);
+      const { promise, resolve } = Promise.withResolvers<string | null>();
+      execFile(
+        "git",
+        ["branch", "--show-current"],
+        {
+          cwd: this.projectRoot,
+          encoding: "utf8",
+          timeout: 3000,
+        },
+        (err, stdout) => {
+          if (err) {
+            resolve(null);
+            return;
           }
-        );
-      });
+          const trimmed = (stdout ?? "").trim();
+          resolve(trimmed || null);
+        }
+      );
+      return promise;
     } catch {
       return null;
     }
@@ -2549,6 +2581,15 @@ export class SessionManager {
       this.appendSessionMessage(sessionId, toolMessage);
       this.onAssistantMessage(toolMessage, true);
 
+      // Update session CWD when a tool reports a new working directory
+      if (execution.result.metadata?.cwd && typeof execution.result.metadata.cwd === "string") {
+        this.updateSessionEntry(sessionId, (entry) => ({
+          ...entry,
+          cwd: execution.result.metadata!.cwd as string,
+          updateTime: new Date().toISOString(),
+        }));
+      }
+
       for (const followUpMessage of execution.result.followUpMessages ?? []) {
         if (followUpMessage.role !== "system") {
           continue;
@@ -3012,7 +3053,7 @@ export class SessionManager {
   }
 
   private normalizeUsagePerModel(entry: Record<string, unknown>): Record<string, ModelUsage> | null {
-    if (!Object.prototype.hasOwnProperty.call(entry, "usagePerModel")) {
+    if (!Object.hasOwn(entry, "usagePerModel")) {
       return null;
     }
     if (!isUsageRecord(entry.usagePerModel)) {
