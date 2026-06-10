@@ -1257,6 +1257,32 @@ export class SessionManager {
         const refusal = null; // intentionally not tracked — refusal text merged into content
         // const html = content ? this.renderMarkdown(content) : "";
 
+        // Record budget cost before checking isInterrupted, so interrupted
+        // sessions still contribute to budget tracking.  When the API usage
+        // event is missing because the stream was aborted, fall back to
+        // estimated output tokens tracked during streaming.
+        const responseUsage: ModelUsage | null =
+          streamUsage ??
+          (sessionController.signal.aborted && estimatedTokens > 0
+            ? {
+                prompt_tokens: 0,
+                completion_tokens: Math.ceil(estimatedTokens),
+                total_tokens: Math.ceil(estimatedTokens),
+              }
+            : null);
+        if (responseUsage) {
+          const budgetWarning = recordBudgetCost(
+            this.projectRoot,
+            model,
+            responseUsage,
+            modelPricing,
+            this.getResolvedSettings().budget
+          );
+          if (budgetWarning) {
+            this.addSessionSystemMessage(sessionId, budgetWarning, true);
+          }
+        }
+
         if (this.isInterrupted(sessionId)) {
           return;
         }
@@ -1281,19 +1307,6 @@ export class SessionManager {
         this.onAssistantMessage(assistantMessage, true);
 
         let waitingForUser = false;
-        const responseUsage = streamUsage;
-        if (responseUsage) {
-          const budgetWarning = recordBudgetCost(
-            this.projectRoot,
-            model,
-            responseUsage,
-            modelPricing,
-            this.getResolvedSettings().budget
-          );
-          if (budgetWarning) {
-            this.addSessionSystemMessage(sessionId, budgetWarning, true);
-          }
-        }
         if (toolCalls) {
           if (permissionPlan?.askPermissions.length) {
             this.updateSessionEntry(sessionId, (entry) => ({
@@ -1498,7 +1511,17 @@ export class SessionManager {
     }
 
     const now = new Date().toISOString();
-    const responseUsage = compactionUsage;
+    // Use API-reported usage when available; fall back to estimated tokens from
+    // response length so interrupted compactions still contribute to budget tracking.
+    const responseUsage: ModelUsage | null =
+      compactionUsage ??
+      (compactedContent.length > 0
+        ? {
+            prompt_tokens: 0,
+            completion_tokens: Math.ceil(compactedContent.length / 4),
+            total_tokens: Math.ceil(compactedContent.length / 4),
+          }
+        : null);
     if (responseUsage) {
       const budgetWarning = recordBudgetCost(
         this.projectRoot,
