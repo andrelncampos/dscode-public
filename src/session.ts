@@ -1817,11 +1817,30 @@ export class SessionManager {
     }));
 
     const contentParts = ["Interrupted."];
+    if (session?.lastUserPrompt) {
+      contentParts.push(
+        `The prompt "${session.lastUserPrompt}" was cancelled by the human. Do NOT try to continue or re-execute it unless the human explicitly asks.`
+      );
+    }
     if (killedPids.length > 0) {
-      contentParts.push(`Killed processes: ${killedPids.join(", ")}.`);
+      const processDescriptions = killedPids
+        .map((pid) => {
+          const entry = session?.processes?.get(String(pid));
+          const label = entry?.command ? `"${entry.command}" (pid ${pid})` : `pid ${pid}`;
+          return label;
+        })
+        .join(", ");
+      contentParts.push(`Killed processes: ${processDescriptions}.`);
     }
     if (failedPids.length > 0) {
-      contentParts.push(`Failed to kill processes: ${failedPids.join(", ")}.`);
+      const processDescriptions = failedPids
+        .map((pid) => {
+          const entry = session?.processes?.get(String(pid));
+          const label = entry?.command ? `"${entry.command}" (pid ${pid})` : `pid ${pid}`;
+          return label;
+        })
+        .join(", ");
+      contentParts.push(`Failed to kill processes: ${processDescriptions}.`);
     }
 
     this.onAssistantMessage(this.buildUserMessage(sessionId, { text: contentParts.join(" ") }), false);
