@@ -3,21 +3,21 @@ Your task is to create spec #<%= specNumber %> with the highest possible quality
 ### Step 1: Read Context Documents
 
 Read these files:
-1. `.dscode/specs/roadmap.md` — find spec #<%= specNumber %> and note its name, status, and references.
-2. `.dscode/specs/vision.md` — read the value blocks referenced by this spec.
-3. `.dscode/specs/arch.md` — refresh on architecture and fundamental principles.
-4. `.dscode/specs/adr.md` — note any architecture decisions relevant to this spec.
-5. `.dscode/specs/lessons.md` — note any lessons relevant to this spec.
+1. `management/roadmap.md` — find spec #<%= specNumber %> and note its name, status, and references.
+2. `management/vision.md` — read the value blocks referenced by this spec.
+3. `management/arch.md` — refresh on architecture and fundamental principles.
+4. `management/adr.md` — note any architecture decisions relevant to this spec.
+5. `management/lessons.md` — note any lessons relevant to this spec.
 
 If the spec does not exist in the roadmap, report that and stop.
 
 ### Step 2: Determine Spec Folder
 
-The spec folder is `.dscode/specs/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
+The spec folder is `management/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
 
 ### Step 3: Create `requirements.md`
 
-Create `.dscode/specs/<%= specNumber %>-<name>/requirements.md` with this structure:
+Create `management/<%= specNumber %>-<name>/requirements.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Requirements
@@ -75,7 +75,7 @@ Create `.dscode/specs/<%= specNumber %>-<name>/requirements.md` with this struct
 
 ### Step 4: Create `design.md`
 
-Create `.dscode/specs/<%= specNumber %>-<name>/design.md` with this structure:
+Create `management/<%= specNumber %>-<name>/design.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Design
@@ -133,7 +133,7 @@ Create `.dscode/specs/<%= specNumber %>-<name>/design.md` with this structure:
 
 ### Step 5: Create `task.md`
 
-Create `.dscode/specs/<%= specNumber %>-<name>/task.md` with this structure:
+Create `management/<%= specNumber %>-<name>/task.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Implementation Tasks
