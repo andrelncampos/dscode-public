@@ -186,25 +186,33 @@ O custo aparece no canto superior direito durante a sessão: `⚡ 42.3K 💰 $0.
 
 ## Arquivos e estrutura
 
-O DsCode organiza seus dados em diretórios `.dscode/` no projeto e no home do usuário:
+O DsCode organiza seus dados em `.dscode/` (configurações privadas) e `management/` (documentação do projeto versionada no git):
 
 ```
 meu-projeto/
-├── .dscode/                   # Config e dados do projeto
-│   ├── settings.json          # Configurações locais (opcional)
-│   ├── AGENTS.md              # Instruções e regras de steering
-│   ├── sessions-index.json    # Índice de sessões
-│   ├── <session-id>.jsonl     # Mensagens de cada sessão
-│   └── specs/                 # Documentos SDD
-│       ├── vision.md          # Visão do produto
-│       ├── arch.md            # Arquitetura
-│       ├── roadmap.md         # Roadmap com status dos specs
-│       ├── adr.md             # Decisões de arquitetura
-│       └── lessons.md         # Lições aprendidas
+├── management/                  # Documentação de gestão (versionada)
+│   ├── vision.md                # Visão do produto
+│   ├── arch.md                  # Arquitetura
+│   ├── roadmap.md               # Roadmap com status dos specs
+│   ├── adr.md                   # Decisões de arquitetura
+│   ├── lessons.md               # Lições aprendidas
+│   ├── budget.md                # Custo acumulado do projeto
+│   └── specs/                   # Especificações detalhadas
+│       ├── 10-exemplo/          # Spec #10
+│       │   ├── requirements.md
+│       │   ├── design.md
+│       │   └── task.md
+│       └── ...
 │
-~/.dscode/                     # Config do usuário
-├── settings.json              # Chave de API, modelo padrão
-└── logs/debug.log             # Logs de depuração
+├── .dscode/                     # Config e dados privados (não versionado)
+│   ├── settings.json            # Configurações locais (opcional)
+│   ├── AGENTS.md                # Instruções e regras de steering
+│   ├── sessions-index.json      # Índice de sessões
+│   └── <session-id>.jsonl       # Mensagens de cada sessão
+│
+~/.dscode/                       # Config do usuário
+├── settings.json                # Chave de API, modelo padrão
+└── logs/debug.log               # Logs de depuração
 
 ~/.agents/skills/<skill>/SKILL.md    # Skills do usuário
 ./.agents/skills/<skill>/SKILL.md    # Skills do projeto
@@ -349,7 +357,7 @@ flowchart LR
 
 ## SDD — Spec-Driven Development
 
-O DsCode implementa um ciclo completo de desenvolvimento orientado a especificações. Todos os arquivos ficam em `.dscode/specs/`.
+O DsCode implementa um ciclo completo de desenvolvimento orientado a especificações. Todos os arquivos ficam em `management/`.
 
 ```mermaid
 flowchart TD

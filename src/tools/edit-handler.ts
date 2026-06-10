@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
 import { z } from "zod";
 import { buildThinkingRequestOptions } from "../common/openai-thinking";
+import { recordBudgetCost } from "../common/budget-tracker";
+import type { ModelUsage } from "../session";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import {
   buildDiffPreview,
@@ -683,6 +685,11 @@ async function inferOldStringNotFoundReasonWithLLM(
       ...buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort),
     });
 
+    // Record API cost for this non-streaming LLM call
+    if (response.usage) {
+      recordBudgetCost(context.projectRoot, model, response.usage as ModelUsage);
+    }
+
     return parseOldStringNotFoundReason(response.choices?.[0]?.message?.content ?? "");
   } catch {
     return null;
@@ -760,6 +767,11 @@ async function correctEscapedStringsWithLLM(
       ],
       ...buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort),
     });
+
+    // Record API cost for this non-streaming LLM call
+    if (response.usage) {
+      recordBudgetCost(context.projectRoot, model, response.usage as ModelUsage);
+    }
 
     const content = response.choices?.[0]?.message?.content ?? "";
     const parsed = parseCorrectedEditStrings(content);

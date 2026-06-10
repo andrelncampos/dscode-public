@@ -499,7 +499,10 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
   },
   budget: {},
   mcpServers: {},
-  modelPricing: {},
+  modelPricing: {
+    "deepseek-v4-pro": { inputPrice: 0.435, outputPrice: 0.87, cacheReadPrice: 0.003625 },
+    "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
+  },
   terminalTitleTemplate: "DsCode - {{cwd}}",
 };
 
@@ -543,6 +546,9 @@ export function ensureSettingsDefaults(settings: DeepcodingSettings): Deepcoding
   }
   if (result.budget) {
     result.budget = { ...DEFAULT_SETTINGS.budget, ...result.budget };
+  }
+  if (result.modelPricing) {
+    result.modelPricing = { ...DEFAULT_SETTINGS.modelPricing, ...result.modelPricing };
   }
 
   return result;

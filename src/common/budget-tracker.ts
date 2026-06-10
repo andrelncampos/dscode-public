@@ -12,13 +12,13 @@ type DailyCost = {
 };
 
 function getBudgetPath(projectRoot: string): string {
-  const dscodeDir = path.join(projectRoot, ".dscode");
+  const mgmtDir = path.join(projectRoot, "management");
   try {
-    fs.mkdirSync(dscodeDir, { recursive: true });
+    fs.mkdirSync(mgmtDir, { recursive: true });
   } catch {
     // Directory creation failed — callers handle missing files gracefully
   }
-  return path.join(dscodeDir, BUDGET_FILE);
+  return path.join(mgmtDir, BUDGET_FILE);
 }
 
 function getToday(): string {
@@ -92,7 +92,7 @@ function writeBudget(projectRoot: string, costs: DailyCost[]): void {
 /**
  * Record the cost of a single LLM API call into the project budget file.
  *
- * Reads .dscode/budget.md, adds the cost to today's entry (or creates it),
+ * Reads management/budget.md, adds the cost to today's entry (or creates it),
  * and writes the updated markdown file back.
  */
 /**
@@ -106,7 +106,7 @@ export type BudgetCosts = {
 };
 
 /**
- * Read the current daily and project-total costs from .dscode/budget.md.
+ * Read the current daily and project-total costs from management/budget.md.
  * Returns zeroed values when the file does not exist or is malformed.
  */
 export function getBudgetCosts(projectRoot: string): BudgetCosts {

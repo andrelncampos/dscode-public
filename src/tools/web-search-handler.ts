@@ -1,4 +1,6 @@
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { recordBudgetCost } from "../common/budget-tracker";
+import type { ModelUsage } from "../session";
 
 const MAX_OUTPUT_CHARS = 30000;
 
@@ -24,13 +26,14 @@ export async function handleWebSearchTool(
     };
   }
 
-  return executeNativeWebSearch(query, llmContext.model, llmContext.client);
+  return executeNativeWebSearch(query, llmContext.model, llmContext.client, context.projectRoot);
 }
 
 async function executeNativeWebSearch(
   query: string,
   model: string,
-  client: NonNullable<ReturnType<NonNullable<ToolExecutionContext["createOpenAIClient"]>>["client"]>
+  client: NonNullable<ReturnType<NonNullable<ToolExecutionContext["createOpenAIClient"]>>["client"]>,
+  projectRoot: string
 ): Promise<ToolExecutionResult> {
   try {
     const response = await client.chat.completions.create(
@@ -52,6 +55,11 @@ async function executeNativeWebSearch(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any
     );
+
+    // Record API cost for this non-streaming web search call
+    if (response.usage) {
+      recordBudgetCost(projectRoot, model, response.usage as ModelUsage);
+    }
 
     const content = response.choices[0]?.message?.content ?? "";
     if (!content.trim()) {
