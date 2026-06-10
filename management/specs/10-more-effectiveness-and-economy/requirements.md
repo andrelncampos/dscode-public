@@ -6,7 +6,9 @@ Delivers value blocks **V6** (Multi-Model Support with Thinking Mode), **V8** (S
 
 > **V6:** *"The `reasoning_content` field is only transmitted for turns with tool calls — per DeepSeek V4 API behavior, reasoning content between non-tool turns is ignored by the API and can be omitted to save input tokens. Web search uses the native DeepSeek `web_search` tool type when running on V4+ engines."*
 
-> **V8:** *"Compaction uses `deepseek-v4-flash` without thinking mode for cost-efficient summarization."*
+> **V8:** *"Compaction uses `deepseek-v4-flash` without thinking mode for cost-efficient summarization. Smart pruning of redundant `reasoning_content` between non-tool turns."*
+>
+> **Note:** V8 also lists "token-aware prompt buffer" and "session persistence across process restarts" — these are **pre-existing features** already implemented in `SessionManager` and `PromptBuffer`. This spec does not modify them; it adds the compaction and reasoning optimization ON TOP of those existing capabilities.
 
 > **V11:** *"Systematic minimization of API token consumption without sacrificing output quality. Targets include: eliminating redundant `reasoning_content` transmission between non-tool turns, using cheaper models for auxiliary tasks like context compaction, replacing LLM-based skill matching with heuristic keyword matching to eliminate an extra API call per user message, slimming the system prompt by removing tool documentation duplicated between `templates/tools/` and the JSON function schema, compacting built-in skill documents to essential rules only, and removing legacy code paths and configuration options that exist only for engines predating DeepSeek V4 and GPT 5.4."*
 
