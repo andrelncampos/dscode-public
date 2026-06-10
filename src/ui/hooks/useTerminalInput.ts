@@ -31,7 +31,7 @@ const END_SEQUENCES = new Set(["\u001B[F", "\u001B[4~", "\u001B[8~", "\u001BOF"]
 // Shift+Enter detection relies on modifyOtherKeys / CSI-u sequences sent by the
 // terminal. Terminals that do not support these protocols (e.g. mintty) may send
 // \n (0x0A) instead, which is treated as Ctrl+J (newline intent) by the prompt
-// handler — not as proof of Shift+Enter. See scripts/lessons.md for details.
+// handler — not as proof of Shift+Enter. See management/lessons.md for details.
 const SHIFT_RETURN_SEQUENCES = new Set(["\u001B\r", "\u001B[13;2u", "\u001B[13;2~", "\u001B[27;2;13~"]);
 const META_RETURN_SEQUENCES = new Set(["\u001B[13;3u", "\u001B[13;4u"]);
 

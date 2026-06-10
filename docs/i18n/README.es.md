@@ -349,7 +349,7 @@ flowchart LR
 
 ## SDD — Spec-Driven Development
 
-DsCode implementa un ciclo completo de desarrollo orientado a especificaciones. Todos los archivos se guardan en `.dscode/specs/`.
+DsCode implementa un ciclo completo de desarrollo orientado a especificaciones. Todos los archivos se guardan en `management/`.
 
 ```mermaid
 flowchart TD

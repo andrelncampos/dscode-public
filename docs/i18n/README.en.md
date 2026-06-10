@@ -349,7 +349,7 @@ flowchart LR
 
 ## SDD — Spec-Driven Development
 
-DsCode implements a complete spec-driven development cycle. All files live in `.dscode/specs/`.
+DsCode implements a complete spec-driven development cycle. All files live in `management/`.
 
 ```mermaid
 flowchart TD

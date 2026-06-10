@@ -241,7 +241,7 @@ IMPORTANT: Steps 1-5 remove all IMPORTS of the functions being deleted. Step 6 r
 **Requirements Covered:** Process requirement from /spec-new instructions.
 
 **Actions:**
-1. Open `.dscode/specs/roadmap.md`.
+1. Open `management/roadmap.md`.
 2. If status is `planned`, change to `created`.
 3. If status is already `created` or `verified`, leave unchanged.
 

@@ -401,7 +401,7 @@ This ensures the same options are passed to both the existing `messageConverter`
 **Requirements Covered:** N/A (process)
 
 **Actions:**
-1. Open `.dscode/specs/roadmap.md`.
+1. Open `management/roadmap.md`.
 2. Change `| 30 | provider-agnostic-llm-layer | planned | ...` to `| 30 | provider-agnostic-llm-layer | created | ...`.
 
 **Validation:**
