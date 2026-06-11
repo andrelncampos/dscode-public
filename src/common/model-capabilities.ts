@@ -28,10 +28,9 @@ export type ModelPricing = {
 export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   "deepseek-v4-pro": { inputPrice: 0.435, outputPrice: 0.87, cacheReadPrice: 0.003625 },
   "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
-  // NEW: OpenAI GPT-5.4 family pricing (USD per 1M tokens)
-  // NOTE: Prices are estimates. Verify against https://openai.com/api/pricing/ during commit.
-  "gpt-5.4": { inputPrice: 1.25, outputPrice: 10.0, cacheReadPrice: 0.625 },
-  "gpt-5.4-mini": { inputPrice: 0.15, outputPrice: 0.6, cacheReadPrice: 0.075 },
+  "claude-opus-4-8": { inputPrice: 15.0, outputPrice: 75.0, cacheReadPrice: 1.5 },
+  "claude-sonnet-4-5": { inputPrice: 3.0, outputPrice: 15.0, cacheReadPrice: 0.3 },
+  "claude-haiku-4-5": { inputPrice: 0.8, outputPrice: 4.0, cacheReadPrice: 0.08 },
 };
 
 /**

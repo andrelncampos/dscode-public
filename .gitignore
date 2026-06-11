@@ -8,9 +8,6 @@ dist/
 .deepcode/
 .dscode/
 
-# Local caches and generated data
-data/
-
 # Binary release artifacts (generated, never committed)
 release/
 

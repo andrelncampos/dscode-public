@@ -237,6 +237,30 @@ export function collectDeepcodeEnv(processEnv: SettingsProcessEnv = process.env)
   return result;
 }
 
+function collectEngineEnv(processEnv: SettingsProcessEnv): Record<string, { apiKey?: string; baseURL?: string }> {
+  const engines: Record<string, { apiKey?: string; baseURL?: string }> = {};
+  const prefix = "DEEPCODE_ENGINE_";
+  const apiKeySuffix = "_API_KEY";
+  const baseUrlSuffix = "_BASE_URL";
+  for (const [key, value] of Object.entries(processEnv)) {
+    if (!key.startsWith(prefix) || typeof value !== "string" || !value) continue;
+    const rest = key.slice(prefix.length);
+    // Match known field suffixes (they may contain underscores, e.g. API_KEY, BASE_URL)
+    if (rest.endsWith(apiKeySuffix)) {
+      const engineName = rest.slice(0, rest.length - apiKeySuffix.length).toLowerCase();
+      if (!engineName) continue;
+      engines[engineName] ??= {};
+      engines[engineName].apiKey = value;
+    } else if (rest.endsWith(baseUrlSuffix)) {
+      const engineName = rest.slice(0, rest.length - baseUrlSuffix.length).toLowerCase();
+      if (!engineName) continue;
+      engines[engineName] ??= {};
+      engines[engineName].baseURL = value;
+    }
+  }
+  return engines;
+}
+
 function extractMcpEnv(env: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
