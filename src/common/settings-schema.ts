@@ -96,7 +96,6 @@ export const deepcodingSettingsSchema = z.strictObject({
   modelPricing: z.record(z.string(), modelPricingSchema).optional(),
   memory: memorySettingsSchema,
   budget: budgetSettingsSchema.optional(),
-  engines: z.record(z.string(), engineEntrySchema).optional(),
   terminalTitleTemplate: z.string().optional(),
 });
 
