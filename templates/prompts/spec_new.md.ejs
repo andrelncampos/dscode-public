@@ -13,11 +13,11 @@ If the spec does not exist in the roadmap, report that and stop.
 
 ### Step 2: Determine Spec Folder
 
-The spec folder is `management/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
+The spec folder is `management/specs/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
 
 ### Step 3: Create `requirements.md`
 
-Create `management/<%= specNumber %>-<name>/requirements.md` with this structure:
+Create `management/specs/<%= specNumber %>-<name>/requirements.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Requirements
@@ -75,7 +75,7 @@ Create `management/<%= specNumber %>-<name>/requirements.md` with this structure
 
 ### Step 4: Create `design.md`
 
-Create `management/<%= specNumber %>-<name>/design.md` with this structure:
+Create `management/specs/<%= specNumber %>-<name>/design.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Design
@@ -133,7 +133,7 @@ Create `management/<%= specNumber %>-<name>/design.md` with this structure:
 
 ### Step 5: Create `task.md`
 
-Create `management/<%= specNumber %>-<name>/task.md` with this structure:
+Create `management/specs/<%= specNumber %>-<name>/task.md` with this structure:
 
 ```markdown
 # Spec <%= specNumber %>: [Spec Name] — Implementation Tasks

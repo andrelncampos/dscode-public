@@ -5,6 +5,7 @@
  *  - HTTP 429 (rate limit)
  *  - HTTP 502 (bad gateway)
  *  - HTTP 503 (service unavailable)
+ *  - HTTP 529 (overloaded — Anthropic overloaded_error)
  *  - Network errors (ECONNRESET, ETIMEDOUT, etc.)
  *  - AbortError from timeout (not user-initiated abort)
  *
@@ -26,7 +27,7 @@ export type RetryOptions = {
   userSignal?: AbortSignal;
 };
 
-const RETRYABLE_STATUS_CODES = new Set([429, 502, 503]);
+const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 529]);
 
 function isRetryableError(error: unknown, options: RetryOptions): boolean {
   // User-initiated abort — never retry
@@ -54,7 +55,7 @@ function isRetryableError(error: unknown, options: RetryOptions): boolean {
   }
 
   // Fallback: check error message for status codes
-  if (message.includes("429") || message.includes("502") || message.includes("503")) {
+  if (message.includes("429") || message.includes("502") || message.includes("503") || message.includes("529")) {
     return true;
   }
 
