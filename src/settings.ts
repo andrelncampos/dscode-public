@@ -410,7 +410,7 @@ export function resolveSettingsSources(
     parsePositiveInt(projectEnv.MAX_TOKENS) ??
     parsePositiveInt(userSettings?.maxTokens) ??
     parsePositiveInt(userEnv.MAX_TOKENS) ??
-    (model === "deepseek-v4-pro" ? 65536 : 32768);
+    (model === "deepseek-v4-pro" ? 131072 : model.startsWith("deepseek-") ? 65536 : 32768);
 
   const notify =
     trimString(systemEnv.NOTIFY) || trimString(projectSettings?.notify) || trimString(userSettings?.notify) || "";
@@ -502,7 +502,7 @@ export const DEFAULT_BASE_URL = "https://api.deepseek.com";
 export const DEFAULT_SETTINGS: DeepcodingSettings = {
   env: {},
   model: DEFAULT_MODEL,
-  maxTokens: 65536,
+  maxTokens: 131072,
   thinkingEnabled: true,
   reasoningEffort: "max",
   debugLogEnabled: false,
