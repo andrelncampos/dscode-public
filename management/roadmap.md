@@ -18,7 +18,7 @@
 | 10 | more-effectiveness-and-economy | done | V6, V8, V11, ADR-005, ADR-006 |
 | 20 | tui-scalability | done | V1, L3 |
 | 30 | provider-agnostic-llm-layer | audited | V12, V6, ADR-001, ADR-002, ADR-003, ADR-004, P1, P2, P3, L1, L2 |
-| 40 | openai-provider-adapter | planned | V6, V12, ADR-001, ADR-002 |
+| 40 | openai-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-005 |
 | 50 | anthropic-provider-adapter | planned | V6, V12, ADR-002 |
 | 60 | model-selection-configuration | planned | V13, V6, ADR-002, P7 |
 

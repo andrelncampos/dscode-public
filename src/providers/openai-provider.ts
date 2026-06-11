@@ -1,16 +1,17 @@
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "../common/openai-message-converter";
 import { buildThinkingRequestOptions } from "../common/openai-thinking";
-import { DEFAULT_API_TIMEOUT_MS, FLASH_API_TIMEOUT_MS, PRO_API_TIMEOUT_MS } from "../common/api-timeout";
+import { DEFAULT_API_TIMEOUT_MS, PRO_API_TIMEOUT_MS } from "../common/api-timeout";
 import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm-provider";
 import type { ModelUsage } from "../session";
 import type { CreateOpenAIClient } from "../tools/executor";
-import { isMultimodalModel } from "../common/model-capabilities";
 import { withRetry } from "../common/api-retry";
 
-const DEEPSEEK_MODEL_PREFIX = "deepseek-";
+const OPENAI_MODEL_PREFIXES = ["gpt-", "o1", "o3", "o4", "openai-"] as const;
+const OPENAI_NON_MULTIMODAL_MODELS = new Set(["o1-mini", "o3-mini"]);
+const OPENAI_REASONING_MODELS_PATTERN = /^(o[134]|gpt-5\.[0-9]+)$/; // base reasoning models (excludes -mini variants)
 
-export class DeepSeekProvider implements ILlmProvider {
-  readonly providerName = "deepseek";
+export class OpenAIProvider implements ILlmProvider {
+  readonly providerName = "openai";
   private readonly messageConverter: OpenAIMessageConverter;
 
   constructor(
@@ -21,35 +22,47 @@ export class DeepSeekProvider implements ILlmProvider {
   }
 
   supportsModel(model: string): boolean {
-    return model.toLowerCase().startsWith(DEEPSEEK_MODEL_PREFIX);
+    const lower = model.toLowerCase();
+    return OPENAI_MODEL_PREFIXES.some((prefix) => lower.startsWith(prefix));
   }
 
   getTimeoutMs(model: string): number {
-    if (model === "deepseek-v4-pro") return PRO_API_TIMEOUT_MS; // 300_000
-    if (model === "deepseek-v4-flash") return FLASH_API_TIMEOUT_MS; // 180_000
+    // Reasoning models get longer timeout (5 min vs 3 min)
+    if (OPENAI_REASONING_MODELS_PATTERN.test(model)) {
+      return PRO_API_TIMEOUT_MS; // 300_000
+    }
     return DEFAULT_API_TIMEOUT_MS; // 180_000
   }
 
   isMultimodal(model: string): boolean {
-    return isMultimodalModel(model);
+    return !OPENAI_NON_MULTIMODAL_MODELS.has(model.trim());
   }
 
   getCheapModel(model: string): string | null {
-    if (model === "deepseek-v4-pro") return "deepseek-v4-flash";
-    if (model === "deepseek-v4-flash") return null;
-    if (model.includes("pro")) return model.replace("pro", "flash");
+    // GPT-5.4 → gpt-5.4-mini
+    if (model === "gpt-5.4") return "gpt-5.4-mini";
+    // gpt-5.4-mini → null (already cheap)
+    if (model === "gpt-5.4-mini") return null;
+    // o-series → o-series-mini
+    if (model === "o4") return "o4-mini";
+    if (model === "o3") return "o3-mini";
+    // o1, o1-mini, o3-mini, o4-mini → null (already cheap or no cheaper variant)
+    if (model === "o1" || model === "o1-mini" || model === "o3-mini" || model === "o4-mini") return null;
+    // Heuristic: already a mini/cheap variant
+    if (model.endsWith("-mini")) return null;
+    // Fallback: unknown model, no cheap variant
     return null;
   }
 
   async *chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent> {
-    // NOTE: This method is structurally mirrored from OpenAIProvider.chat().
+    // NOTE: This method is structurally mirrored from DeepSeekProvider.chat().
     // Bugfixes applied to one MUST be applied to the other.
-    // See: src/providers/openai-provider.ts
+    // See: src/providers/deepseek-provider.ts
 
     const { client, baseURL } = this.createOpenAIClient();
 
     if (!client) {
-      throw new Error("DeepSeek API key not configured");
+      throw new Error("OpenAI API key not configured");
     }
 
     const providerOpts = options.providerOptions as
@@ -60,7 +73,12 @@ export class DeepSeekProvider implements ILlmProvider {
 
     const openaiMessages = this.messageConverter.buildMessages(options.messages, thinkingEnabled, options.model);
 
-    const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort, "deepseek");
+    const thinkingOptions = buildThinkingRequestOptions(
+      thinkingEnabled,
+      baseURL,
+      reasoningEffort,
+      "openai" // ← KEY DIFFERENCE from DeepSeekProvider
+    );
 
     const streamRequest: Record<string, unknown> = {
       model: options.model,
@@ -78,8 +96,8 @@ export class DeepSeekProvider implements ILlmProvider {
       streamRequest.max_tokens = options.maxTokens;
     }
 
-    // Retry transient failures (429, 502, 503, network errors) with exponential backoff.
-    // Timeout signals are recreated per attempt so each retry gets a fresh timeout window.
+    // Retry transient failures with exponential backoff.
+    // Timeout signals are recreated per attempt.
     const rawResponse = await withRetry(
       () => {
         const attemptTimeout = AbortSignal.timeout(this.getTimeoutMs(options.model));
@@ -98,7 +116,6 @@ export class DeepSeekProvider implements ILlmProvider {
       !rawResponse ||
       typeof (rawResponse as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] !== "function"
     ) {
-      // Non-streaming: extract usage and message content directly
       if (response.usage != null) {
         yield { type: "usage", usage: response.usage as ModelUsage };
       }
@@ -121,7 +138,6 @@ export class DeepSeekProvider implements ILlmProvider {
           for (const rawToolCall of message.tool_calls) {
             const tc = rawToolCall as Record<string, unknown>;
             const tcFn = tc.function as Record<string, unknown> | undefined;
-            // Use the given id (even empty) — normalizeLlmToolCalls handles ID generation
             const toolId = typeof tc.id === "string" ? tc.id : "";
             yield {
               type: "tool_call_start",
@@ -129,17 +145,9 @@ export class DeepSeekProvider implements ILlmProvider {
               name: typeof tcFn?.name === "string" ? (tcFn.name as string) : "",
             };
             if (typeof tcFn?.arguments === "string") {
-              yield {
-                type: "tool_call_delta",
-                id: toolId,
-                arguments: tcFn.arguments as string,
-              };
+              yield { type: "tool_call_delta", id: toolId, arguments: tcFn.arguments as string };
             } else if (tcFn?.arguments !== null && typeof tcFn?.arguments === "object") {
-              yield {
-                type: "tool_call_delta",
-                id: toolId,
-                arguments: JSON.stringify(tcFn.arguments),
-              };
+              yield { type: "tool_call_delta", id: toolId, arguments: JSON.stringify(tcFn.arguments) };
             }
           }
         }
@@ -149,9 +157,8 @@ export class DeepSeekProvider implements ILlmProvider {
 
     const stream = rawResponse as unknown as AsyncIterable<Record<string, unknown>>;
 
-    // DeepSeek API only includes `id` on the first chunk of each tool call.
+    // OpenAI API only includes `id` on the first chunk of each tool call.
     // Subsequent chunks carry only `index` + `function.arguments` (no `id`).
-    // This map tracks index→id so delta events always carry the correct id.
     const toolIndexToId = new Map<number, string>();
 
     try {
@@ -184,7 +191,6 @@ export class DeepSeekProvider implements ILlmProvider {
               const tc = rawToolCall as Record<string, unknown>;
               const tcFn = tc.function as Record<string, unknown> | undefined;
 
-              // Track index→id mapping (DeepSeek only sends id on first chunk per tool call)
               if (typeof tc.id === "string" && typeof tc.index === "number") {
                 toolIndexToId.set(tc.index, tc.id);
               }
@@ -197,7 +203,6 @@ export class DeepSeekProvider implements ILlmProvider {
                 };
               }
 
-              // Resolve the effective id: use tc.id directly if present, otherwise fallback to index→id map
               const effectiveId =
                 typeof tc.id === "string"
                   ? tc.id
@@ -206,17 +211,9 @@ export class DeepSeekProvider implements ILlmProvider {
                     : "";
 
               if (typeof tcFn?.arguments === "string") {
-                yield {
-                  type: "tool_call_delta",
-                  id: effectiveId,
-                  arguments: tcFn.arguments as string,
-                };
+                yield { type: "tool_call_delta", id: effectiveId, arguments: tcFn.arguments as string };
               } else if (tcFn?.arguments !== null && typeof tcFn?.arguments === "object") {
-                yield {
-                  type: "tool_call_delta",
-                  id: effectiveId,
-                  arguments: JSON.stringify(tcFn.arguments),
-                };
+                yield { type: "tool_call_delta", id: effectiveId, arguments: JSON.stringify(tcFn.arguments) };
               }
             }
           }

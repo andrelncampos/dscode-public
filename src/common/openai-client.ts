@@ -20,7 +20,10 @@ const keepAliveAgent = new Agent({
 let cachedOpenAI: OpenAI | null = null;
 let cachedOpenAIKey = "";
 
-export function createOpenAIClient(projectRoot: string = process.cwd()): {
+export function createOpenAIClient(
+  projectRoot: string = process.cwd(),
+  engineName?: string
+): {
   client: OpenAI | null;
   model: string;
   baseURL: string;
@@ -34,11 +37,31 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
   env: Record<string, string>;
 } {
   const settings = resolveCurrentSettings(projectRoot);
-  if (!settings.apiKey) {
+
+  // Engine-specific default base URLs (not falling through to global DeepSeek default)
+  const ENGINE_DEFAULT_BASE_URLS: Record<string, string> = {
+    openai: "https://api.openai.com/v1",
+  };
+
+  // Resolve API key and base URL: engine-specific → engine default → global
+  let apiKey = settings.apiKey;
+  let baseURL = settings.baseURL;
+  if (engineName) {
+    const engineConfig = settings.engines[engineName];
+    if (engineConfig) {
+      apiKey = engineConfig.apiKey || apiKey;
+      baseURL = engineConfig.baseURL || ENGINE_DEFAULT_BASE_URLS[engineName] || baseURL;
+    } else {
+      // No engine config at all — use engine-specific default base URL
+      baseURL = ENGINE_DEFAULT_BASE_URLS[engineName] || baseURL;
+    }
+  }
+
+  if (!apiKey) {
     return {
       client: null,
       model: settings.model,
-      baseURL: settings.baseURL,
+      baseURL,
       temperature: settings.temperature,
       thinkingEnabled: settings.thinkingEnabled,
       reasoningEffort: settings.reasoningEffort,
@@ -50,12 +73,12 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
     };
   }
 
-  const cacheKey = `${settings.apiKey}::${settings.baseURL}`;
+  const cacheKey = `${apiKey}::${baseURL}`;
   if (cachedOpenAI && cachedOpenAIKey === cacheKey) {
     return {
       client: cachedOpenAI,
       model: settings.model,
-      baseURL: settings.baseURL,
+      baseURL,
       temperature: settings.temperature,
       thinkingEnabled: settings.thinkingEnabled,
       reasoningEffort: settings.reasoningEffort,
@@ -68,8 +91,8 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
   }
 
   cachedOpenAI = new OpenAI({
-    apiKey: settings.apiKey,
-    baseURL: settings.baseURL || undefined,
+    apiKey,
+    baseURL: baseURL || undefined,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fetch: (url: any, init: any) => undiciFetch(url, { ...init, dispatcher: keepAliveAgent }),
   });
@@ -91,7 +114,7 @@ export function createOpenAIClient(projectRoot: string = process.cwd()): {
   return {
     client: cachedOpenAI,
     model: settings.model,
-    baseURL: settings.baseURL,
+    baseURL,
     temperature: settings.temperature,
     thinkingEnabled: settings.thinkingEnabled,
     reasoningEffort: settings.reasoningEffort,

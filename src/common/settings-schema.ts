@@ -65,9 +65,19 @@ const memorySettingsSchema = z
 
 // ── Root schema (strict — rejects unknown keys) ──────────────────
 
+export type EngineEntry = {
+  apiKey?: string;
+  baseURL?: string;
+};
+
 const budgetSettingsSchema = z.object({
   dailyLimit: z.number().nonnegative().optional(),
   monthlyLimit: z.number().nonnegative().optional(),
+});
+
+const engineEntrySchema = z.object({
+  apiKey: z.string().optional(),
+  baseURL: z.string().optional(),
 });
 
 export const deepcodingSettingsSchema = z.strictObject({
@@ -81,6 +91,7 @@ export const deepcodingSettingsSchema = z.strictObject({
   maxTokens: z.number().int().positive().optional(),
   notify: z.string().optional(),
   mcpServers: z.record(z.string(), mcpServerConfigSchema).optional(),
+  engines: z.record(z.string(), engineEntrySchema).optional(),
   permissions: permissionSettingsSchema.optional(),
   modelPricing: z.record(z.string(), modelPricingSchema).optional(),
   memory: memorySettingsSchema,

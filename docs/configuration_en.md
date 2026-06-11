@@ -35,6 +35,8 @@ The following are all the top-level fields supported in `settings.json`, along w
 | `notify`           | string  | Full path to a task-completion notification script (e.g., Slack notification script) |
 | `webSearchTool`    | string  | Full path to a custom web search script                                     |
 | `mcpServers`       | object  | MCP server configurations (keys are service names, values are McpServerConfig objects) |
+| `engines`          | object  | Per-provider credentials (e.g., `engines.openai.apiKey`). Overrides global `env.API_KEY` for the matching provider |
+| `modelPricing`     | object  | Custom model pricing per token (input/output/cacheRead). See README for defaults |
 | `temperature`      | number  | Sampling temperature for LLM, from `0` to `2`                 |
 
 #### `env` Sub-fields

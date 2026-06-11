@@ -1469,8 +1469,8 @@ export class SessionManager {
 
     const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, adjustedEndIndex));
     // Use a cheaper model variant for compaction, falling back to the current model
-    const resolvedModel = this.getResolvedSettings().model;
-    const compactionModel = resolvedModel.includes("pro") ? resolvedModel.replace("pro", "flash") : resolvedModel;
+    const resolvedModel = this.createOpenAIClient().model;
+    const compactionModel = provider?.getCheapModel?.(resolvedModel) ?? resolvedModel;
 
     const compactMessage: SessionMessage = {
       id: crypto.randomUUID(),

@@ -1,5 +1,5 @@
 import { defaultsToThinkingMode, type ModelPricing } from "./common/model-capabilities";
-import { deepcodingSettingsSchema, formatZodErrors } from "./common/settings-schema";
+import { deepcodingSettingsSchema, formatZodErrors, type EngineEntry } from "./common/settings-schema";
 import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import { resolveMemorySettings } from "./memory/memory-settings";
 import type { MemorySettings } from "./memory/turn-transcript-types";
@@ -65,6 +65,7 @@ export type DeepcodingSettings = {
   maxTokens?: number;
   notify?: string;
   mcpServers?: Record<string, McpServerConfig>;
+  engines?: Record<string, EngineEntry>;
   permissions?: PermissionSettings;
   modelPricing?: Record<string, ModelPricing>;
   memory?: Partial<MemorySettings>;
@@ -85,6 +86,7 @@ export type ResolvedDeepcodingSettings = {
   maxTokens: number;
   notify?: string;
   mcpServers?: Record<string, McpServerConfig>;
+  engines: Record<string, EngineEntry>;
   permissions: Required<PermissionSettings>;
   modelPricing?: Record<string, ModelPricing>;
   memory: MemorySettings;
@@ -310,6 +312,30 @@ function parsePositiveInt(value: unknown): number | undefined {
   return undefined;
 }
 
+function collectEngineEnv(processEnv: SettingsProcessEnv): Record<string, { apiKey?: string; baseURL?: string }> {
+  const engines: Record<string, { apiKey?: string; baseURL?: string }> = {};
+  const prefix = "DEEPCODE_ENGINE_";
+  const apiKeySuffix = "_API_KEY";
+  const baseUrlSuffix = "_BASE_URL";
+  for (const [key, value] of Object.entries(processEnv)) {
+    if (!key.startsWith(prefix) || typeof value !== "string" || !value) continue;
+    const rest = key.slice(prefix.length);
+    // Match known field suffixes (they may contain underscores, e.g. API_KEY, BASE_URL)
+    if (rest.endsWith(apiKeySuffix)) {
+      const engineName = rest.slice(0, rest.length - apiKeySuffix.length).toLowerCase();
+      if (!engineName) continue;
+      engines[engineName] ??= {};
+      engines[engineName].apiKey = value;
+    } else if (rest.endsWith(baseUrlSuffix)) {
+      const engineName = rest.slice(0, rest.length - baseUrlSuffix.length).toLowerCase();
+      if (!engineName) continue;
+      engines[engineName] ??= {};
+      engines[engineName].baseURL = value;
+    }
+  }
+  return engines;
+}
+
 export function resolveSettingsSources(
   userSettings: DeepcodingSettings | null | undefined,
   projectSettings: DeepcodingSettings | null | undefined,
@@ -323,6 +349,12 @@ export function resolveSettingsSources(
     ...userEnv,
     ...projectEnv,
     ...systemEnv,
+  };
+
+  const engines = {
+    ...(userSettings?.engines ?? {}),
+    ...(projectSettings?.engines ?? {}),
+    ...collectEngineEnv(processEnv),
   };
 
   const model =
@@ -408,6 +440,7 @@ export function resolveSettingsSources(
     maxTokens,
     notify: notify || undefined,
     mcpServers: mergeMcpServers(userSettings, projectSettings, userEnv, projectEnv, systemEnv),
+    engines,
     permissions: mergePermissions(userSettings, projectSettings),
     modelPricing: projectSettings?.modelPricing ?? userSettings?.modelPricing,
     memory,
@@ -467,6 +500,7 @@ export const DEFAULT_BASE_URL = "https://api.deepseek.com";
  * and as documentation of every supported setting.
  */
 export const DEFAULT_SETTINGS: DeepcodingSettings = {
+  env: {},
   model: DEFAULT_MODEL,
   maxTokens: 65536,
   thinkingEnabled: true,
@@ -499,6 +533,7 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
   },
   budget: {},
   mcpServers: {},
+  engines: {},
   modelPricing: {
     "deepseek-v4-pro": { inputPrice: 0.435, outputPrice: 0.87, cacheReadPrice: 0.003625 },
     "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
@@ -571,9 +606,25 @@ function readSettingsAndEnsureDefaults(settingsPath: string): DeepcodingSettings
     if (!result.success) {
       const errorMessage = formatZodErrors(result.error, settingsPath);
       process.stderr.write(errorMessage + "\n");
+      // Zod strictObject rejects unrecognized keys entirely — result.data is typically undefined.
+      // Fall back to extracting known fields from the raw parsed JSON so critical settings
+      // like env.API_KEY are not lost.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const partial = (result as any).data as DeepcodingSettings | undefined;
-      return partial ?? ({} as DeepcodingSettings);
+      if (partial && Object.keys(partial).length > 0) {
+        return partial;
+      }
+      // Manually extract known settings keys from the raw parsed JSON.
+      const rawObj = parsed as Record<string, unknown>;
+      const rescued: DeepcodingSettings = {};
+      const KNOWN_KEYS = new Set(Object.keys(deepcodingSettingsSchema.shape));
+      for (const key of Object.keys(rawObj)) {
+        if (KNOWN_KEYS.has(key)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (rescued as any)[key] = rawObj[key];
+        }
+      }
+      return Object.keys(rescued).length > 0 ? rescued : null;
     }
 
     const validated = result.data as DeepcodingSettings;

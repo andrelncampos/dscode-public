@@ -25,4 +25,6 @@ export interface ILlmProvider {
   chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent>;
   getTimeoutMs(model: string): number;
   isMultimodal(model: string): boolean;
+  /** Return the cheapest thinking-disabled model for the given model, or null if none. */
+  getCheapModel?(model: string): string | null;
 }
