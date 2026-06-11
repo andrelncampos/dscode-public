@@ -155,6 +155,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | `permissions` | object | Control fino de permisos | *(todo permitido)* |
 | `mcpServers` | object | Configuración de servidores MCP | *(ninguno)* |
 | `notify` | string | Script ejecutado al final de cada tarea | *(ninguno)* |
+| `engines` | object | Configuración por proveedor (ej: `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Precios personalizados por modelo | *(precios por defecto DeepSeek V4)* |
 
 ### Precios de modelo (`modelPricing`)
@@ -165,6 +166,8 @@ DsCode calcula el costo estimado de la sesión según los tokens usados. Precios
 |---|---|---|---|
 | `deepseek-v4-pro` | $0.435 | $0.87 | $0.003625 |
 | `deepseek-v4-flash` | $0.14 | $0.28 | $0.0028 |
+| `gpt-5.4` | $1.25 | $10.00 | $0.625 |
+| `gpt-5.4-mini` | $0.15 | $0.60 | $0.075 |
 
 Para usar precios personalizados (o añadir un modelo no soportado):
 
@@ -479,37 +482,61 @@ DsCode está optimizado para los modelos DeepSeek V4.
 
 ## Cómo usar con OpenAI
 
-DsCode funciona con cualquier modelo de OpenAI compatible con la API Chat Completions.
+DsCode tiene **soporte nativo para OpenAI** mediante `OpenAIProvider`. Los modelos con prefijo `gpt-`, `o1`, `o3`, `o4` u `openai-` se enrutan automáticamente al provider OpenAI — sin configuración adicional.
 
 ### Configuración para OpenAI
 
 ```json
 {
   "env": {
-    "MODEL": "gpt-4o",
+    "MODEL": "gpt-5.4",
     "BASE_URL": "https://api.openai.com/v1",
     "API_KEY": "sk-tu-clave-openai"
   },
-  "thinkingEnabled": false
+  "thinkingEnabled": true,
+  "reasoningEffort": "high"
 }
 ```
+
+> 💡 `thinkingEnabled` funciona con OpenAI: `reasoningEffort` se envía como el parámetro nativo `reasoning_effort` de la API.
+
+### Usando múltiples proveedores con `engines`
+
+Puedes configurar claves separadas para cada proveedor sin cambiar de `settings.json`:
+
+```json
+{
+  "env": {
+    "MODEL": "deepseek-v4-pro",
+    "API_KEY": "sk-clave-deepseek"
+  },
+  "engines": {
+    "openai": {
+      "apiKey": "sk-clave-openai"
+    }
+  }
+}
+```
+
+Cuando cambias el modelo a `gpt-5.4` (vía `/model`), DsCode usa automáticamente la clave del engine `openai`. El provider y la clave correcta se seleccionan según el prefijo del modelo.
 
 ### Qué cambia respecto a DeepSeek
 
 | Funcionalidad | Con OpenAI |
 |---|---|
-| **Thinking mode** | ⚠️ Debe estar `false`. El reasoning effort es propietario de DeepSeek |
+| **Thinking mode** | ✅ Soportado nativamente. `reasoningEffort` (`"high"` / `"max"`) se envía como `reasoning_effort` |
 | **WebSearch built-in** | ❌ No disponible. Usa MCP con servidor de búsqueda o pide a la IA usar WebFetch en URLs específicas |
 | **KV Cache** | ❌ No disponible (exclusivo de DeepSeek) |
 | **Imágenes (Ctrl+V)** | ✅ Funciona con modelos de visión (`gpt-5.5`, `gpt-5`, `gpt-4o`) |
-| **Modelos soportados** | `gpt-5.5`, `gpt-5.4`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini` — cualquier modelo Chat Completions |
+| **Modelos soportados** | `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4` — cualquier modelo Chat Completions |
+| **Compactación** | Usa `getCheapModel()`: `gpt-5.4` → `gpt-5.4-mini` para reducir costo al resumir historial |
 
 ### Ejemplo con modelo más barato
 
 ```json
 {
   "env": {
-    "MODEL": "gpt-4o-mini",
+    "MODEL": "gpt-5.4-mini",
     "BASE_URL": "https://api.openai.com/v1",
     "API_KEY": "sk-tu-clave-openai"
   },

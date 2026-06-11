@@ -577,3 +577,52 @@ test(
     assert.equal(calls[1]?.options.env?.TITLE, "Fix login bug");
   }
 );
+
+// ── engines settings tests (Spec 40) ──
+
+test("engines field resolves from project settings", () => {
+  const projectSettings = {
+    engines: { openai: { apiKey: "sk-project-openai" } },
+  };
+  const resolved = resolveSettingsSources(null, projectSettings, {
+    model: "deepseek-v4-pro",
+    baseURL: "https://api.deepseek.com",
+  });
+  assert.ok(resolved.engines);
+  assert.equal(resolved.engines.openai?.apiKey, "sk-project-openai");
+});
+
+test("DEEPCODE_ENGINE_OPENAI_API_KEY populates engines.openai.apiKey", () => {
+  const env = { DEEPCODE_ENGINE_OPENAI_API_KEY: "sk-env-openai" };
+  const resolved = resolveSettingsSources(
+    null,
+    null,
+    {
+      model: "deepseek-v4-pro",
+      baseURL: "https://api.deepseek.com",
+    },
+    env
+  );
+  assert.ok(resolved.engines.openai);
+  assert.equal(resolved.engines.openai.apiKey, "sk-env-openai");
+});
+
+test("Engine-specific API key overrides global API_KEY", () => {
+  const env = {
+    DEEPCODE_ENGINE_OPENAI_API_KEY: "sk-engine-specific",
+    DEEPCODE_API_KEY: "sk-global",
+  };
+  const resolved = resolveSettingsSources(
+    null,
+    null,
+    {
+      model: "gpt-5.4",
+      baseURL: "https://api.deepseek.com",
+    },
+    env
+  );
+  // The engine-specific key is in engines.openai
+  assert.equal(resolved.engines.openai?.apiKey, "sk-engine-specific");
+  // The global key is still available as the top-level apiKey
+  assert.equal(resolved.apiKey, "sk-global");
+});
