@@ -81,8 +81,10 @@ type Props = PromptStreamState &
     onInterrupt: () => void;
     onToggleProcessStdout?: () => void;
     onToggleHelp?: () => void;
-    /** Current session token count, or 0. */
+    /** Cumulative tokens consumed across all API calls in this session. */
     sessionTokens?: number;
+    /** Estimated tokens currently occupying the context window (active messages). */
+    sessionActiveTokens?: number;
     /** Current session cost in USD, or null if unknown. */
     sessionCost?: number | null;
     /** Current model's context window size in tokens. */
@@ -141,6 +143,7 @@ export const PromptInput = React.memo(function PromptInput({
   streamProgress,
   nowTick: _nowTick,
   sessionTokens = 0,
+  sessionActiveTokens = 0,
   sessionCost = null,
   sessionContextWindow,
   dailyCost = 0,
@@ -220,13 +223,12 @@ export const PromptInput = React.memo(function PromptInput({
     }
     // Build stats suffix
     let stats = "";
+    if (sessionActiveTokens > 0 && sessionContextWindow && sessionContextWindow > 0) {
+      const pct = Math.round((sessionActiveTokens / sessionContextWindow) * 100);
+      stats += ` · 🪟 ${formatTokenCount(sessionActiveTokens)}/${formatTokenCount(sessionContextWindow)} (${pct}%)`;
+    }
     if (sessionTokens > 0) {
-      if (sessionContextWindow && sessionContextWindow > 0) {
-        const pct = Math.round((sessionTokens / sessionContextWindow) * 100);
-        stats += ` · ⚡ ${formatTokenCount(sessionTokens)}/${formatTokenCount(sessionContextWindow)} (${pct}%)`;
-      } else {
-        stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
-      }
+      stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
     }
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     stats += ` · 📅 ${formatCost(dailyCost)}`;

@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import ejs from "ejs";
 import type { SessionMessage } from "./session";
+import type { SkillInfo } from "./session";
 import { findGitBashPath, resolveShellPath } from "./common/shell-utils";
 import { isMultimodalModel } from "./common/model-capabilities";
 
@@ -92,7 +93,9 @@ Here's an example of how your output should be structured:
 
 const SYSTEM_PROMPT_BASE = `You are an interactive CLI tool called DsCode that helps users complete software engineering tasks. Use the instructions below and the tools available to you to assist the user.
 
-Important: Do not fabricate any non-programming URLs. For programming links, only use: 1) context provided by the user; 2) the main domain of official documentation you have identified. Before outputting, you must verify that the link exists in your context memory; if it does not, explicitly state that you cannot provide it.`;
+Important: Do not fabricate any non-programming URLs. For programming links, only use: 1) context provided by the user; 2) the main domain of official documentation you have identified. Before outputting, you must verify that the link exists in your context memory; if it does not, explicitly state that you cannot provide it.
+
+When you need to explore the codebase (finding files, searching for patterns, understanding architecture), delegate to the Explore tool instead of using Read/Grep/Glob directly. This keeps the main conversation context clean. Use Explore for multi-file exploration; use Read for single known files.`;
 
 type PromptToolOptions = {
   model?: string;
@@ -436,319 +439,316 @@ export type ToolDefinition = {
   };
 };
 
-export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDefinition[] = []): ToolDefinition[] {
-  const tools: ToolDefinition[] = [
-    {
-      type: "function",
-      function: {
-        name: "bash",
-        description: "Execute shell commands in a persistent bash session.",
-        parameters: {
-          type: "object",
-          properties: {
-            command: {
-              type: "string",
-              description: "The shell command to execute",
-            },
-            description: {
-              type: "string",
-              description:
-                'Clear, concise description of what this command does in active voice. Never use words like "complex" or "risk" in the description - just describe what it does.',
-            },
-            sideEffects: {
-              description:
-                'Permission scopes required by this bash command. Use [] only for commands that do not read, write, delete, or access the network. Use ["unknown"] when the effects cannot be classified safely.',
-              type: "array",
-              items: {
-                type: "string",
-                enum: [
-                  "read-in-cwd",
-                  "read-out-cwd",
-                  "write-in-cwd",
-                  "write-out-cwd",
-                  "delete-in-cwd",
-                  "delete-out-cwd",
-                  "query-git-log",
-                  "mutate-git-log",
-                  "network",
-                  "unknown",
-                ],
-              },
-              uniqueItems: true,
-            },
-            run_in_background: {
-              type: "boolean",
-              description:
-                "Set to true to run the command in the background. Use this only when you need to perform a blocking task and do not need the result immediately.",
-            },
+const BUILTIN_TOOL_DEFINITIONS: ToolDefinition[] = [
+  {
+    type: "function",
+    function: {
+      name: "bash",
+      description: "Execute shell commands in a persistent bash session.",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "The shell command to execute",
           },
-          required: ["command", "sideEffects"],
-          additionalProperties: false,
+          description: {
+            type: "string",
+            description:
+              'Clear, concise description of what this command does in active voice. Never use words like "complex" or "risk" in the description - just describe what it does.',
+          },
+          sideEffects: {
+            description:
+              'Permission scopes required by this bash command. Use [] only for commands that do not read, write, delete, or access the network. Use ["unknown"] when the effects cannot be classified safely.',
+            type: "array",
+            items: {
+              type: "string",
+              enum: [
+                "read-in-cwd",
+                "read-out-cwd",
+                "write-in-cwd",
+                "write-out-cwd",
+                "delete-in-cwd",
+                "delete-out-cwd",
+                "query-git-log",
+                "mutate-git-log",
+                "network",
+                "unknown",
+              ],
+            },
+            uniqueItems: true,
+          },
+          run_in_background: {
+            type: "boolean",
+            description:
+              "Set to true to run the command in the background. Use this only when you need to perform a blocking task and do not need the result immediately.",
+          },
         },
+        required: ["command", "sideEffects"],
+        additionalProperties: false,
       },
     },
-    {
-      type: "function",
-      function: {
-        name: "AskUserQuestion",
-        description:
-          "When the task has ambiguities or multiple implementation approaches, use this tool to pause execution and ask the user a question to get clarification or make a decision.",
-        parameters: {
-          type: "object",
-          properties: {
-            questions: {
-              type: "array",
-              description: "Questions to present to the user. Usually only one question is needed at a time.",
-              items: {
-                type: "object",
-                properties: {
-                  question: {
-                    type: "string",
-                    description: "The question to ask the user.",
-                  },
-                  multiSelect: {
-                    type: "boolean",
-                    description: "Whether the user may choose multiple options.",
-                  },
-                  options: {
-                    type: "array",
-                    description: "A list of predefined options for the user to choose from.",
-                    items: {
-                      type: "object",
-                      properties: {
-                        label: {
-                          type: "string",
-                          description: "The display text for the option.",
-                        },
-                        description: {
-                          type: "string",
-                          description:
-                            "A detailed explanation or hint about this option to help the user understand what happens if they choose it.",
-                        },
+  },
+  {
+    type: "function",
+    function: {
+      name: "AskUserQuestion",
+      description:
+        "When the task has ambiguities or multiple implementation approaches, use this tool to pause execution and ask the user a question to get clarification or make a decision.",
+      parameters: {
+        type: "object",
+        properties: {
+          questions: {
+            type: "array",
+            description: "Questions to present to the user. Usually only one question is needed at a time.",
+            items: {
+              type: "object",
+              properties: {
+                question: {
+                  type: "string",
+                  description: "The question to ask the user.",
+                },
+                multiSelect: {
+                  type: "boolean",
+                  description: "Whether the user may choose multiple options.",
+                },
+                options: {
+                  type: "array",
+                  description: "A list of predefined options for the user to choose from.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: {
+                        type: "string",
+                        description: "The display text for the option.",
                       },
-                      required: ["label"],
+                      description: {
+                        type: "string",
+                        description:
+                          "A detailed explanation or hint about this option to help the user understand what happens if they choose it.",
+                      },
                     },
+                    required: ["label"],
                   },
                 },
-                required: ["question", "options"],
               },
+              required: ["question", "options"],
             },
           },
-          required: ["questions"],
-          additionalProperties: false,
         },
+        required: ["questions"],
+        additionalProperties: false,
       },
     },
-    {
-      type: "function",
-      function: {
-        name: "UpdatePlan",
-        description:
-          "Update the current task plan. The plan argument must be the complete markdown task list to show as the latest progress state.",
-        parameters: {
-          type: "object",
-          properties: {
-            plan: {
-              type: "string",
-              description:
-                "The complete markdown task list, including task status markers such as [ ], [>], [x], and optional notes.",
-            },
-            explanation: {
-              type: "string",
-              description: "Optional short reason for changing the plan.",
-            },
+  },
+  {
+    type: "function",
+    function: {
+      name: "UpdatePlan",
+      description:
+        "Update the current task plan. The plan argument must be the complete markdown task list to show as the latest progress state.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan: {
+            type: "string",
+            description:
+              "The complete markdown task list, including task status markers such as [ ], [>], [x], and optional notes.",
           },
-          required: ["plan"],
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "read",
-        description: "Read files from the filesystem (text, images, PDFs, notebooks).",
-        parameters: {
-          type: "object",
-          properties: {
-            file_path: {
-              type: "string",
-              description: "UNIX-style path to file",
-            },
-            offset: {
-              type: "number",
-              description: "Line number to start reading from",
-            },
-            limit: {
-              type: "number",
-              description: "Number of lines to read",
-            },
-            pages: {
-              type: "string",
-              description: 'Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files.',
-            },
+          explanation: {
+            type: "string",
+            description: "Optional short reason for changing the plan.",
           },
-          required: ["file_path"],
-          additionalProperties: false,
         },
+        required: ["plan"],
+        additionalProperties: false,
       },
     },
-    {
-      type: "function",
-      function: {
-        name: "write",
-        description: "Create files or overwrite them with a complete string payload. Prefer edit for existing files.",
-        parameters: {
-          type: "object",
-          properties: {
-            file_path: {
-              type: "string",
-              description: "Absolute path to file",
-            },
-            content: {
-              type: "string",
-              description: "Complete file content as a single string. Serialize JSON documents before writing.",
-            },
+  },
+  {
+    type: "function",
+    function: {
+      name: "read",
+      description: "Read files from the filesystem (text, images, PDFs, notebooks).",
+      parameters: {
+        type: "object",
+        properties: {
+          file_path: {
+            type: "string",
+            description: "UNIX-style path to file",
           },
-          required: ["file_path", "content"],
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "edit",
-        description: "Perform scoped string replacements in files.",
-        parameters: {
-          type: "object",
-          properties: {
-            snippet_id: {
-              type: "string",
-              description: "Required Read/Edit snippet_id.",
-            },
-            file_path: {
-              type: "string",
-              description: "Optional absolute path guard; must match snippet_id's file.",
-            },
-            old_string: {
-              type: "string",
-              description: "Exact text to replace inside snippet_id's scope",
-            },
-            new_string: {
-              type: "string",
-              description: "Replacement text (must differ from old_string)",
-            },
-            replace_all: {
-              type: "boolean",
-              description: "Replace all occurences of old_string (default false)",
-              default: false,
-            },
-            expected_occurrences: {
-              type: "number",
-              description: "Expected number of matches, especially useful as a safety check with replace_all",
-            },
+          offset: {
+            type: "number",
+            description: "Line number to start reading from",
           },
-          required: ["snippet_id", "old_string", "new_string"],
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "glob",
-        description:
-          "Search for files matching a glob pattern (e.g., 'src/**/*.ts', '*.test.ts'). " +
-          "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
-          "Returns matching relative file paths as a JSON array. Prefer this over bash ls/find.",
-        parameters: {
-          type: "object",
-          properties: {
-            pattern: {
-              type: "string",
-              description:
-                "Glob pattern to match (e.g., '**/*.ts', 'src/**/*.tsx'). " +
-                "If the pattern has no directory component it matches in any directory.",
-            },
+          limit: {
+            type: "number",
+            description: "Number of lines to read",
           },
-          required: ["pattern"],
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "grep",
-        description:
-          "Search file contents within the project workspace using a regex pattern. " +
-          "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
-          "Returns matching file paths, line numbers, and line content as a JSON array. " +
-          "Prefer this over bash grep/rg for searching file contents.",
-        parameters: {
-          type: "object",
-          properties: {
-            pattern: {
-              type: "string",
-              description: "Regex pattern to search for in file contents (e.g., 'TODO', 'import.*from').",
-            },
-            path: {
-              type: "string",
-              description:
-                "Optional file or directory path relative to project root to search within (default: entire project).",
-            },
-            glob: {
-              type: "string",
-              description: "Optional glob pattern to filter which files to search (e.g., '*.ts', 'src/**/*.tsx').",
-            },
+          pages: {
+            type: "string",
+            description: 'Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files.',
           },
-          required: ["pattern"],
-          additionalProperties: false,
         },
+        required: ["file_path"],
+        additionalProperties: false,
       },
     },
-    {
-      type: "function",
-      function: {
-        name: "WebFetch",
-        description:
-          "Fetch content from a URL (documentation, API responses, etc.). " +
-          "HTML is automatically stripped to readable text. JSON and XML are returned as-is. " +
-          "Local/private addresses are blocked. Use this to read docs, fetch API data, or inspect web resources.",
-        parameters: {
-          type: "object",
-          properties: {
-            url: {
-              type: "string",
-              description: "The URL to fetch (must be http or https).",
-            },
-            method: {
-              type: "string",
-              description: "HTTP method (default: GET). Use POST/PUT with a body for API calls.",
-              enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"],
-            },
-            headers: {
-              type: "object",
-              description: 'Optional request headers as a JSON object (e.g., {"Authorization": "Bearer token"}).',
-            },
-            body: {
-              type: "string",
-              description: "Optional request body for POST/PUT/PATCH requests.",
-            },
-            maxChars: {
-              type: "number",
-              description: "Maximum characters to return (default: 50000).",
-            },
+  },
+  {
+    type: "function",
+    function: {
+      name: "write",
+      description: "Create files or overwrite them with a complete string payload. Prefer edit for existing files.",
+      parameters: {
+        type: "object",
+        properties: {
+          file_path: {
+            type: "string",
+            description: "Absolute path to file",
           },
-          required: ["url"],
-          additionalProperties: false,
+          content: {
+            type: "string",
+            description: "Complete file content as a single string. Serialize JSON documents before writing.",
+          },
         },
+        required: ["file_path", "content"],
+        additionalProperties: false,
       },
     },
-  ];
-
-  tools.push({
+  },
+  {
+    type: "function",
+    function: {
+      name: "edit",
+      description: "Perform scoped string replacements in files.",
+      parameters: {
+        type: "object",
+        properties: {
+          snippet_id: {
+            type: "string",
+            description: "Required Read/Edit snippet_id.",
+          },
+          file_path: {
+            type: "string",
+            description: "Optional absolute path guard; must match snippet_id's file.",
+          },
+          old_string: {
+            type: "string",
+            description: "Exact text to replace inside snippet_id's scope",
+          },
+          new_string: {
+            type: "string",
+            description: "Replacement text (must differ from old_string)",
+          },
+          replace_all: {
+            type: "boolean",
+            description: "Replace all occurences of old_string (default false)",
+            default: false,
+          },
+          expected_occurrences: {
+            type: "number",
+            description: "Expected number of matches, especially useful as a safety check with replace_all",
+          },
+        },
+        required: ["snippet_id", "old_string", "new_string"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "glob",
+      description:
+        "Search for files matching a glob pattern (e.g., 'src/**/*.ts', '*.test.ts'). " +
+        "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
+        "Returns matching relative file paths as a JSON array. Prefer this over bash ls/find.",
+      parameters: {
+        type: "object",
+        properties: {
+          pattern: {
+            type: "string",
+            description:
+              "Glob pattern to match (e.g., '**/*.ts', 'src/**/*.tsx'). " +
+              "If the pattern has no directory component it matches in any directory.",
+          },
+        },
+        required: ["pattern"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "grep",
+      description:
+        "Search file contents within the project workspace using a regex pattern. " +
+        "Respects .gitignore and auto-excludes node_modules, .git, dist, etc. " +
+        "Returns matching file paths, line numbers, and line content as a JSON array. " +
+        "Prefer this over bash grep/rg for searching file contents.",
+      parameters: {
+        type: "object",
+        properties: {
+          pattern: {
+            type: "string",
+            description: "Regex pattern to search for in file contents (e.g., 'TODO', 'import.*from').",
+          },
+          path: {
+            type: "string",
+            description:
+              "Optional file or directory path relative to project root to search within (default: entire project).",
+          },
+          glob: {
+            type: "string",
+            description: "Optional glob pattern to filter which files to search (e.g., '*.ts', 'src/**/*.tsx').",
+          },
+        },
+        required: ["pattern"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "WebFetch",
+      description:
+        "Fetch content from a URL (documentation, API responses, etc.). " +
+        "HTML is automatically stripped to readable text. JSON and XML are returned as-is. " +
+        "Local/private addresses are blocked. Use this to read docs, fetch API data, or inspect web resources.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The URL to fetch (must be http or https).",
+          },
+          method: {
+            type: "string",
+            description: "HTTP method (default: GET). Use POST/PUT with a body for API calls.",
+            enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"],
+          },
+          headers: {
+            type: "object",
+            description: 'Optional request headers as a JSON object (e.g., {"Authorization": "Bearer token"}).',
+          },
+          body: {
+            type: "string",
+            description: "Optional request body for POST/PUT/PATCH requests.",
+          },
+          maxChars: {
+            type: "number",
+            description: "Maximum characters to return (default: 50000).",
+          },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
     type: "function",
     function: {
       name: "WebSearch",
@@ -766,10 +766,97 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
         additionalProperties: false,
       },
     },
-  });
+  },
+  {
+    type: "function",
+    function: {
+      name: "Explore",
+      description: `Delegate codebase exploration to a read-only subagent that runs in an isolated context.
+The subagent uses an auxiliary model (no thinking) to search and analyze the codebase.
+Only the final summary is returned to the main conversation — exploration details stay isolated.
+
+Use Explore when you need to:
+- Find where a function, class, or feature is implemented
+- Search for patterns across multiple files
+- Understand how a module or subsystem works
+- Map architecture or dependencies
+
+Prefer Explore over multiple Read/Grep/Glob calls in the main conversation.
+Do NOT use Explore for single-file lookups or when you already know the file path.`,
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The exploration question or task description. Be specific about what to find.",
+          },
+          thoroughness: {
+            type: "string",
+            enum: ["quick", "medium", "thorough"],
+            description:
+              "quick: simple lookup (where is X?). medium: balanced exploration (how does Y work?). thorough: comprehensive analysis (map the entire Z architecture).",
+          },
+        },
+        required: ["query", "thoroughness"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+export function getBuiltInToolDefinitions(): ToolDefinition[] {
+  return BUILTIN_TOOL_DEFINITIONS;
+}
+
+export function getTools(
+  _options: PromptToolOptions = {},
+  externalTools: ToolDefinition[] = [],
+  skills: SkillInfo[] = []
+): ToolDefinition[] {
+  const tools: ToolDefinition[] = [...getBuiltInToolDefinitions()];
 
   for (const tool of externalTools) {
     tools.push(tool);
+  }
+
+  // Add agent skill tool definitions
+  if (skills.length > 0) {
+    const builtInToolNames = new Set(
+      tools.map((t) => {
+        return typeof t.function === "object" && "name" in t.function ? t.function.name : "";
+      })
+    );
+
+    const agentSkills = skills
+      .filter((s) => s.mode === "agent")
+      .filter((s) => !builtInToolNames.has(s.name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const skill of agentSkills) {
+      tools.push({
+        type: "function" as const,
+        function: {
+          name: skill.name,
+          description: `${skill.description}\n\nThis is an agent skill that runs as an isolated subagent with its own tools and context. Only the result is returned to the main conversation.`,
+          parameters: {
+            type: "object" as const,
+            properties: {
+              prompt: {
+                type: "string" as const,
+                description: "The task for this agent to perform. Be specific about what you need done.",
+              },
+            },
+            required: ["prompt"],
+            additionalProperties: false,
+          },
+        },
+      });
+    }
+
+    const skipped = skills.filter((s) => s.mode === "agent" && builtInToolNames.has(s.name));
+    for (const s of skipped) {
+      console.error(`[WARN] Agent skill "${s.name}" conflicts with built-in tool name — not registered as tool.`);
+    }
   }
 
   return tools;

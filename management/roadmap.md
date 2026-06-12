@@ -26,6 +26,8 @@
 | 90 | product-i18n | audited | V14, P6 |
 | 100 | steering-management | audited | V15, ADR-006 |
 | 110 | skills-inclusion-modes | audited | V16, ADR-006 |
+| 120 | explore-subagent | audited | V17, V8, V11, ADR-005, L1 |
+| 130 | skills-as-subagents | audited | V17, V16, V8, V11, ADR-005, ADR-006, L1 |
 
 ---
 
@@ -47,6 +49,12 @@ Spec 100 (steering management)
 
 Spec 110 (skills inclusion modes)
   (standalone — builds on existing SKILL.md infrastructure)
+
+Spec 120 (explore subagent)
+  (standalone — builds on existing tool infrastructure, web-search-handler pattern)
+
+Spec 130 (skills as subagents)
+  └── depends on Spec 120 (subagent runner infrastructure from explore-subagent)
 ```
 
 Spec 30 is the **required precursor** to 40, 50, 60, and 70. The provider interface

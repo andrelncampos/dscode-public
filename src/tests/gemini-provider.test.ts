@@ -46,42 +46,42 @@ await test("isMultimodal returns true for all models", () => {
   assert.equal(provider.isMultimodal("gemini-2.5-flash"), true);
 });
 
-// ── getCheapModel ──────────────────────────────────────────────────────
+// ── getAuxiliaryModel ──────────────────────────────────────────────────────
 
-await test("getCheapModel returns flash-lite for 3.5-flash", () => {
+await test("getAuxiliaryModel returns flash-lite for 3.5-flash", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-3.5-flash"), "gemini-3.1-flash-lite");
+  assert.equal(provider.getAuxiliaryModel("gemini-3.5-flash"), "gemini-3.1-flash-lite");
 });
 
-await test("getCheapModel returns flash-lite for 3-flash", () => {
+await test("getAuxiliaryModel returns flash-lite for 3-flash", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-3-flash"), "gemini-3.1-flash-lite");
+  assert.equal(provider.getAuxiliaryModel("gemini-3-flash"), "gemini-3.1-flash-lite");
 });
 
-await test("getCheapModel returns flash for 2.5-pro", () => {
+await test("getAuxiliaryModel returns flash for 2.5-pro", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-2.5-pro"), "gemini-2.5-flash");
+  assert.equal(provider.getAuxiliaryModel("gemini-2.5-pro"), "gemini-2.5-flash");
 });
 
-await test("getCheapModel returns flash-lite for 2.5-flash", () => {
+await test("getAuxiliaryModel returns flash-lite for 2.5-flash", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-2.5-flash"), "gemini-3.1-flash-lite");
+  assert.equal(provider.getAuxiliaryModel("gemini-2.5-flash"), "gemini-3.1-flash-lite");
 });
 
-await test("getCheapModel returns null for flash-lite", () => {
+await test("getAuxiliaryModel returns null for flash-lite", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-3.1-flash-lite"), null);
+  assert.equal(provider.getAuxiliaryModel("gemini-3.1-flash-lite"), null);
 });
 
-await test("getCheapModel heuristic returns flash-lite for unknown gemini- model", () => {
+await test("getAuxiliaryModel returns null for unknown model", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gemini-unknown-model"), "gemini-3.1-flash-lite");
+  assert.equal(provider.getAuxiliaryModel("gemini-unknown-model"), null);
 });
 
-await test("getCheapModel returns null for non-gemini model", () => {
+await test("getAuxiliaryModel delegates to catalog for all models", () => {
   const provider = new GeminiProvider();
-  assert.equal(provider.getCheapModel("gpt-5.4"), null);
-  assert.equal(provider.getCheapModel("deepseek-v4-pro"), null);
+  assert.equal(provider.getAuxiliaryModel("gpt-5.4"), "gpt-5.4-mini");
+  assert.equal(provider.getAuxiliaryModel("deepseek-v4-pro"), "deepseek-v4-flash");
 });
 
 // ── providerName ───────────────────────────────────────────────────────
@@ -99,6 +99,6 @@ await test("GeminiProvider has all required ILlmProvider methods", () => {
   assert.equal(typeof provider.chat, "function");
   assert.equal(typeof provider.getTimeoutMs, "function");
   assert.equal(typeof provider.isMultimodal, "function");
-  assert.equal(typeof provider.getCheapModel, "function");
+  assert.equal(typeof provider.getAuxiliaryModel, "function");
   assert.equal(typeof provider.providerName, "string");
 });

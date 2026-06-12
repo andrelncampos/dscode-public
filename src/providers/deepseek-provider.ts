@@ -3,6 +3,7 @@ import { DEFAULT_API_TIMEOUT_MS, FLASH_API_TIMEOUT_MS, PRO_API_TIMEOUT_MS } from
 import type { LlmChatOptions } from "../common/llm-provider";
 import type { CreateOpenAIClient } from "../tools/executor";
 import { isMultimodalModel } from "../common/model-capabilities";
+import { getAuxiliaryModel } from "../common/model-catalog";
 import { BaseOpenAICompatibleProvider } from "./base-openai-provider";
 import type { OpenAIMessageConverterOptions } from "../common/openai-message-converter";
 
@@ -33,11 +34,8 @@ export class DeepSeekProvider extends BaseOpenAICompatibleProvider {
     return isMultimodalModel(model);
   }
 
-  getCheapModel(model: string): string | null {
-    if (model === "deepseek-v4-pro") return "deepseek-v4-flash";
-    if (model === "deepseek-v4-flash") return null;
-    if (model.includes("pro")) return model.replace("pro", "flash");
-    return null;
+  getAuxiliaryModel(model: string): string | null {
+    return getAuxiliaryModel(model);
   }
 
   protected buildChatCompletionRequest(

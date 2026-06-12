@@ -5,6 +5,7 @@ import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm
 import type { ModelUsage } from "../session";
 import type { CreateOpenAIClient } from "../tools/executor";
 import { withRetry } from "../common/api-retry";
+import { getAuxiliaryModel } from "../common/model-catalog";
 
 const OPENAI_MODEL_PREFIXES = ["gpt-", "o1", "o3", "o4", "openai-"] as const;
 const OPENAI_NON_MULTIMODAL_MODELS = new Set(["o1-mini", "o3-mini"]);
@@ -38,24 +39,8 @@ export class OpenAIProvider implements ILlmProvider {
     return !OPENAI_NON_MULTIMODAL_MODELS.has(model.trim());
   }
 
-  getCheapModel(model: string): string | null {
-    // GPT-5.5 → gpt-5.4-mini
-    if (model === "gpt-5.5") return "gpt-5.4-mini";
-    // GPT-5.4 → gpt-5.4-mini
-    if (model === "gpt-5.4") return "gpt-5.4-mini";
-    // gpt-5.4-mini → gpt-5.4-nano
-    if (model === "gpt-5.4-mini") return "gpt-5.4-nano";
-    // gpt-5.4-nano → null (cheapest)
-    if (model === "gpt-5.4-nano") return null;
-    // o-series → o-series-mini
-    if (model === "o4") return "o4-mini";
-    if (model === "o3") return "o3-mini";
-    // o1, o1-mini, o3-mini, o4-mini → null (already cheap or no cheaper variant)
-    if (model === "o1" || model === "o1-mini" || model === "o3-mini" || model === "o4-mini") return null;
-    // Heuristic: already a mini/cheap variant
-    if (model.endsWith("-mini") || model.endsWith("-nano")) return null;
-    // Fallback: unknown model, no cheap variant
-    return null;
+  getAuxiliaryModel(model: string): string | null {
+    return getAuxiliaryModel(model);
   }
 
   async *chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent> {

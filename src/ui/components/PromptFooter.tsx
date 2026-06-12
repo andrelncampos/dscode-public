@@ -11,7 +11,7 @@ type PromptFooterProps = {
 };
 
 const KEY_COLOR = "cyan";
-const FLASH_DURATION_MS = 5000;
+const FLASH_DURATION_MS = 3000;
 const BLINK_INTERVAL_MS = 400;
 
 function ColoredFooter({ text }: { text: string }): React.ReactElement {

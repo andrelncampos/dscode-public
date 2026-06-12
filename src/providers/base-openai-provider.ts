@@ -18,7 +18,7 @@ export abstract class BaseOpenAICompatibleProvider implements ILlmProvider {
   abstract supportsModel(model: string): boolean;
   abstract getTimeoutMs(model: string): number;
   abstract isMultimodal(model: string): boolean;
-  getCheapModel?(_model: string): string | null;
+  getAuxiliaryModel?(_model: string): string | null;
 
   /** Subclasses override this to provide provider-specific request options. */
   protected abstract buildChatCompletionRequest(

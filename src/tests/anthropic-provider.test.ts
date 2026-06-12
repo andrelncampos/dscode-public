@@ -39,29 +39,27 @@ await test("isMultimodal returns true for all models", () => {
   assert.equal(provider.isMultimodal("claude-haiku-4-5"), true);
 });
 
-// ── getCheapModel ──────────────────────────────────────────────────────
+// ── getAuxiliaryModel ──────────────────────────────────────────────────────
 
-await test("getCheapModel returns haiku for opus", () => {
+await test("getAuxiliaryModel returns haiku for opus", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.getCheapModel("claude-opus-4-8"), "claude-haiku-4-5");
+  assert.equal(provider.getAuxiliaryModel("claude-opus-4-8"), "claude-haiku-4-5");
 });
 
-await test("getCheapModel returns haiku for sonnet", () => {
+await test("getAuxiliaryModel returns haiku for sonnet", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.getCheapModel("claude-sonnet-4-6"), "claude-haiku-4-5");
+  assert.equal(provider.getAuxiliaryModel("claude-sonnet-4-6"), "claude-haiku-4-5");
 });
 
-await test("getCheapModel returns null for haiku", () => {
+await test("getAuxiliaryModel returns null for haiku", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.getCheapModel("claude-haiku-4-5"), null);
+  assert.equal(provider.getAuxiliaryModel("claude-haiku-4-5"), null);
 });
 
-await test("getCheapModel heuristic replaces opus/sonnet with haiku", () => {
+await test("getAuxiliaryModel returns null for unknown models", () => {
   const provider = new AnthropicProvider();
-  // Unknown model with "opus" in name → replace with "haiku"
-  assert.equal(provider.getCheapModel("claude-opus-4-9"), "claude-haiku-4-9");
-  // Unknown model with "sonnet" in name
-  assert.equal(provider.getCheapModel("claude-sonnet-5-1"), "claude-haiku-5-1");
+  assert.equal(provider.getAuxiliaryModel("claude-opus-4-9"), null);
+  assert.equal(provider.getAuxiliaryModel("claude-sonnet-5-1"), null);
 });
 
 // ── chat() error handling ──────────────────────────────────────────────

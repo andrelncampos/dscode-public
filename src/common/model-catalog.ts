@@ -22,6 +22,8 @@ export type ModelEntry = {
   maxOutput: number;
   multimodal: boolean;
   isDefault: boolean;
+  /** Model ID of an auxiliary (usually cheaper) model in the same provider family, or null if already the most cost-efficient. */
+  auxiliaryModelId?: string;
 };
 
 export type ModelCapabilities = ModelEntry & {
@@ -39,6 +41,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 131_072,
     multimodal: true,
     isDefault: true,
+    auxiliaryModelId: "deepseek-v4-flash",
   },
   {
     id: "deepseek-v4-flash",
@@ -60,6 +63,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 131_072,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gpt-5.4-mini",
   },
   {
     id: "gpt-5.4",
@@ -70,6 +74,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 131_072,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gpt-5.4-mini",
   },
   {
     id: "gpt-5.4-mini",
@@ -80,6 +85,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 131_072,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gpt-5.4-nano",
   },
   {
     id: "gpt-5.4-nano",
@@ -89,6 +95,68 @@ export const MODEL_CATALOG: ModelEntry[] = [
     contextWindow: 400_000,
     maxOutput: 131_072,
     multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "o4",
+    provider: "openai",
+    displayName: "o4",
+    reasoning: { type: "effort", defaultEffort: "high" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: true,
+    isDefault: false,
+    auxiliaryModelId: "o4-mini",
+  },
+  {
+    id: "o4-mini",
+    provider: "openai",
+    displayName: "o4 Mini",
+    reasoning: { type: "effort", defaultEffort: "medium" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "o3",
+    provider: "openai",
+    displayName: "o3",
+    reasoning: { type: "effort", defaultEffort: "high" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: true,
+    isDefault: false,
+    auxiliaryModelId: "o3-mini",
+  },
+  {
+    id: "o3-mini",
+    provider: "openai",
+    displayName: "o3 Mini",
+    reasoning: { type: "effort", defaultEffort: "medium" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: false,
+    isDefault: false,
+  },
+  {
+    id: "o1",
+    provider: "openai",
+    displayName: "o1",
+    reasoning: { type: "effort", defaultEffort: "medium" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "o1-mini",
+    provider: "openai",
+    displayName: "o1 Mini",
+    reasoning: { type: "effort", defaultEffort: "medium" },
+    contextWindow: 200_000,
+    maxOutput: 100_000,
+    multimodal: false,
     isDefault: false,
   },
   // Anthropic
@@ -101,6 +169,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 131_072,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "claude-haiku-4-5",
   },
   {
     id: "claude-sonnet-4-6",
@@ -111,6 +180,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "claude-haiku-4-5",
   },
   {
     id: "claude-haiku-4-5",
@@ -152,6 +222,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gemini-3.1-flash-lite",
   },
   {
     id: "gemini-3-flash",
@@ -162,6 +233,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gemini-3.1-flash-lite",
   },
   {
     id: "gemini-3.1-flash-lite",
@@ -182,6 +254,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gemini-2.5-flash",
   },
   {
     id: "gemini-2.5-flash",
@@ -192,6 +265,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
+    auxiliaryModelId: "gemini-3.1-flash-lite",
   },
 ];
 
@@ -227,4 +301,14 @@ export function getModelCapabilities(modelId: string): ModelCapabilities | null 
   const entry = MODEL_CATALOG.find((m) => m.id === modelId);
   if (!entry) return null;
   return { ...entry, pricing: DEFAULT_MODEL_PRICING[modelId] ?? null };
+}
+
+/**
+ * Get the auxiliary model in the same provider family for a given model.
+ * Returns null if there is no cheaper auxiliary or the model is not in the catalog.
+ * Driven entirely by the `auxiliaryModelId` field in MODEL_CATALOG — no hardcoding.
+ */
+export function getAuxiliaryModel(modelId: string): string | null {
+  const entry = MODEL_CATALOG.find((m) => m.id === modelId);
+  return entry?.auxiliaryModelId ?? null;
 }

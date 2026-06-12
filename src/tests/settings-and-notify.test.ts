@@ -364,7 +364,7 @@ test("resolveSettings ignores invalid temperature values", () => {
     TEST_PROCESS_ENV
   );
 
-  assert.equal(resolved.temperature, undefined);
+  assert.equal(resolved.temperature, 0.3);
 });
 
 test("applyModelConfigSelection writes model only when the effective model changes or already exists", () => {

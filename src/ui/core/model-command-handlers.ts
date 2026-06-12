@@ -551,7 +551,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
   if (step === "init") {
     const modelEntry = MODEL_CATALOG.find((m) => m.id === ctx.settings.model);
     const modelMaxOutput = modelEntry?.maxOutput ?? 131072;
-    const temperature = ctx.settings.temperature ?? 1.0;
+    const temperature = ctx.settings.temperature ?? 0.3;
     const maxTokens = ctx.settings.maxTokens ?? modelMaxOutput;
     const topP = ctx.settings.topP;
 
@@ -604,7 +604,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
 
     if (choice === "temperature" || choice === "max_tokens" || choice === "top_p") {
       const prompts: Record<string, string> = {
-        temperature: t("model.params-enter-temperature", { current: String(pending.temperature ?? 1.0) }),
+        temperature: t("model.params-enter-temperature", { current: String(pending.temperature ?? 0.3) }),
         max_tokens: t("model.params-enter-max-tokens", {
           max: String(modelMax),
           current: String(pending.maxTokens ?? modelMax),
@@ -674,7 +674,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
 
     const lines = [
       t("model.params-current"),
-      t("model.params-temperature", { value: String(pending.temperature ?? 1.0) }),
+      t("model.params-temperature", { value: String(pending.temperature ?? 0.3) }),
       t("model.params-max-tokens", { value: String(pending.maxTokens ?? modelMax), max: String(modelMax) }),
       t("model.params-top-p", { value: pending.topP !== undefined ? String(pending.topP) : t("model.params-not-set") }),
       "",

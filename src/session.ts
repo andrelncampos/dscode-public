@@ -28,6 +28,8 @@ import {
   type ToolCallExecution,
   type ToolExecutionHooks,
 } from "./tools/executor";
+import { handleExploreToolCall } from "./tools/explore-subagent";
+import { handleSkillToolCall } from "./tools/explore-subagent";
 import { McpManager } from "./mcp/mcp-manager";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
@@ -299,6 +301,12 @@ export type SkillInfo = {
   description: string;
   isLoaded?: boolean;
   inclusion?: "auto" | "manual";
+  mode?: "prompt" | "agent";
+  agentModel?: string;
+  agentThinking?: "enabled" | "disabled";
+  agentTools?: string[];
+  agentMaxTurns?: number;
+  agentTimeoutMs?: number;
 };
 
 type SessionManagerOptions = {
@@ -364,6 +372,7 @@ export class SessionManager {
   private readonly toolExecutor: ToolExecutor;
   private readonly mcpManager = new McpManager();
   private mcpToolDefinitions: ToolDefinition[] = [];
+  private skillsCache: SkillInfo[] = [];
   private readonly messageConverter: OpenAIMessageConverter;
   private static systemPromptCache = new Map<string, string>();
   private lastInjectedAgentInstructionsHash: string | null = null;
@@ -580,6 +589,7 @@ export class SessionManager {
     for (const skill of skills) {
       if (skill.isLoaded) continue;
       if (skill.inclusion === "manual") continue;
+      if (skill.mode === "agent") continue; // agent skills are tools, not prompts
 
       // Rule 1: skill name matches (hyphens/spaces equivalent)
       const normalizedName = skill.name.toLowerCase().replace(/-/g, " ");
@@ -718,6 +728,53 @@ export class SessionManager {
       const rawInclusion = typeof parsed.data.inclusion === "string" ? parsed.data.inclusion.trim() : "";
       const inclusion: "auto" | "manual" | undefined =
         rawInclusion === "auto" || rawInclusion === "manual" ? (rawInclusion as "auto" | "manual") : undefined;
+
+      // Parse mode
+      const rawMode = typeof parsed.data.mode === "string" ? parsed.data.mode.trim() : "";
+      let mode: "prompt" | "agent" | undefined;
+      if (rawMode === "prompt" || rawMode === "agent") {
+        mode = rawMode;
+      }
+
+      // Parse agent fields (only if mode === "agent")
+      let agentModel: string | undefined;
+      let agentThinking: "enabled" | "disabled" | undefined;
+      let agentTools: string[] | undefined;
+      let agentMaxTurns: number | undefined;
+      let agentTimeoutMs: number | undefined;
+
+      if (mode === "agent") {
+        // tools: required — if missing/invalid, fall back to prompt mode
+        const rawTools = parsed.data.tools;
+        if (Array.isArray(rawTools) && rawTools.length > 0 && rawTools.every((t: unknown) => typeof t === "string")) {
+          agentTools = rawTools as string[];
+        } else {
+          mode = undefined; // fallback to prompt mode
+        }
+
+        if (mode === "agent") {
+          // model: optional string
+          if (typeof parsed.data.model === "string" && parsed.data.model.trim()) {
+            agentModel = parsed.data.model.trim();
+          }
+          // thinking: optional "enabled" | "disabled"
+          const rawThinking = typeof parsed.data.thinking === "string" ? parsed.data.thinking.trim() : "";
+          if (rawThinking === "enabled" || rawThinking === "disabled") {
+            agentThinking = rawThinking;
+          }
+          // maxTurns: optional positive integer
+          const rawMaxTurns = Number(parsed.data.maxTurns);
+          if (Number.isFinite(rawMaxTurns) && rawMaxTurns > 0 && Number.isInteger(rawMaxTurns)) {
+            agentMaxTurns = rawMaxTurns;
+          }
+          // timeout: optional positive integer (milliseconds)
+          const rawTimeout = Number(parsed.data.timeout);
+          if (Number.isFinite(rawTimeout) && rawTimeout > 0 && Number.isInteger(rawTimeout)) {
+            agentTimeoutMs = rawTimeout;
+          }
+        }
+      }
+
       return {
         name:
           typeof parsed.data.name === "string" && parsed.data.name.trim()
@@ -726,6 +783,12 @@ export class SessionManager {
         path: displayPath,
         description: typeof parsed.data.description === "string" ? parsed.data.description.trim() : "",
         inclusion,
+        mode,
+        agentModel,
+        agentThinking,
+        agentTools,
+        agentMaxTurns,
+        agentTimeoutMs,
       };
     } catch {
       return fallbackSkill;
@@ -935,6 +998,7 @@ export class SessionManager {
 
     if (userPrompt.text) {
       const skills = await this.listSkills();
+      this.skillsCache = skills;
       const skillNames = this.matchSkillsByKeywords(skills, userPrompt.text ?? "");
       const skillSet = new Set(skillNames);
       const matchedSkill = skills.filter((skill) => skillSet.has(skill.name));
@@ -952,10 +1016,18 @@ export class SessionManager {
         if (skill.isLoaded) {
           continue;
         }
-        const skillPrompt = this.buildSkillPrompt(skill);
-        const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
-        this.appendSessionMessage(sessionId, skillMessage);
-        this.onAssistantMessage(skillMessage, true);
+        if (skill.mode === "agent") {
+          // Agent skill: inject lightweight hint instead of full skill body
+          const hint = `The user has explicitly requested the use of the '${skill.name}' agent skill. Use the '${skill.name}' tool to delegate work to it.`;
+          const hintMessage = this.buildSystemMessage(sessionId, hint, skill);
+          this.appendSessionMessage(sessionId, hintMessage);
+          this.onAssistantMessage(hintMessage, true);
+        } else {
+          const skillPrompt = this.buildSkillPrompt(skill);
+          const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
+          this.appendSessionMessage(sessionId, skillMessage);
+          this.onAssistantMessage(skillMessage, true);
+        }
       }
     }
 
@@ -1010,6 +1082,7 @@ export class SessionManager {
 
     if (userPrompt.text) {
       const skills = await this.listSkills(sessionId);
+      this.skillsCache = skills;
       const skillNames = this.matchSkillsByKeywords(skills, userPrompt.text ?? "");
       this.throwIfAborted(signal);
       const skillSet = new Set(skillNames);
@@ -1028,10 +1101,18 @@ export class SessionManager {
         if (skill.isLoaded) {
           continue;
         }
-        const skillPrompt = this.buildSkillPrompt(skill);
-        const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
-        this.appendSessionMessage(sessionId, skillMessage);
-        this.onAssistantMessage(skillMessage, true);
+        if (skill.mode === "agent") {
+          // Agent skill: inject lightweight hint instead of full skill body
+          const hint = `The user has explicitly requested the use of the '${skill.name}' agent skill. Use the '${skill.name}' tool to delegate work to it.`;
+          const hintMessage = this.buildSystemMessage(sessionId, hint, skill);
+          this.appendSessionMessage(sessionId, hintMessage);
+          this.onAssistantMessage(hintMessage, true);
+        } else {
+          const skillPrompt = this.buildSkillPrompt(skill);
+          const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
+          this.appendSessionMessage(sessionId, skillMessage);
+          this.onAssistantMessage(skillMessage, true);
+        }
       }
 
       // ── Model command dispatch ──────────────────────────────
@@ -1147,7 +1228,7 @@ export class SessionManager {
     try {
       const maxIterations = 80000; // about 1K RMB cost
       let toolCalls: unknown[] | null = null;
-      const cachedTools = getTools(this.getPromptToolOptions(), this.mcpToolDefinitions);
+      const cachedTools = getTools(this.getPromptToolOptions(), this.mcpToolDefinitions, this.skillsCache);
 
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         if (this.isInterrupted(sessionId)) {
@@ -1556,7 +1637,7 @@ export class SessionManager {
     const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, adjustedEndIndex));
     // Use a cheaper model variant for compaction, falling back to the current model
     const resolvedModel = this.createOpenAIClient().model;
-    const compactionModel = provider?.getCheapModel?.(resolvedModel) ?? resolvedModel;
+    const compactionModel = provider?.getAuxiliaryModel?.(resolvedModel) ?? resolvedModel;
 
     const compactMessage: SessionMessage = {
       id: crypto.randomUUID(),
@@ -1576,7 +1657,9 @@ export class SessionManager {
     const stream = provider.chat({
       model: compactionModel,
       messages: [compactMessage],
+      temperature: 0,
       signal: signal ?? undefined,
+      providerOptions: { thinkingEnabled: false },
     });
     for await (const event of stream) {
       if (event.type === "text_delta") compactedContent += event.text;
@@ -2678,6 +2761,15 @@ export class SessionManager {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatSubagentToolResult(result: any): string {
+    const payload: Record<string, unknown> = { ok: result.ok, name: result.name };
+    if (typeof result.output !== "undefined") payload.output = result.output;
+    if (result.error) payload.error = result.error;
+    if (result.metadata && Object.keys(result.metadata).length > 0) payload.metadata = result.metadata;
+    return JSON.stringify(payload, null, 2);
+  }
+
   private async appendToolMessages(
     sessionId: string,
     toolCalls: unknown[],
@@ -2707,6 +2799,38 @@ export class SessionManager {
       const blockedResult = buildPermissionToolExecution(toolCall, options);
       if (blockedResult) {
         toolExecutions.push(blockedResult);
+        continue;
+      }
+      // Intercept Explore tool calls and route to the subagent handler
+      if (toolCall.function.name === "Explore") {
+        const exploreResult = await handleExploreToolCall(
+          toolCall as ToolCall,
+          this.createOpenAIClient,
+          this.projectRoot
+        );
+        const content = this.formatSubagentToolResult(exploreResult);
+        toolExecutions.push({
+          toolCallId: toolCall.id,
+          content,
+          result: exploreResult,
+        });
+        continue;
+      }
+      // Intercept agent skill tool calls and route to the skill subagent handler
+      const agentSkill = this.skillsCache.find((s) => s.mode === "agent" && s.name === toolCall.function.name);
+      if (agentSkill) {
+        const skillResult = await handleSkillToolCall(
+          toolCall as ToolCall,
+          this.createOpenAIClient,
+          agentSkill,
+          this.projectRoot
+        );
+        const content = this.formatSubagentToolResult(skillResult);
+        toolExecutions.push({
+          toolCallId: toolCall.id,
+          content,
+          result: skillResult,
+        });
         continue;
       }
       const executions = await this.toolExecutor.executeToolCalls(sessionId, [toolCall], hooks);
@@ -2806,10 +2930,18 @@ export class SessionManager {
         if (skill.isLoaded) {
           continue;
         }
-        const skillPrompt = this.buildSkillPrompt(skill);
-        const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
-        this.appendSessionMessage(sessionId, skillMessage);
-        this.onAssistantMessage(skillMessage, true);
+        if (skill.mode === "agent") {
+          // Agent skill: inject lightweight hint instead of full skill body
+          const hint = `The user has explicitly requested the use of the '${skill.name}' agent skill. Use the '${skill.name}' tool to delegate work to it.`;
+          const hintMessage = this.buildSystemMessage(sessionId, hint, skill);
+          this.appendSessionMessage(sessionId, hintMessage);
+          this.onAssistantMessage(hintMessage, true);
+        } else {
+          const skillPrompt = this.buildSkillPrompt(skill);
+          const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
+          this.appendSessionMessage(sessionId, skillMessage);
+          this.onAssistantMessage(skillMessage, true);
+        }
       }
     }
   }

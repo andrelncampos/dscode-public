@@ -65,6 +65,7 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 | **Refactor** | Ask "Simplify this function without changing its behavior". |
 | **Investigate bugs** | Paste a stack trace and ask for help finding the cause. |
 | **Create or use skills** | Skills are guides that teach the AI to work in a specific way. |
+| **Explore code with subagents** | Delegate searches and analysis to the Explore subagent — it combs through code in isolation and returns only the summary, without cluttering context. |
 | **Work with Git** | The AI suggests branches, commit messages, and makes versioned changes. |
 | **Configure reasoning** | Enable *thinking mode* for hard tasks — the AI "thinks" before responding. |
 | **Integrate external tools** | With MCP, connect databases, browsers, APIs, and other tools. |
@@ -73,9 +74,8 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ## Installation
 
-### Via binary (recommended)
-
-Download the binary for your operating system from the [releases page](https://github.com/andrelncampos/dscode/releases). No prerequisites — the binary is self-contained.
+Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode/releases)**.  
+**No prerequisites** — the binary is self-contained, no Node.js or other dependencies required.
 
 | Operating System | File |
 |---|---|
@@ -84,34 +84,8 @@ Download the binary for your operating system from the [releases page](https://g
 | macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
 | macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
 
-Each release includes a `checksums.txt` with SHA256 hashes to verify download integrity.
-
-### Via npm
-
-```bash
-npm install -g @andrelncampos/dscode
-```
-
-**Prerequisite**: [Node.js](https://nodejs.org) version **24** or later.
-
-```bash
-dscode --version   # verify installation
-npm update -g @andrelncampos/dscode   # update
-npm uninstall -g @andrelncampos/dscode   # uninstall
-```
-
-### Installing from source
-
-> For contributors or those who need the latest development version.
-
-```bash
-git clone https://github.com/andrelncampos/dscode.git
-cd dscode
-npm ci
-npm run build
-npm link
-dscode --version
-```
+Each release includes a `checksums.txt` with **SHA256** hashes to verify download integrity.
+After downloading, extract the archive and run `./dscode` in your terminal.
 
 ---
 
@@ -151,7 +125,7 @@ DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscod
 | `env.API_KEY` | string | Provider API key | *(required)* |
 | `thinkingEnabled` | boolean | Enables thinking mode | `true` for DeepSeek |
 | `reasoningEffort` | string | Reasoning depth: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"`, or `"none"` (varies by provider) | `"max"` for DeepSeek V4 Pro |
-| `temperature` | number | Response creativity (0 to 2) | *(provider default)* |
+| `temperature` | number | Response creativity (0 to 2) | `0.3` |
 | `maxTokens` | number | Token limit per response | 65536 (Pro) / 32768 (Flash) |
 | `debugLogEnabled` | boolean | Saves debug logs to `~/.dscode/logs/` | `false` |
 | `telemetryEnabled` | boolean | Sends anonymous usage statistics | `false` |
@@ -160,6 +134,7 @@ DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscod
 | `notify` | string | Script executed after each task completes | *(none)* |
 | `engines` | object | Per-provider configuration (e.g., `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Custom model pricing overrides | *(DeepSeek V4 defaults)* |
+| `repositoryVisibility` | `"public"` \| `"private"` | Repository visibility. `"public"` adds `/management/` and `/.agents/` to `.gitignore` automatically | `"private"` |
 
 ### Model pricing (`modelPricing`)
 
@@ -234,9 +209,7 @@ my-project/
 
 ### Step 1: Install
 
-**Via binary (recommended):** Download the file for your system from the [releases page](https://github.com/andrelncampos/dscode/releases), extract it, and run `dscode`.
-
-**Or via npm:** `npm install -g @andrelncampos/dscode` (requires [Node.js 24+](https://nodejs.org)).
+Download the binary from the [releases page](https://github.com/andrelncampos/dscode/releases), extract it, and run `./dscode`. **No prerequisites.**
 
 ### Step 2: Configure your key
 
@@ -478,6 +451,31 @@ Before deploying, verify...
 
 To activate a manual skill, type `#my-deploy` at the start of the prompt — the `#` prefix is stripped and the skill is loaded.
 
+### Skills as autonomous agents
+
+In addition to the `inclusion` field, each `SKILL.md` can declare an execution `mode`:
+
+| Mode | Behavior |
+|------|----------|
+| `prompt` (default) | The skill content is injected into the conversation context as a guide. |
+| `agent` | The skill runs as an **isolated subagent** — with its own model, tools, and thinking — returning only the result. |
+
+Skills with `mode: agent` are registered as tools in the LLM's toolkit. The main agent can delegate work to them by calling the tool with the skill name. This keeps the main context clean and allows each skill to have independent model, temperature, tools, max turns, and timeout settings.
+
+**Example SKILL.md with `mode: agent`:**
+```markdown
+---
+name: code-reviewer
+description: Reviews code for bugs and improvements
+mode: agent
+model: deepseek-v4-flash
+thinking: false
+tools: [Read, Grep, Glob, Bash]
+---
+```
+
+When the main agent needs a review, it calls the `code-reviewer` tool and receives only the final result — the subagent's intermediate reasoning doesn't pollute the main context.
+
 ---
 
 ## Keyboard shortcuts
@@ -532,7 +530,7 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 | **Session** | An ongoing conversation between you and the AI. Each `/new` starts a clean session. | Start a new session when switching tasks to avoid mixing contexts. |
 | **Context** | The entire conversation history the AI "remembers". Includes your messages, responses, and files read. | Long contexts use more tokens. Use `/new` to reset. |
 | **Skills** | Markdown guides that teach the AI to follow specific rules. | Create a skill to standardize reviews, code style, or team processes. |
-| **Tools** | Tools the AI uses: `bash` (shell), `read`/`write`/`edit` (files), `glob`/`grep` (search), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (questions), `UpdatePlan` (tasks). | The AI decides which to use. You can block dangerous ones via `permissions`. |
+| **Tools** | Tools the AI uses: `bash` (shell), `read`/`write`/`edit` (files), `glob`/`grep` (search), `Explore` (subagent), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (questions), `UpdatePlan` (tasks). | The AI decides which to use. You can block dangerous ones via `permissions`. |
 | **`@` Mentions** | Type `@` in the prompt to search and reference project files. | Use to direct the AI: "Analyze @src/utils.ts" — it already knows which file to read. |
 | **Provider** | The company providing the AI model (DeepSeek, OpenAI, Anthropic, Google Gemini, etc.). | Choose a provider based on cost, quality, and privacy. |
 | **Model** | The specific AI model (e.g., `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 models available across 4 providers. | Different models have different quality, speed, and cost. |
@@ -614,7 +612,7 @@ When you switch to `gpt-5.4` (via `/model`), DsCode automatically uses the `open
 | **KV Cache** | ❌ Not available (DeepSeek-exclusive) |
 | **Images (Ctrl+V)** | ✅ Works with vision models (`gpt-5.5`, `gpt-5`, `gpt-4o`) |
 | **Supported models** | `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4` — any Chat Completions model |
-| **Compaction** | Uses `getCheapModel()`: `gpt-5.4` → `gpt-5.4-mini` to reduce cost when summarizing history |
+| **Compaction** | Uses `getAuxiliaryModel()`: `gpt-5.4` → `gpt-5.4-mini` to reduce cost (no thinking) when summarizing history |
 
 ### Example with a cheaper model
 
@@ -737,7 +735,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | **KV Cache** | ❌ Not available (DeepSeek-exclusive) |
 | **Images (Ctrl+V)** | ✅ Works with all Gemini models |
 | **Supported models** | `gemini-3.5-flash`, `gemini-3-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash` |
-| **Compaction** | Uses `getCheapModel()`: `gemini-3.5-flash` → `gemini-3.1-flash-lite` to reduce cost |
+| **Compaction** | Uses `getAuxiliaryModel()`: `gemini-3.5-flash` → `gemini-3.1-flash-lite` to reduce cost (no thinking) |
 
 ### Example with a cheaper model
 
@@ -793,9 +791,6 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | 429 error | Provider rate limit exceeded | Wait a few seconds and try again. Check your plan on the provider's platform. |
 | Truncated response | Token limit reached | Increase `maxTokens` in `settings.json` or type "continue" to resume. |
 | Timeout / excessive delay | Provider server overloaded or network issue | Wait. If persistent, switch models: use Flash instead of Pro temporarily. |
-| Windows permission error | npm without write permission | Run PowerShell as administrator or configure npm's prefix. |
-| Linux/macOS permission error (EACCES) | Global npm without permission | Configure npm's prefix to a local directory or use `sudo npm install -g`. |
-| `npm run build` failed | Typecheck or lint error | Run commands separately to identify the error: `npm run typecheck`, `npm run lint`, `npm run bundle`. |
 | Logs not appearing | `debugLogEnabled` is `false` (default) | Enable `"debugLogEnabled": true` in `settings.json`. Logs appear at `~/.dscode/logs/debug.log`. |
 | Model not recognized | Incorrect model name | Use exact names: `deepseek-v4-pro`, `deepseek-v4-flash`, or a valid OpenAI-compatible model. |
 | Token consumption too high | Long context or overly broad tasks | Use `/new` to reset session. Be specific about files and scope. |
@@ -864,7 +859,6 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../../NOTICE)
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode](https://github.com/andrelncampos/dscode) |
 | **Releases** | [github.com/andrelncampos/dscode/releases](https://github.com/andrelncampos/dscode/releases) |
-| **npm** | `npm install -g @andrelncampos/dscode` |
 | **Issues** | [github.com/andrelncampos/dscode/issues](https://github.com/andrelncampos/dscode/issues) |
 
 ⚠️ Install DsCode **only** from the official channels above. Do not trust versions published on third-party sites or unverified links.

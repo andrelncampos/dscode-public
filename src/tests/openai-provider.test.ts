@@ -72,27 +72,27 @@ test("isMultimodal returns true for multimodal models", () => {
   assert.ok(provider.isMultimodal("gpt-5.4"));
 });
 
-// ── getCheapModel ──
+// ── getAuxiliaryModel ──
 
-test("getCheapModel returns gpt-5.4-mini for gpt-5.4", () => {
+test("getAuxiliaryModel returns gpt-5.4-mini for gpt-5.4", () => {
   const provider = new OpenAIProvider(makeClient());
-  assert.equal(provider.getCheapModel("gpt-5.4"), "gpt-5.4-mini");
+  assert.equal(provider.getAuxiliaryModel("gpt-5.4"), "gpt-5.4-mini");
 });
 
-test("getCheapModel returns null for already-cheap models", () => {
+test("getAuxiliaryModel returns null for already auxiliary models", () => {
   const provider = new OpenAIProvider(makeClient());
-  assert.equal(provider.getCheapModel("gpt-5.4-nano"), null);
-  assert.equal(provider.getCheapModel("o1-mini"), null);
+  assert.equal(provider.getAuxiliaryModel("gpt-5.4-nano"), null);
+  assert.equal(provider.getAuxiliaryModel("o1-mini"), null);
 });
 
-test("getCheapModel returns o3-mini for o3", () => {
+test("getAuxiliaryModel returns o3-mini for o3", () => {
   const provider = new OpenAIProvider(makeClient());
-  assert.equal(provider.getCheapModel("o3"), "o3-mini");
+  assert.equal(provider.getAuxiliaryModel("o3"), "o3-mini");
 });
 
-test("getCheapModel returns null for o4-mini", () => {
+test("getAuxiliaryModel returns null for o4-mini", () => {
   const provider = new OpenAIProvider(makeClient());
-  assert.equal(provider.getCheapModel("o4-mini"), null);
+  assert.equal(provider.getAuxiliaryModel("o4-mini"), null);
 });
 
 // ── chat ──
