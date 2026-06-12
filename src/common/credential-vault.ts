@@ -15,7 +15,10 @@ export function getCredentialKeyPath(): string {
 
 export function getOrCreateCredentialKey(): Buffer {
   const keyPath = getCredentialKeyPath();
-  if (fs.existsSync(keyPath)) {
+
+  // Try to read the existing key first (no TOCTOU: a missing file is
+  // handled by falling through to atomic creation with 'wx').
+  try {
     const data = fs.readFileSync(keyPath);
     if (data.length !== KEY_LENGTH) {
       throw new Error(
@@ -24,11 +27,23 @@ export function getOrCreateCredentialKey(): Buffer {
       );
     }
     return data;
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
   }
+
+  // Keyfile does not exist — create it atomically. 'wx' fails with EEXIST
+  // if another process wins the race, so we retry the read.
   const key = crypto.randomBytes(KEY_LENGTH);
-  fs.mkdirSync(path.dirname(keyPath), { recursive: true });
-  fs.writeFileSync(keyPath, key, { mode: 0o600 });
-  return key;
+  try {
+    fs.mkdirSync(path.dirname(keyPath), { recursive: true });
+    fs.writeFileSync(keyPath, key, { mode: 0o600, flag: "wx" });
+    return key;
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      return getOrCreateCredentialKey();
+    }
+    throw e;
+  }
 }
 
 export function encryptCredential(plaintext: string, providerName: string): string {
