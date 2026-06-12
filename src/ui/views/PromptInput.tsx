@@ -85,6 +85,8 @@ type Props = PromptStreamState &
     sessionTokens?: number;
     /** Current session cost in USD, or null if unknown. */
     sessionCost?: number | null;
+    /** Current model's context window size in tokens. */
+    sessionContextWindow?: number;
     /** Today's total cost in USD. */
     dailyCost?: number;
     /** Project lifetime total cost in USD. */
@@ -140,6 +142,7 @@ export const PromptInput = React.memo(function PromptInput({
   nowTick: _nowTick,
   sessionTokens = 0,
   sessionCost = null,
+  sessionContextWindow,
   dailyCost = 0,
   projectCost = 0,
   providerKeys,
@@ -217,7 +220,14 @@ export const PromptInput = React.memo(function PromptInput({
     }
     // Build stats suffix
     let stats = "";
-    if (sessionTokens > 0) stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
+    if (sessionTokens > 0) {
+      if (sessionContextWindow && sessionContextWindow > 0) {
+        const pct = Math.round((sessionTokens / sessionContextWindow) * 100);
+        stats += ` · ⚡ ${formatTokenCount(sessionTokens)}/${formatTokenCount(sessionContextWindow)} (${pct}%)`;
+      } else {
+        stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
+      }
+    }
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     stats += ` · 📅 ${formatCost(dailyCost)}`;
     stats += ` · 📦 ${formatCost(projectCost)}`;
@@ -684,6 +694,22 @@ export const PromptInput = React.memo(function PromptInput({
     const trimmed = buffer.text.trim();
     if (!trimmed && imageUrls.length === 0 && selectedSkills.length === 0) {
       return;
+    }
+
+    const hashSkillMatch = trimmed.match(/^#([a-z][a-z0-9-]*)\b/i);
+    if (hashSkillMatch) {
+      const skillName = hashSkillMatch[1].toLowerCase();
+      const matchedSkill = skills.find((s) => s.name.toLowerCase() === skillName);
+      if (matchedSkill) {
+        const strippedText = trimmed.slice(hashSkillMatch[0].length).trim();
+        onSubmit({
+          text: expandPasteMarkers(strippedText, pastesRef.current),
+          imageUrls,
+          selectedSkills: addUniqueSkill(selectedSkills, matchedSkill),
+        });
+        resetPromptInput();
+        return;
+      }
     }
 
     if (trimmed.startsWith("/")) {

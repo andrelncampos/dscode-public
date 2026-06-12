@@ -9,6 +9,10 @@ export type OpenAIMessageConverterOptions = {
   renderSteeringAddPrompt?: (steeringText: string) => string;
   /** Optional callback to render the /steering-list command prompt template. */
   renderSteeringListPrompt?: () => string;
+  /** Optional callback to render the /steering-remove command prompt template. */
+  renderSteeringRemovePrompt?: (position: number, replacementText?: string) => string;
+  /** Optional callback to render the /steering-alter command prompt template. */
+  renderSteeringAlterPrompt?: (position: number, replacementText?: string) => string;
   /** Optional callback to render the /spec-init command prompt template. */
   renderSpecInitPrompt?: () => string;
   /** Optional callback to render the /spec-plan command prompt template. */
@@ -166,6 +170,28 @@ export class OpenAIMessageConverter {
     }
     if (message.role === "user" && message.content === "/steering-list") {
       return this.options.renderSteeringListPrompt?.() ?? "";
+    }
+    if (message.role === "user") {
+      const steeringRemoveMatch = message.content?.match(/^\/steering-remove\s+(\d+)(?:\s+(.+))?$/s);
+      if (steeringRemoveMatch) {
+        return (
+          this.options.renderSteeringRemovePrompt?.(
+            parseInt(steeringRemoveMatch[1], 10),
+            steeringRemoveMatch[2]?.trim()
+          ) ?? ""
+        );
+      }
+    }
+    if (message.role === "user") {
+      const steeringAlterMatch = message.content?.match(/^\/steering-alter\s+(\d+)(?:\s+(.+))?$/s);
+      if (steeringAlterMatch) {
+        return (
+          this.options.renderSteeringAlterPrompt?.(
+            parseInt(steeringAlterMatch[1], 10),
+            steeringAlterMatch[2]?.trim()
+          ) ?? ""
+        );
+      }
     }
     if (message.role === "user" && message.content === "/spec-init") {
       return this.options.renderSpecInitPrompt?.() ?? "";

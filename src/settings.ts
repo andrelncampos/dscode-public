@@ -76,6 +76,7 @@ export type DeepcodingSettings = {
   budget?: BudgetSettings;
   terminalTitleTemplate?: string;
   topP?: number;
+  locale?: "en" | "pt" | "es";
   thinkingBudgets?: Record<string, number>;
 };
 
@@ -99,6 +100,7 @@ export type ResolvedDeepcodingSettings = {
   budget: BudgetSettings;
   terminalTitleTemplate?: string;
   topP?: number;
+  locale?: "en" | "pt" | "es";
   thinkingBudgets: Record<string, number>;
 };
 
@@ -354,6 +356,16 @@ function parsePositiveInt(value: unknown): number | undefined {
   return undefined;
 }
 
+function resolveSettingsLocale(
+  env: Record<string, string>,
+  project: DeepcodingSettings | null | undefined,
+  user: DeepcodingSettings | null | undefined
+): "en" | "pt" | "es" | undefined {
+  const raw = trimString(env.LOCALE) || project?.locale || user?.locale;
+  if (raw === "pt" || raw === "es" || raw === "en") return raw;
+  return undefined;
+}
+
 export function resolveSettingsSources(
   userSettings: DeepcodingSettings | null | undefined,
   projectSettings: DeepcodingSettings | null | undefined,
@@ -460,6 +472,8 @@ export function resolveSettingsSources(
 
   const thinkingBudgets = projectSettings?.thinkingBudgets ?? userSettings?.thinkingBudgets ?? {};
 
+  const locale = resolveSettingsLocale(systemEnv, projectSettings, userSettings);
+
   return {
     env,
     apiKey: trimString(env.API_KEY) || undefined,
@@ -480,6 +494,7 @@ export function resolveSettingsSources(
     budget,
     terminalTitleTemplate,
     topP,
+    locale,
     thinkingBudgets,
   };
 }
@@ -574,6 +589,7 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
     "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
   },
   terminalTitleTemplate: "DsCode - {{cwd}}",
+  thinkingBudgets: {},
 };
 
 // ---------------------------------------------------------------------------
@@ -703,6 +719,36 @@ export function readProjectSettings(projectRoot: string = process.cwd()): Deepco
   return readSettingsFile(path.join(projectRoot, ".deepcode", "settings.json"));
 }
 
+/**
+ * Encrypt any plaintext engine API keys in memory and persist the change.
+ * Returns `true` if the settings file was modified, `false` otherwise.
+ *
+ * This is called on every settings load so legacy plaintext keys are migrated
+ * transparently, without waiting for a write-triggering command.
+ */
+function migratePlaintextEngineKeys(settings: DeepcodingSettings | null, settingsPath: string): boolean {
+  if (!settings?.engines) return false;
+  if (!fs.existsSync(settingsPath)) return false;
+
+  let changed = false;
+  const engines = { ...settings.engines };
+  for (const [name, config] of Object.entries(engines)) {
+    if (config.apiKey && !isEncryptedCredential(config.apiKey)) {
+      engines[name] = {
+        ...config,
+        apiKey: encryptCredential(config.apiKey, name),
+        apiKeyEncrypted: true,
+      };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    atomicWriteJsonFileSync(settingsPath, { ...settings, engines });
+  }
+  return changed;
+}
+
 function encryptApiKeys(settings: DeepcodingSettings): DeepcodingSettings {
   if (!settings.engines) return settings;
   const engines = { ...settings.engines };
@@ -790,9 +836,21 @@ export function resolveCurrentSettings(projectRoot: string = process.cwd()): Res
     return cached.resolved;
   }
 
+  const userSettings = readSettings();
+  const projectSettings = readProjectSettings(projectRoot);
+
+  // Auto-encrypt plaintext engine API keys on first load (transparent migration).
+  // We do this here — at the single cached entry point — so it runs once per
+  // settings file until the plaintext keys are gone.
+  const userChanged = migratePlaintextEngineKeys(userSettings, userSettingsPath);
+  const projectChanged = migratePlaintextEngineKeys(projectSettings, projectSettingsPath);
+  if (userChanged || projectChanged) {
+    return resolveCurrentSettings(projectRoot);
+  }
+
   const resolved = resolveSettingsSources(
-    readSettings(),
-    readProjectSettings(projectRoot),
+    userSettings,
+    projectSettings,
     {
       model: DEFAULT_MODEL,
       baseURL: DEFAULT_BASE_URL,

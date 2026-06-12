@@ -1,0 +1,48 @@
+Your task is to remove a steering rule by position from the AGENTS.md file for this repository.
+
+The user wants to remove steering rule number **<%= position %>**.
+
+Follow these steps:
+
+1. Find the AGENTS.md file. Check these paths in order and use the first one that exists:
+   - ./.dscode/AGENTS.md
+   - ./.deepcode/AGENTS.md
+   - ./AGENTS.md
+   If no file exists at any of these paths, stop and tell the user:
+   "No AGENTS.md file found. Create one with /steering-add first."
+
+2. Read the file using the Read tool. Locate the section with the heading `## Steering`.
+
+   If no `## Steering` heading exists, stop and tell the user:
+   "No steering rules to remove."
+
+3. Extract all bullet points from the `## Steering` section. Bullets are lines matching the pattern `- ` (dash + space) followed by text.
+   - Parse lines from the `## Steering` heading until the next Markdown heading (any line starting with `#`) or end of file.
+   - Count the bullets. Store this count as `bulletCount`.
+
+   If the section has zero bullets, stop and tell the user:
+   "No steering rules to remove."
+
+4. Validate the position:
+   - If position <%= position %> is less than 1, stop and tell the user: "Invalid rule number: must be a positive integer."
+   - If position <%= position %> is greater than bulletCount, stop and tell the user:
+     "There are [bulletCount] rules. Position <%= position %> is out of range."
+     (Replace [bulletCount] with the actual count.)
+
+5. Remove bullet number <%= position %> (the bullet at index `position - 1` counting from the first bullet as 1):
+   - Use the Edit tool with the `snippet_id` from the Read tool response.
+   - `old_string` = the entire bullet line including:
+     - Any leading whitespace on the line
+     - The `- ` prefix
+     - The rule text
+     - The trailing newline character
+     - If the line immediately above this bullet is blank (contains only whitespace or is empty), include that blank line in `old_string`.
+     - If the line immediately below this bullet is blank AND that blank line is still within the Steering section (not a section separator or another heading), include that blank line in `old_string`.
+   - `new_string` = `""` (empty string).
+   - If this is the last bullet in the section, also include any trailing blank lines before the next heading in `old_string`, so no orphan blank lines remain.
+
+   Important: Do not modify anything outside the `## Steering` section. Do not remove or alter the `## Steering` heading itself.
+
+6. Report the result. Translate the rule text to the same language the user has been communicating in (look at the user's messages to determine the language). Use this format:
+
+   **Removed rule #<%= position %>: [rule text, translated to user's language]**

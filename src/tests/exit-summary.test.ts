@@ -4,6 +4,7 @@ import { buildExitSummaryText } from "../ui";
 import type { ModelUsage, SessionEntry } from "../session";
 
 const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, "");
+const mockT = (key: string) => key;
 
 test("buildExitSummaryText only shows Goodbye and model usage with cached tokens", () => {
   const summary = stripAnsi(
@@ -18,14 +19,15 @@ test("buildExitSummaryText only shows Goodbye and model usage with cached tokens
           total_reqs: 2,
         },
       }),
+      t: mockT,
     })
   );
 
-  assert.match(summary, /Goodbye!/);
+  assert.match(summary, /exit\.goodbye/);
   assert.match(summary, /╭─+╮/);
   assert.match(summary, /╰─+╯/);
-  assert.match(summary, /Model Usage/);
-  assert.match(summary, /Cached Tokens/);
+  assert.match(summary, /exit\.model-usage/);
+  assert.match(summary, /exit\.cached-tokens/);
   assert.match(summary, /mimo-v2\.5-pro\s+2\s+11,966\s+236\s+11,776/);
   assert.doesNotMatch(summary, /Agent powering down/);
   assert.doesNotMatch(summary, /Interaction Summary/);
@@ -59,6 +61,7 @@ test("buildExitSummaryText shows all usagePerModel rows sorted by request count"
           },
         }
       ),
+      t: mockT,
     })
   );
 
@@ -82,11 +85,12 @@ test("buildExitSummaryText does not derive usage rows from legacy aggregate usag
         total_tokens: 12_202,
         total_reqs: 2,
       }),
+      t: mockT,
     })
   );
 
-  assert.match(summary, /Goodbye!/);
-  assert.doesNotMatch(summary, /Model Usage/);
+  assert.match(summary, /exit\.goodbye/);
+  assert.doesNotMatch(summary, /exit\.model-usage/);
   assert.doesNotMatch(summary, /11,966/);
 });
 

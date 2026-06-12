@@ -1,5 +1,6 @@
 import { formatSlashCommandDescription, formatSlashCommandLabel } from "../core/slash-commands";
 import type { SlashCommandItem } from "../core/slash-commands";
+import { useLocale } from "../../i18n/context";
 import { ARGS_SEPARATOR } from "../constants";
 import React from "react";
 import { Box, Text } from "ink";
@@ -20,6 +21,7 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
   maxVisible = 6,
   width,
 }: SlashCommandMenuProps): React.ReactElement | null {
+  const { t } = useLocale();
   // Calculate optimal label column width: includes prefix "> " or "  " (2 chars), max half container (minus gap)
   const labelColumnWidth = React.useMemo(() => {
     if (items.length === 0) {
@@ -64,7 +66,7 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
             </Box>
             <Box flexGrow={1}>
               <Text color={actualIndex === activeIndex ? "#229ac3" : undefined} wrap="truncate-end" dimColor>
-                {formatSlashCommandDescription(item.description)}
+                {formatSlashCommandDescription(item.description, t)}
               </Text>
             </Box>
           </Box>

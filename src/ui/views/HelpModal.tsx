@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Box, Text, useInput, useWindowSize } from "ink";
+import { useLocale } from "../../i18n/context";
 import {
   HELP_MODAL_MAX_WIDTH,
   HELP_MODAL_MIN_WIDTH,
@@ -18,57 +19,60 @@ type ShortcutEntry = {
   description: string;
 };
 
-const BASE_SHORTCUTS: ShortcutEntry[] = [
-  { key: "?", description: "Toggle help (this screen)" },
-  { key: "Esc", description: "Close current modal / cancel / interrupt" },
-  { key: "Ctrl+C", description: "Cancel input / interrupt" },
-  { key: "Ctrl+O", description: "View live process output / expand paste" },
-  { key: "Ctrl+V", description: "Paste clipboard image" },
-  { key: "Ctrl+Z", description: "Undo last prompt edit" },
-  { key: "Ctrl+Shift+Z", description: "Redo last prompt edit" },
-  { key: "Ctrl+Left/Right", description: "Jump word left/right" },
-  { key: "Alt+Left/Right", description: "Jump word left/right (macOS)" },
-  { key: "Ctrl+A", description: "Move to line start" },
-  { key: "Ctrl+E", description: "Move to line end" },
-  { key: "Ctrl+K", description: "Kill line from cursor" },
-  { key: "Ctrl+W", description: "Delete word before cursor" },
-  { key: "Alt+Backspace", description: "Delete word before cursor" },
-  { key: "Up/Down", description: "Navigate history (when prompt empty) / navigate menus" },
-  { key: "Tab", description: "Autocomplete (slash commands, file mentions)" },
-  { key: "Ctrl+J", description: "Insert newline in prompt (always available)" },
-  { key: "Enter", description: "Submit prompt (when not in menu)" },
-  { key: "@", description: "Trigger file mention autocomplete" },
-  { key: "/", description: "Trigger slash command menu" },
-  { key: "/model", description: "Change model" },
-  { key: "/new", description: "New conversation" },
-  { key: "/resume", description: "Resume previous conversation" },
-  { key: "/undo", description: "Restore code/conversation to earlier point" },
-  { key: "/raw", description: "Toggle raw display mode" },
-  { key: "/mcp", description: "Show MCP server status" },
-  { key: "/exit", description: "Quit dscode" },
-  { key: "PageUp/PageDown", description: "Scroll message history" },
-];
+function buildBaseShortcuts(t: (key: string) => string): ShortcutEntry[] {
+  return [
+    { key: "?", description: t("help.toggle") },
+    { key: "Esc", description: t("help.close") },
+    { key: "Ctrl+C", description: t("help.cancel") },
+    { key: "Ctrl+O", description: t("help.view-output") },
+    { key: "Ctrl+V", description: t("help.paste-image") },
+    { key: "Ctrl+Z", description: t("help.undo") },
+    { key: "Ctrl+Shift+Z", description: t("help.redo") },
+    { key: "Ctrl+Left/Right", description: t("help.jump-word") },
+    { key: "Alt+Left/Right", description: t("help.jump-word-mac") },
+    { key: "Ctrl+A", description: t("help.line-start") },
+    { key: "Ctrl+E", description: t("help.line-end") },
+    { key: "Ctrl+K", description: t("help.kill-line") },
+    { key: "Ctrl+W", description: t("help.delete-word") },
+    { key: "Alt+Backspace", description: t("help.delete-word-alt") },
+    { key: "Up/Down", description: t("help.history") },
+    { key: "Tab", description: t("help.autocomplete") },
+    { key: "Ctrl+J", description: t("help.newline") },
+    { key: "Enter", description: t("help.submit") },
+    { key: "@", description: t("help.file-mention") },
+    { key: "/", description: t("help.command-menu") },
+    { key: "/model", description: t("help.model-cmd") },
+    { key: "/new", description: t("help.new-cmd") },
+    { key: "/resume", description: t("help.resume-cmd") },
+    { key: "/undo", description: t("help.undo-cmd") },
+    { key: "/raw", description: t("help.raw-cmd") },
+    { key: "/mcp", description: t("help.mcp-cmd") },
+    { key: "/exit", description: t("help.exit-cmd") },
+    { key: "PageUp/PageDown", description: t("help.scroll-history") },
+  ];
+}
 
 export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalProps): React.ReactElement {
   const { columns, rows } = useWindowSize();
+  const { t } = useLocale();
 
   const shortcuts = useMemo(() => {
+    const base = buildBaseShortcuts(t);
     const profile = detectTerminalRuntime();
     if (profile.isClassicWindowsConsole) {
-      // Omit Shift+Enter entirely in classic Windows console
-      return BASE_SHORTCUTS;
+      return base;
     }
     // Insert Shift+Enter with terminal-dependent qualifier after Ctrl+J
-    const ctrlJIndex = BASE_SHORTCUTS.findIndex((s) => s.key === "Ctrl+J");
-    const result = [...BASE_SHORTCUTS];
+    const ctrlJIndex = base.findIndex((s) => s.key === "Ctrl+J");
+    const result = [...base];
     if (ctrlJIndex !== -1) {
       result.splice(ctrlJIndex + 1, 0, {
         key: "Shift+Enter",
-        description: "Insert newline in prompt (terminal-dependent)",
+        description: t("welcome.tip-insert-newline-alt"),
       });
     }
     return result;
-  }, []);
+  }, [t]);
 
   useInput((input, key) => {
     if (key.escape) {
@@ -101,7 +105,7 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
         {/* Header */}
         <Box paddingY={1}>
           <Text bold color="#229ac3">
-            Keyboard Shortcuts
+            {t("help.title")}
           </Text>
         </Box>
 
@@ -121,7 +125,7 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
 
         {/* Footer */}
         <Box paddingY={1}>
-          <Text dimColor>Press Esc or ? to close</Text>
+          <Text dimColor>{t("help.press-esc")}</Text>
         </Box>
       </Box>
     </Box>

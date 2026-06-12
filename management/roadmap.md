@@ -24,8 +24,8 @@
 | 70 | google-gemini-provider | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
 | 80 | model-engine-configuration-ux | audited | V13, V6, ADR-002, ADR-005, P7, L1 |
 | 90 | product-i18n | audited | V14, P6 |
-| 100 | steering-management | planned | V15, ADR-006 |
-| 110 | skills-inclusion-modes | planned | V16, ADR-006 |
+| 100 | steering-management | audited | V15, ADR-006 |
+| 110 | skills-inclusion-modes | audited | V16, ADR-006 |
 
 ---
 

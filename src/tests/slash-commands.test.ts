@@ -31,6 +31,8 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "raw",
     "steering-add",
     "steering-list",
+    "steering-remove",
+    "steering-alter",
     "spec-init",
     "spec-plan",
     "spec-new",
@@ -86,7 +88,7 @@ test("findExactSlashCommand returns built-in /init", () => {
   const item = findExactSlashCommand(items, "/init");
   assert.ok(item);
   assert.equal(item?.kind, "init");
-  assert.equal(item?.description, "Initialize an AGENTS.md file with instructions for LLM");
+  assert.equal(item?.description, "cmd.initialize-agents");
 });
 
 test("findExactSlashCommand returns built-in /continue", () => {
@@ -133,7 +135,8 @@ test("findExactSlashCommand returns the matching skill", () => {
 });
 
 test("formatSlashCommandDescription keeps descriptions on one line", () => {
-  assert.equal(formatSlashCommandDescription("Line one\n  line two"), "Line one line two");
+  const mockT = (key: string) => key;
+  assert.equal(formatSlashCommandDescription("Line one\n  line two", mockT), "Line one line two");
 });
 
 test("formatSlashCommandLabel marks loaded skills", () => {

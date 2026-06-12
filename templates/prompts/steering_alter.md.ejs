@@ -1,0 +1,84 @@
+Your task is to alter a steering rule by position in the AGENTS.md file for this repository.
+
+The user wants to alter steering rule number **<%= position %>**.
+<% if (replacementText) { %>
+The user provided this replacement text: **<%= replacementText %>**
+<% } else { %>
+The user did not provide replacement text. You must ask for it.
+<% } %>
+
+Follow these steps:
+
+1. Find the AGENTS.md file. Check these paths in order and use the first one that exists:
+   - ./.dscode/AGENTS.md
+   - ./.deepcode/AGENTS.md
+   - ./AGENTS.md
+   If no file exists at any of these paths, stop and tell the user:
+   "No AGENTS.md file found. Create one with /steering-add first."
+
+2. Read the file using the Read tool. Locate the section with the heading `## Steering`.
+
+   If no `## Steering` heading exists, stop and tell the user:
+   "No steering rules to alter."
+
+3. Extract all bullet points from the `## Steering` section. Bullets are lines matching the pattern `- ` (dash + space) followed by text.
+   - Parse lines from the `## Steering` heading until the next Markdown heading (any line starting with `#`) or end of file.
+   - Count the bullets. Store this count as `bulletCount`.
+
+   If the section has zero bullets, stop and tell the user:
+   "No steering rules to alter."
+
+4. Validate the position:
+   - If position <%= position %> is less than 1, stop and tell the user: "Invalid rule number: must be a positive integer."
+   - If position <%= position %> is greater than bulletCount, stop and tell the user:
+     "There are [bulletCount] rules. Position <%= position %> is out of range."
+     (Replace [bulletCount] with the actual count.)
+
+5. Read the current text of rule <%= position %>. The rule text is the bullet content WITHOUT the `- ` prefix.
+   Store this as `oldText` for later comparison.
+
+6. Get the replacement text:
+<% if (replacementText) { %>
+   The user already provided replacement text: "<%= replacementText %>"
+   Use this text directly as `newText`. Skip to step 8.
+<% } else { %>
+   a. Tell the user the current rule text:
+      "Current rule #<%= position %>: [oldText translated to user's language]"
+
+   b. Use the AskUserQuestion tool to ask:
+      Question: "Enter the new text for this rule:"
+      Input type: single text input
+
+   c. If the user cancels, stop and tell the user: "Alteration cancelled."
+
+   d. If the user's input is empty or contains only whitespace, use AskUserQuestion again
+      to ask for non-empty text. Repeat until the user provides at least one
+      non-whitespace character or cancels.
+
+   e. Trim the user's input and store as `newText`.
+<% } %>
+
+7. Compare old and new text:
+   If `newText` is identical to `oldText`, stop and tell the user:
+   "Rule text unchanged."
+
+8. Replace the rule:
+   - Use the Edit tool with the `snippet_id` from the Read tool response.
+   - `old_string` = the entire bullet line including:
+     - Any leading whitespace on the line
+     - The `- ` prefix
+     - The old rule text (`oldText`)
+     - The trailing newline character
+   - `new_string` = the same line but with `newText` instead of `oldText`:
+     - Same leading whitespace
+     - The `- ` prefix
+     - The new rule text (`newText`)
+     - The trailing newline character
+
+   Important: Do not modify anything outside the `## Steering` section. Do not alter the `## Steering` heading itself.
+
+9. Report the result. Translate both old and new text to the same language the user has been communicating in (look at the user's messages to determine the language). Use this format:
+
+   **Rule #<%= position %> altered.**
+   Old: [oldText translated to user's language]
+   New: [newText translated to user's language]

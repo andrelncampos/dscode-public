@@ -3,10 +3,12 @@ import gradientString from "gradient-string";
 import type { ModelUsage, SessionEntry } from "../session";
 import { computeSessionCost, formatCost } from "../common/model-capabilities";
 import { getBudgetCosts } from "../common/budget-tracker";
+import type { I18nTFunction } from "../i18n/translate";
 
 type ExitSummaryInput = {
   session: SessionEntry | null;
   projectRoot?: string;
+  t: I18nTFunction;
 };
 
 const ANSI_RE = /\u001b\[[0-9;]*[a-zA-Z]/g;
@@ -70,7 +72,7 @@ function extractUsageFields(usage: ModelUsage | null): UsageFields {
 }
 
 export function buildExitSummaryText(input: ExitSummaryInput): string {
-  const { session } = input;
+  const { session, t } = input;
 
   const innerWidth = 98;
   const contentWidth = innerWidth - 4; // "│  " prefix + "  │" suffix → 4 chars padding
@@ -79,7 +81,7 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
   const titleColor = gradientString("#229ac3e6", "rgb(125 51 247 / 0.7)");
   const line = (text: string) => `${borderColor("│")}  ${padRight(text, contentWidth)}  ${borderColor("│")}`;
 
-  const header = chalk.bold(titleColor("Goodbye!"));
+  const header = chalk.bold(titleColor(t("exit.goodbye")));
 
   const rows: string[] = ["", `${header}`, ""];
 
@@ -110,11 +112,11 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
     const divider = "─".repeat(tableWidth);
 
     const headerRow =
-      padRight("Model Usage", colModel) +
-      padLeft("Reqs", colReqs) +
-      padLeft("Input Tokens", colInput) +
-      padLeft("Output Tokens", colOutput) +
-      padLeft("Cached Tokens", colCached);
+      padRight(t("exit.model-usage"), colModel) +
+      padLeft(t("exit.reqs"), colReqs) +
+      padLeft(t("exit.input-tokens"), colInput) +
+      padLeft(t("exit.output-tokens"), colOutput) +
+      padLeft(t("exit.cached-tokens"), colCached);
     rows.push(chalk.bold(headerRow));
     rows.push(divider);
 
@@ -142,15 +144,15 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
   const showBudget = budgetCosts !== null && (budgetCosts.todayCost > 0 || budgetCosts.projectTotal > 0);
 
   if (showSessionCost || showBudget) {
-    rows.push(chalk.bold("Cost (USD)"));
+    rows.push(chalk.bold(t("exit.cost-usd")));
     const costDivider = "─".repeat(20);
     rows.push(costDivider);
     if (showSessionCost) {
-      rows.push(`Session:   ${formatCost(sessionCost!)}`);
+      rows.push(t("exit.session-cost", { cost: formatCost(sessionCost!) }));
     }
     if (showBudget) {
-      rows.push(`Today:     ${formatCost(budgetCosts!.todayCost)}`);
-      rows.push(`Project:   ${formatCost(budgetCosts!.projectTotal)}`);
+      rows.push(t("exit.today-cost", { cost: formatCost(budgetCosts!.todayCost) }));
+      rows.push(t("exit.project-cost", { cost: formatCost(budgetCosts!.projectTotal) }));
     }
     rows.push("");
   }

@@ -73,7 +73,20 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ## Installation
 
-### Via npm (recommended)
+### Via binary (recommended)
+
+Download the binary for your operating system from the [releases page](https://github.com/andrelncampos/dscode/releases). No prerequisites — the binary is self-contained.
+
+| Operating System | File |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+
+Each release includes a `checksums.txt` with SHA256 hashes to verify download integrity.
+
+### Via npm
 
 ```bash
 npm install -g @andrelncampos/dscode
@@ -87,20 +100,9 @@ npm update -g @andrelncampos/dscode   # update
 npm uninstall -g @andrelncampos/dscode   # uninstall
 ```
 
-### Via binary (future)
-
-> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published.
-
-| Operating System | File |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-Each release includes a `checksums.txt` with SHA256 hashes.
-
 ### Installing from source
+
+> For contributors or those who need the latest development version.
 
 ```bash
 git clone https://github.com/andrelncampos/dscode.git
@@ -232,9 +234,9 @@ my-project/
 
 ### Step 1: Install
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+**Via binary (recommended):** Download the file for your system from the [releases page](https://github.com/andrelncampos/dscode/releases), extract it, and run `dscode`.
+
+**Or via npm:** `npm install -g @andrelncampos/dscode` (requires [Node.js 24+](https://nodejs.org)).
 
 ### Step 2: Configure your key
 
@@ -328,6 +330,8 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/init` | Create `AGENTS.md` with instructions for the AI in the project |
 | `/steering-add` | Add a steering rule to the STEERINGS section of `AGENTS.md` |
 | `/steering-list` | List all steering rules from `AGENTS.md` |
+| `/steering-remove <N>` | Remove the Nth steering rule from `AGENTS.md` |
+| `/steering-alter <N>` | Alter the Nth steering rule in `AGENTS.md` |
 
 ### SDD (Spec-Driven Development)
 
@@ -358,7 +362,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 
 ## Steering system
 
-**Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `STEERINGS` section of the `.dscode/AGENTS.md` file.
+**Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `## Steering` section of the `.dscode/AGENTS.md` file. The full management lifecycle includes adding, listing, altering, and removing rules by position.
 
 ```mermaid
 flowchart LR
@@ -366,12 +370,17 @@ flowchart LR
     A --> S[🧠 Next session loads the rule]
     S --> B[✅ AI follows the rule automatically]
     U2[👤 /steering-list] --> V[📋 Lists active rules]
+    U3[👤 /steering-alter 2] --> W[✏️ Alters the 2nd rule]
+    U4[👤 /steering-remove 3] --> X[🗑️ Removes the 3rd rule]
 ```
 
 **Example:**
 ```
 /steering-add always respond in English
 /steering-add never push without explicit authorization
+/steering-list
+/steering-alter 2 never push or merge without authorization
+/steering-remove 1
 ```
 
 ---
@@ -444,6 +453,30 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 | **agent-drift-guard** | Detects and corrects execution drift |
 | **karpathy-guidelines** | Best practices to reduce common LLM mistakes |
 | **plan-and-execute** | Structured planning with progress tracking |
+
+### Inclusion modes
+
+Each `SKILL.md` can declare how it should be loaded via the optional `inclusion` field in YAML frontmatter:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | Loaded automatically via keyword matching in the prompt and available in the `/skills` menu |
+| `manual` | **Never** loaded automatically. Activated only with `#skill-name` prefix or via the `/skills` menu |
+
+**Example SKILL.md with `inclusion: manual`:**
+```markdown
+---
+name: my-deploy
+description: Deploys to production
+inclusion: manual
+---
+
+# Deploy
+
+Before deploying, verify...
+```
+
+To activate a manual skill, type `#my-deploy` at the start of the prompt — the `#` prefix is stripped and the skill is loaded.
 
 ---
 

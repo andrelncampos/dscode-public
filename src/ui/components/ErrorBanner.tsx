@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import { classifyError } from "../core/error-classification";
+import { useLocale } from "../../i18n/context";
 
 export type ErrorSeverity = "error" | "warning";
 
@@ -45,9 +46,10 @@ const ErrorBanner = React.memo(function ErrorBanner({
 }: ErrorBannerProps): React.ReactElement | null {
   const color = severity === "error" ? "red" : "yellow";
   const icon = severity === "error" ? "✖" : "⚠";
+  const { t } = useLocale();
   const classified = useMemo(() => classifyError(message), [message]);
-  const hint = actionHintProp ?? classified.hint;
-  const headerText = `${icon} ${classified.label}`;
+  const hint = actionHintProp ?? t(classified.hintKey);
+  const headerText = `${icon} ${t(classified.labelKey)}`;
   const innerWidth = Math.max(20, maxWidth - 4);
 
   // Truncate absurdly long messages
