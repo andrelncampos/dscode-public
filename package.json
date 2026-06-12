@@ -73,9 +73,9 @@
     "@eslint/js": "^9.39.4",
     "@types/ejs": "^3.1.5",
     "@types/minimatch": "^5.1.2",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.3",
     "@types/react": "^19.2.14",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -83,10 +83,10 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.4",
     "postject": "^1.0.0-alpha.6",
-    "prettier": "^3.8.3",
+    "prettier": "^3.8.4",
     "react-devtools-core": "^7.0.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.61.0"
   }
 }

@@ -85,7 +85,7 @@ DsCode 对以下人群有用：
 npm install -g @andrelncampos/dscode
 ```
 
-**前提条件**：[Node.js](https://nodejs.org) 版本 **22** 或更高。
+**前提条件**：[Node.js](https://nodejs.org) 版本 **24** 或更高。
 
 ```bash
 dscode --version   # 验证安装
@@ -675,7 +675,7 @@ DsCode 通过 `AnthropicProvider` 提供**原生 Anthropic 支持**。带有 `cl
 | 问题 | 可能原因 | 解决方法 |
 |---|---|---|
 | **`dscode: command not found`** | 全局 npm 不在 PATH 中 | 重新打开终端。在 Windows 上，检查 `%APPDATA%\\npm`。在 Linux/macOS 上，检查 `~/.npm-global/bin`。 |
-| **`Node.js version not supported`** | Node 低于版本 22 | 安装或升级到 [Node.js 22+](https://nodejs.org)。 |
+| **`Node.js version not supported`** | Node 低于版本 24 | 安装或升级到 [Node.js 24+](https://nodejs.org)。 |
 | **401 错误 (Unauthorized)** | API 密钥缺失或无效 | 检查 `~/.dscode/settings.json` 中或环境变量中的 `API_KEY` 是否正确。 |
 | **429 错误 (Too Many Requests)** | 超过提供商的速率限制 | 等待几秒后重试。在提供商平台上检查你的计划。 |
 | **回复被截断** | 达到 token 限制 | 在 `settings.json` 中增加 `maxTokens`，或输入"继续"来恢复。 |

@@ -79,7 +79,7 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 npm install -g @andrelncampos/dscode
 ```
 
-**Prerrequisito**: [Node.js](https://nodejs.org) versión **22** o superior.
+**Prerrequisito**: [Node.js](https://nodejs.org) versión **24** o superior.
 
 ```bash
 dscode --version   # verifica instalación
@@ -645,7 +645,7 @@ DsCode tiene **soporte nativo para Anthropic** mediante `AnthropicProvider`. Los
 | Problema | Causa probable | Cómo resolver |
 |---|---|---|
 | `dscode: comando no encontrado` | npm global no está en PATH | Reabre la terminal. En Windows, verifica `%APPDATA%\\npm`. En Linux/macOS, verifica `~/.npm-global/bin`. |
-| `Node.js version not supported` | Node inferior a la versión 22 | Instala o actualiza a [Node.js 22+](https://nodejs.org). |
+| `Node.js version not supported` | Node inferior a la versión 24 | Instala o actualiza a [Node.js 24+](https://nodejs.org). |
 | Error 401 | Clave de API ausente o inválida | Verifica que `API_KEY` esté correcto en `~/.dscode/settings.json` o en la variable de entorno. |
 | Error 429 | Límite de solicitudes del proveedor excedido | Espera unos segundos y vuelve a intentar. Verifica tu plan en la plataforma del proveedor. |
 | Respuesta truncada | Límite de tokens alcanzado | Aumenta `maxTokens` en `settings.json` o escribe "continúa" para retomar. |

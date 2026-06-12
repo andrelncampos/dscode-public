@@ -79,7 +79,7 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 npm install -g @andrelncampos/dscode
 ```
 
-**Prerequisite**: [Node.js](https://nodejs.org) version **22** or later.
+**Prerequisite**: [Node.js](https://nodejs.org) version **24** or later.
 
 ```bash
 dscode --version   # verify installation
@@ -645,7 +645,7 @@ DsCode has **native Anthropic support** via `AnthropicProvider`. Models with the
 | Problem | Likely cause | How to fix |
 |---|---|---|
 | `dscode: command not found` | Global npm not in PATH | Reopen terminal. On Windows, check `%APPDATA%\\npm`. On Linux/macOS, check `~/.npm-global/bin`. |
-| `Node.js version not supported` | Node below version 22 | Install or upgrade to [Node.js 22+](https://nodejs.org). |
+| `Node.js version not supported` | Node below version 24 | Install or upgrade to [Node.js 24+](https://nodejs.org). |
 | 401 error | API key missing or invalid | Check that `API_KEY` is correct in `~/.dscode/settings.json` or environment variable. |
 | 429 error | Provider rate limit exceeded | Wait a few seconds and try again. Check your plan on the provider's platform. |
 | Truncated response | Token limit reached | Increase `maxTokens` in `settings.json` or type "continue" to resume. |
