@@ -21,7 +21,7 @@
 <br/>
 </div>
 
-**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA — **11 modelos entre DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude o cualquier API compatible con OpenAI** — y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS. Su arquitectura cuenta con una **capa LLM agnóstica de proveedor**, que permite cambiar entre proveedores sin modificar código.
+**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA — **16 modelos entre DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini o cualquier API compatible con OpenAI** — y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS. Su arquitectura cuenta con una **capa LLM agnóstica de proveedor**, que permite cambiar entre proveedores sin modificar código.
 
 DsCode deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), pero tiene evolución propia, mantenido por [André Campos](https://github.com/andrelncampos).
 
@@ -51,7 +51,7 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 - **Tech leads** que necesitan revisar o entender bases de código rápidamente.
 - **Personas que ya usan IA para programar** y quieren un flujo rápido integrado en la terminal.
 - **Equipos que quieren estandarizar** prompts, skills, agentes y steering para mantener consistencia.
-- **Usuarios de cualquier proveedor LLM** — DeepSeek V4, OpenAI, Anthropic o APIs compatibles. La capa agnóstica de proveedor permite alternar sin esfuerzo.
+- **Usuarios de cualquier proveedor LLM** — DeepSeek V4, OpenAI, Anthropic, Google Gemini o APIs compatibles. La capa agnóstica de proveedor permite alternar sin esfuerzo.
 
 ---
 
@@ -79,7 +79,7 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 npm install -g @andrelncampos/dscode
 ```
 
-**Prerrequisito**: [Node.js](https://nodejs.org) versión **22** o superior.
+**Prerrequisito**: [Node.js](https://nodejs.org) versión **24** o superior.
 
 ```bash
 dscode --version   # verifica instalación
@@ -138,6 +138,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys |
 | **Anthropic** | [console.anthropic.com](https://console.anthropic.com) → API Keys |
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com) → API Keys |
 
 ### Opciones de configuración disponibles
 
@@ -171,6 +172,12 @@ DsCode calcula el costo estimado de la sesión según los tokens usados. Precios
 | `claude-opus-4-8` | $15.00 | $75.00 | $7.50 |
 | `claude-sonnet-4-6` | $3.00 | $15.00 | $1.50 |
 | `claude-haiku-4-5` | $0.80 | $4.00 | $0.40 |
+| `claude-fable-5` | $10.00 | $50.00 | $1.00 |
+| `claude-mythos-5` | $10.00 | $50.00 | $1.00 |
+| `gemini-3.5-flash` | $1.50 | $9.00 | $0.15 |
+| `gemini-3.1-flash-lite` | $0.25 | $1.50 | $0.025 |
+| `gemini-2.5-pro` | $2.50 | $15.00 | $0.25 |
+| `gemini-2.5-flash` | $0.50 | $3.00 | $0.05 |
 
 Para usar precios personalizados (o añadir un modelo no soportado):
 
@@ -293,7 +300,7 @@ Escribe `/` en el prompt para abrir el menú. Son **20 comandos built-in** + ski
 
 | Comando | Descripción |
 |---|---|
-| `/model` | Seleccionar entre 11 modelos de 3 proveedores, con thinking mode y reasoning effort por proveedor |
+| `/model` | Seleccionar entre 16 modelos de 4 proveedores, con thinking mode y reasoning effort por proveedor |
 | `/raw` | Alternar modo de visualización: `lite` (resumido), `normal` (completo), `raw-scrollback` (scroll) |
 
 ### Skills y agentes
@@ -453,8 +460,8 @@ DsCode funciona de forma **conversacional**: escribes lo que necesitas, la IA re
 | **Skills** | Guías escritas en Markdown que enseñan a la IA a seguir reglas específicas. | Crea una skill para estandarizar revisiones, estilo de código o procesos del equipo. |
 | **Tools** | Herramientas que la IA usa: `bash` (shell), `read`/`write`/`edit` (archivos), `glob`/`grep` (búsqueda), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (preguntas), `UpdatePlan` (tareas). | La IA decide cuáles usar. Puedes bloquear las peligrosas vía `permissions`. |
 | **Menciones `@`** | Escribe `@` en el prompt para buscar y referenciar archivos del proyecto. | Usa para dirigir a la IA: "Analiza @src/utils.ts" — ya sabe qué archivo leer. |
-| **Provider** | La empresa que proporciona el modelo de IA (DeepSeek, OpenAI, Anthropic, etc.). | Elige el proveedor según costo, calidad y privacidad. |
-| **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`). 11 modelos disponibles entre 3 proveedores. | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
+| **Provider** | La empresa que proporciona el modelo de IA (DeepSeek, OpenAI, Anthropic, Google Gemini, etc.). | Elige el proveedor según costo, calidad y privacidad. |
+| **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 modelos disponibles entre 4 proveedores. | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
 | **Thinking mode** | La IA "piensa" (razona) antes de responder, generando tokens internos que puedes ver o no. | Actívalo para tareas complejas (debug, arquitectura). Desactívalo para agilidad. |
 | **Reasoning effort** | Controla la profundidad del razonamiento: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` o `"none"` (varía por proveedor). | Usa máximo para problemas difíciles y medio/bajo para el día a día. |
 | **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). | Sucede automáticamente. Mantén los prompts estables para ahorrar. |
@@ -611,6 +618,68 @@ DsCode tiene **soporte nativo para Anthropic** mediante `AnthropicProvider`. Los
 
 ---
 
+## Cómo usar con Google Gemini
+
+DsCode tiene **soporte nativo para Google Gemini** mediante `GeminiProvider`. Los modelos con prefijo `gemini-` se enrutan automáticamente al provider Gemini — sin configuración adicional. Gemini es el primer provider implementado con **cero SDK** — usa `fetch()` nativo de Node 24.
+
+### Configuración para Gemini
+
+```json
+{
+  "env": {
+    "MODEL": "gemini-3.5-flash",
+    "BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
+    "API_KEY": "AIza-tu-clave-gemini"
+  },
+  "thinkingEnabled": true,
+  "reasoningEffort": "high"
+}
+```
+
+> 💡 `thinkingEnabled` funciona con Gemini: el provider envía `thinkingConfig: { thinkingBudget: 8192, includeThoughts: true }` en `generationConfig`. Gemini usa "thinking budget" en lugar de "reasoning effort".
+
+### Usando múltiples proveedores con `engines`
+
+```json
+{
+  "env": {
+    "MODEL": "deepseek-v4-pro",
+    "API_KEY": "sk-clave-deepseek"
+  },
+  "engines": {
+    "gemini": {
+      "apiKey": "AIza-tu-clave-gemini"
+    }
+  }
+}
+```
+
+### Qué cambia respecto a DeepSeek
+
+| Funcionalidad | Con Gemini |
+|---|---|
+| **Thinking mode** | ✅ Soportado nativamente vía `thinkingConfig`. Budget de 8192 tokens. |
+| **WebSearch built-in** | ❌ No disponible. Usa MCP con servidor de búsqueda. |
+| **KV Cache** | ❌ No disponible (exclusivo de DeepSeek) |
+| **Imágenes (Ctrl+V)** | ✅ Funciona con todos los modelos Gemini |
+| **Modelos soportados** | `gemini-3.5-flash`, `gemini-3-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash` |
+| **Compactación** | Usa `getCheapModel()`: `gemini-3.5-flash` → `gemini-3.1-flash-lite` para reducir costo |
+
+### Ejemplo con modelo más barato
+
+```json
+{
+  "env": {
+    "MODEL": "gemini-3.1-flash-lite",
+    "BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
+    "API_KEY": "AIza-tu-clave-gemini"
+  },
+  "thinkingEnabled": false
+}
+```
+
+---
+
 ## Buenas prácticas de seguridad
 
 | Qué hacer | Por qué |
@@ -645,7 +714,7 @@ DsCode tiene **soporte nativo para Anthropic** mediante `AnthropicProvider`. Los
 | Problema | Causa probable | Cómo resolver |
 |---|---|---|
 | `dscode: comando no encontrado` | npm global no está en PATH | Reabre la terminal. En Windows, verifica `%APPDATA%\\npm`. En Linux/macOS, verifica `~/.npm-global/bin`. |
-| `Node.js version not supported` | Node inferior a la versión 22 | Instala o actualiza a [Node.js 22+](https://nodejs.org). |
+| `Node.js version not supported` | Node inferior a la versión 24 | Instala o actualiza a [Node.js 24+](https://nodejs.org). |
 | Error 401 | Clave de API ausente o inválida | Verifica que `API_KEY` esté correcto en `~/.dscode/settings.json` o en la variable de entorno. |
 | Error 429 | Límite de solicitudes del proveedor excedido | Espera unos segundos y vuelve a intentar. Verifica tu plan en la plataforma del proveedor. |
 | Respuesta truncada | Límite de tokens alcanzado | Aumenta `maxTokens` en `settings.json` o escribe "continúa" para retomar. |

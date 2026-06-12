@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import ignore from "ignore";
-import minimatch from "minimatch";
+import { minimatch } from "minimatch";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 
 const MAX_RESULTS = 500;
@@ -111,7 +111,7 @@ function loadGitignoreMatcher(projectRoot: string): (relPath: string, isDir: boo
     };
   }
 
-  let content = "";
+  let content: string;
   try {
     content = fs.readFileSync(gitignorePath, "utf8");
   } catch {

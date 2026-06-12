@@ -120,12 +120,19 @@ provider SDK. Defined by the `ILlmProvider` interface:
 User-facing controls for choosing and configuring LLM providers:
 
 - `/model` slash command to switch models mid-session.
+- `/model-add`, `/model-remove`, `/model-list`, `/model-info` for provider management.
+- `/model-key` to update API keys without editing `settings.json` manually.
+- `/model-default` to set the default model.
+- `/model-params` to configure generation parameters (temperature, max tokens, top_p).
+- `/model-thinking` to tune per-model thinking budgets.
 - Settings schema for provider-specific configuration (API keys, base URLs, model
   names, pricing overrides).
 - Provider-aware capability detection (multimodal support, thinking mode availability,
   max context window).
 - Graceful fallback when a configured provider is unreachable.
 
-**Delivered by:** Spec 60 (Model Selection & Configuration).
+**Delivered by:**
+- Spec 60 (Model Selection & Configuration) — model catalog, `/model` dropdown, thinking mode selection, graceful fallback.
+- Spec 80 (Model & Engine Configuration UX) — provider management commands, API key configuration, generation parameters, thinking budget tuning.
 
 ---

@@ -15,7 +15,7 @@ export type ModelReasoning = {
 
 export type ModelEntry = {
   id: string;
-  provider: "deepseek" | "openai" | "anthropic";
+  provider: "deepseek" | "openai" | "anthropic" | "gemini";
   displayName: string;
   reasoning: ModelReasoning;
   contextWindow: number;
@@ -139,6 +139,57 @@ export const MODEL_CATALOG: ModelEntry[] = [
     reasoning: { type: "adaptive", defaultEffort: "high" },
     contextWindow: 1_000_000,
     maxOutput: 131_072,
+    multimodal: true,
+    isDefault: false,
+  },
+  // Google Gemini
+  {
+    id: "gemini-3.5-flash",
+    provider: "gemini",
+    displayName: "Gemini 3.5 Flash",
+    reasoning: { type: "adaptive", defaultEffort: "high" },
+    contextWindow: 1_000_000,
+    maxOutput: 65_536,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "gemini-3-flash",
+    provider: "gemini",
+    displayName: "Gemini 3 Flash",
+    reasoning: { type: "adaptive", defaultEffort: "high" },
+    contextWindow: 1_000_000,
+    maxOutput: 65_536,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "gemini-3.1-flash-lite",
+    provider: "gemini",
+    displayName: "Gemini 3.1 Flash-Lite",
+    reasoning: { type: "none", defaultEffort: "high" },
+    contextWindow: 1_000_000,
+    maxOutput: 65_536,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "gemini-2.5-pro",
+    provider: "gemini",
+    displayName: "Gemini 2.5 Pro",
+    reasoning: { type: "adaptive", defaultEffort: "high" },
+    contextWindow: 1_000_000,
+    maxOutput: 65_536,
+    multimodal: true,
+    isDefault: false,
+  },
+  {
+    id: "gemini-2.5-flash",
+    provider: "gemini",
+    displayName: "Gemini 2.5 Flash",
+    reasoning: { type: "adaptive", defaultEffort: "high" },
+    contextWindow: 1_000_000,
+    maxOutput: 65_536,
     multimodal: true,
     isDefault: false,
   },

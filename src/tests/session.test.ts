@@ -2268,10 +2268,10 @@ test("SessionManager streams chat completions and counts reasoning progress", as
   );
   assert.deepEqual(
     progressEvents.map((event) => event.phase),
-    ["start", "update", "update", "end"]
+    ["start", "update", "update", "update", "update", "end"]
   );
   assert.equal(progressEvents[1]?.estimatedTokens, 1);
-  assert.equal(progressEvents[2]?.formattedTokens, "3");
+  assert.equal(progressEvents[3]?.formattedTokens, "3");
 });
 
 test("SessionManager persists session and user message during skill matching (no API call)", async () => {

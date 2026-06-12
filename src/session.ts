@@ -323,6 +323,12 @@ export type LlmStreamProgress = {
   estimatedTokens: number;
   formattedTokens: string;
   phase: "start" | "update" | "end";
+  /** What the LLM is currently emitting in the stream. */
+  activity?: "reasoning" | "generating";
+  /** How many tool calls have been seen in this stream so far. */
+  toolCallCount?: number;
+  /** Name of the most recent tool call (e.g. "glob", "read"). */
+  toolCallName?: string;
 };
 
 export class SessionManager {
@@ -506,7 +512,8 @@ export class SessionManager {
     startedAt: string,
     estimatedTokens: number,
     phase: LlmStreamProgress["phase"],
-    sessionId?: string
+    sessionId?: string,
+    extra?: Partial<Pick<LlmStreamProgress, "activity" | "toolCallCount" | "toolCallName">>
   ): void {
     this.onLlmStreamProgress?.({
       requestId,
@@ -515,6 +522,7 @@ export class SessionManager {
       estimatedTokens: Math.round(estimatedTokens),
       formattedTokens: this.formatEstimatedTokens(estimatedTokens),
       phase,
+      ...extra,
     });
   }
 
@@ -1176,6 +1184,15 @@ export class SessionManager {
           number,
           { id?: string; type?: string; function?: { name?: string; arguments?: string } }
         >();
+        let currentActivity: LlmStreamProgress["activity"] = undefined;
+        let toolCallCount = 0;
+
+        const emitActivity = () => {
+          this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "update", sessionId, {
+            activity: currentActivity,
+            toolCallCount: toolCallCount > 0 ? toolCallCount : undefined,
+          });
+        };
 
         try {
           await runWithExecCtx({ sessionId, requestId, model, turnNumber: iteration }, async () => {
@@ -1187,11 +1204,15 @@ export class SessionManager {
               if (event.type === "text_delta") {
                 content += event.text;
                 trackText(event.text);
+                currentActivity = "generating";
+                emitActivity();
                 continue;
               }
               if (event.type === "reasoning_delta") {
                 reasoningContent += event.text;
                 trackText(event.text);
+                currentActivity = "reasoning";
+                emitActivity();
                 continue;
               }
               if (event.type === "tool_call_start") {
@@ -1202,6 +1223,12 @@ export class SessionManager {
                   function: { name: event.name, arguments: "" },
                 });
                 trackText(event.name);
+                toolCallCount = index + 1;
+                this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "update", sessionId, {
+                  activity: currentActivity,
+                  toolCallCount,
+                  toolCallName: event.name,
+                });
                 continue;
               }
               if (event.type === "tool_call_delta") {

@@ -21,6 +21,8 @@
 | 40 | openai-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
 | 50 | anthropic-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P6, P7 |
 | 60 | model-selection-configuration | audited | V13, V6, ADR-002, P7 |
+| 70 | google-gemini-provider | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
+| 80 | model-engine-configuration-ux | planned | V13, V6, ADR-002, ADR-005, P7, L1 |
 
 ---
 
@@ -30,15 +32,21 @@
 Spec 30 (provider-agnostic LLM layer)
   ├── Spec 40 (OpenAI adapter)
   ├── Spec 50 (Anthropic adapter)
-  └── Spec 60 (model selection & config)
+  ├── Spec 60 (model selection & config)
+  │     └── Spec 80 (engine config UX)
+  └── Spec 70 (Google Gemini adapter)
 ```
 
-Spec 30 is the **required precursor** to 40, 50, and 60. The provider interface
-(`ILlmProvider`) defined in spec 30 is what 40 and 50 implement, and what spec 60
+Spec 30 is the **required precursor** to 40, 50, 60, and 70. The provider interface
+(`ILlmProvider`) defined in spec 30 is what 40, 50, and 70 implement, and what spec 60
 exposes to the user through configuration and the `/model` command.
 
-Specs 40 and 50 are independent of each other but both depend on 30. Spec 60 can
+Specs 40, 50, and 70 are independent of each other but all depend on 30. Spec 60 can
 start as soon as 30 lands, but full end-to-end testing requires at least one
-additional provider (40 or 50).
+additional provider (40, 50, or 70).
+
+Spec 80 depends on Spec 60 for `MODEL_CATALOG`, `getModelCapabilities`, and the
+`engines` settings namespace. It extends the `/model` command with subcommands
+for provider management, generation parameters, and thinking budget tuning.
 
 ---
