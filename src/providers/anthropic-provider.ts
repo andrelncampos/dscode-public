@@ -5,6 +5,7 @@ import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm
 import type { ModelUsage } from "../session";
 import { withRetry } from "../common/api-retry";
 import { createAnthropicClient } from "../common/anthropic-client";
+import { getAuxiliaryModel } from "../common/model-catalog";
 
 // Map DsCode ThinkingEffort to Anthropic adaptive effort.
 // Anthropic adaptive thinking supports: "low", "medium", "high".
@@ -18,7 +19,6 @@ function toAnthropicEffort(effort: string | undefined): string | undefined {
 }
 
 const CLAUDE_MODEL_PREFIX = "claude-";
-const CLAUDE_HAIKU_PATTERN = /^claude-haiku/;
 // Reasoning models: opus and sonnet get longer timeouts
 const CLAUDE_REASONING_PATTERN = /^claude-(opus|sonnet)/;
 // Models that use adaptive thinking (thinking: { type: "adaptive" })
@@ -55,17 +55,8 @@ export class AnthropicProvider implements ILlmProvider {
     return true;
   }
 
-  getCheapModel(model: string): string | null {
-    if (model === "claude-opus-4-8") return "claude-haiku-4-5";
-    if (model === "claude-sonnet-4-6") return "claude-haiku-4-5";
-    // Fable 5 / Mythos 5: no cheaper equivalent.
-    if (/^claude-(fable|mythos)/.test(model.toLowerCase())) return null;
-    if (CLAUDE_HAIKU_PATTERN.test(model.toLowerCase())) return null;
-    // Heuristic: replace "opus" or "sonnet" with "haiku"
-    if (model.includes("opus") || model.includes("sonnet")) {
-      return model.replace(/opus|sonnet/g, "haiku");
-    }
-    return null;
+  getAuxiliaryModel(model: string): string | null {
+    return getAuxiliaryModel(model);
   }
 
   async *chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent> {

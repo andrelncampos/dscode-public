@@ -162,8 +162,10 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
     activeStatus !== "ask_permission" &&
     !showProcessStdout &&
     !busy;
-  const usagePerModel = sessionManager.getSession(sessionManager.getActiveSessionId() ?? "")?.usagePerModel ?? null;
+  const activeSession = sessionManager.getSession(sessionManager.getActiveSessionId() ?? "");
+  const usagePerModel = activeSession?.usagePerModel ?? null;
   let sessionTokens = 0;
+  let sessionActiveTokens = 0;
   let sessionCost: number | null = null;
   if (usagePerModel) {
     let totalTokens = 0;
@@ -172,6 +174,9 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
       sessionTokens = totalTokens;
       sessionCost = computeSessionCost(usagePerModel, resolvedSettings.modelPricing);
     }
+  }
+  if (activeSession) {
+    sessionActiveTokens = activeSession.activeTokens;
   }
   const budgetCosts = getBudgetCosts(projectRoot ?? "");
 
@@ -406,6 +411,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         runningProcesses={runningProcesses}
         promptDraft={promptDraft}
         sessionTokens={sessionTokens}
+        sessionActiveTokens={sessionActiveTokens}
         sessionCost={sessionCost}
         sessionContextWindow={getModelCapabilities(resolvedSettings.model)?.contextWindow}
         dailyCost={budgetCosts.todayCost}

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import type { ModelUsage } from "../session";
 import { computeUsageCost, formatCost, DEFAULT_MODEL_PRICING, type ModelPricing } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
+import { getProjectDscodeDir } from "./dscode-paths";
 
 const BUDGET_FILE = "budget.md";
 
@@ -12,13 +13,13 @@ type DailyCost = {
 };
 
 function getBudgetPath(projectRoot: string): string {
-  const mgmtDir = path.join(projectRoot, "management");
+  const dscodeDir = getProjectDscodeDir(projectRoot);
   try {
-    fs.mkdirSync(mgmtDir, { recursive: true });
+    fs.mkdirSync(dscodeDir, { recursive: true });
   } catch {
     // Directory creation failed — callers handle missing files gracefully
   }
-  return path.join(mgmtDir, BUDGET_FILE);
+  return path.join(dscodeDir, BUDGET_FILE);
 }
 
 function getToday(): string {
@@ -92,8 +93,8 @@ function writeBudget(projectRoot: string, costs: DailyCost[]): void {
 /**
  * Record the cost of a single LLM API call into the project budget file.
  *
- * Reads management/budget.md, adds the cost to today's entry (or creates it),
- * and writes the updated markdown file back.
+ * Reads the budget file from .dscode/budget.md, adds the cost to today's
+ * entry (or creates it), and writes the updated markdown file back.
  */
 /**
  * Result from reading the project budget file.
@@ -106,7 +107,7 @@ export type BudgetCosts = {
 };
 
 /**
- * Read the current daily and project-total costs from management/budget.md.
+ * Read the current daily and project-total costs from .dscode/budget.md.
  * Returns zeroed values when the file does not exist or is malformed.
  */
 export function getBudgetCosts(projectRoot: string): BudgetCosts {

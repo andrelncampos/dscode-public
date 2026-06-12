@@ -8,6 +8,7 @@ import { isEncryptedCredential, decryptCredential, encryptCredential } from "./c
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { execFileSync } from "node:child_process";
 
 export type DeepcodingEnv = Record<string, string | undefined> & {
   MODEL?: string;
@@ -19,6 +20,7 @@ export type DeepcodingEnv = Record<string, string | undefined> & {
   DEBUG_LOG_ENABLED?: string;
   TELEMETRY_ENABLED?: string;
   MAX_TOKENS?: string;
+  REPOSITORY_VISIBILITY?: string;
 };
 
 import type { ThinkingEffort } from "./common/model-catalog";
@@ -76,6 +78,7 @@ export type DeepcodingSettings = {
   budget?: BudgetSettings;
   terminalTitleTemplate?: string;
   topP?: number;
+  repositoryVisibility?: "public" | "private";
   locale?: "en" | "pt" | "es";
   thinkingBudgets?: Record<string, number>;
 };
@@ -100,6 +103,7 @@ export type ResolvedDeepcodingSettings = {
   budget: BudgetSettings;
   terminalTitleTemplate?: string;
   topP?: number;
+  repositoryVisibility: "public" | "private";
   locale?: "en" | "pt" | "es";
   thinkingBudgets: Record<string, number>;
 };
@@ -423,7 +427,8 @@ export function resolveSettingsSources(
     parseTemperature(projectSettings?.temperature) ??
     parseTemperature(projectEnv.TEMPERATURE) ??
     parseTemperature(userSettings?.temperature) ??
-    parseTemperature(userEnv.TEMPERATURE);
+    parseTemperature(userEnv.TEMPERATURE) ??
+    0.3;
 
   const debugLogEnabled =
     parseBoolean(systemEnv.DEBUG_LOG_ENABLED) ??
@@ -474,6 +479,12 @@ export function resolveSettingsSources(
 
   const locale = resolveSettingsLocale(systemEnv, projectSettings, userSettings);
 
+  const repositoryVisibility: "public" | "private" =
+    trimString(systemEnv.REPOSITORY_VISIBILITY) === "public" ||
+    trimString(systemEnv.REPOSITORY_VISIBILITY) === "private"
+      ? (trimString(systemEnv.REPOSITORY_VISIBILITY) as "public" | "private")
+      : (projectSettings?.repositoryVisibility ?? userSettings?.repositoryVisibility ?? "private");
+
   return {
     env,
     apiKey: trimString(env.API_KEY) || undefined,
@@ -494,6 +505,7 @@ export function resolveSettingsSources(
     budget,
     terminalTitleTemplate,
     topP,
+    repositoryVisibility,
     locale,
     thinkingBudgets,
   };
@@ -589,6 +601,7 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
     "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
   },
   terminalTitleTemplate: "DsCode - {{cwd}}",
+  repositoryVisibility: "private",
   thinkingBudgets: {},
 };
 
@@ -858,8 +871,105 @@ export function resolveCurrentSettings(projectRoot: string = process.cwd()): Res
     process.env
   );
 
+  // When the repository is public, ensure that sensitive directories
+  // like /management/ are listed in .gitignore so they are never committed.
+  if (resolved.repositoryVisibility === "public") {
+    ensurePublicRepoGitignore(projectRoot);
+  }
+
   settingsCache.set(projectRoot, { mtimeMs: currentMtime, resolved });
   return resolved;
+}
+
+// ── Public-repo gitignore enforcement ────────────────────────────────
+
+const PUBLIC_SENSITIVE_ENTRIES = ["/management/", "/.agents/"];
+
+/**
+ * Ensure that entries for sensitive directories are present in the project's
+ * `.gitignore`.  Called every time settings are resolved when
+ * `repositoryVisibility` is `"public"`.
+ *
+ * Idempotent — only appends entries that are not already present.
+ * Afterwards warns if any of those directories are still tracked by Git
+ * (they were committed before the .gitignore entry was added).
+ */
+function ensurePublicRepoGitignore(projectRoot: string): void {
+  const gitignorePath = path.join(projectRoot, ".gitignore");
+  const marker = "# DsCode: public-repository sensitive entries";
+
+  try {
+    let content = "";
+    try {
+      content = fs.readFileSync(gitignorePath, "utf8");
+    } catch {
+      // .gitignore doesn't exist yet — create it.
+    }
+
+    // If the marker is already present, the entries have already been added.
+    if (content.includes(marker)) return;
+
+    const missing = PUBLIC_SENSITIVE_ENTRIES.filter(
+      (entry) => !content.split(/\r?\n/).some((line) => line.trim() === entry)
+    );
+
+    if (missing.length === 0) return;
+
+    const newBlock = [content.endsWith("\n") ? "" : content ? "\n" : "", marker, ...missing, ""].join("\n");
+
+    fs.writeFileSync(gitignorePath, content + newBlock, "utf8");
+  } catch {
+    // Best effort — non-fatal if .gitignore can't be written.
+  }
+
+  // Warn if any sensitive directory is still tracked by Git.
+  warnIfSensitiveDirsAreTracked(projectRoot);
+}
+
+/**
+ * Check whether any of the PUBLIC_SENSITIVE_ENTRIES directories are
+ * still tracked (cached) in Git.  If they are, print a warning with the
+ * exact commands the user can run to remove them.
+ */
+function warnIfSensitiveDirsAreTracked(projectRoot: string): void {
+  const stillTracked: string[] = [];
+  for (const entry of PUBLIC_SENSITIVE_ENTRIES) {
+    // entry is like "/management/" — strip the leading/trailing slashes
+    const dirName = entry.replace(/^\/|\/$/g, "");
+    const dirPath = path.join(projectRoot, dirName);
+
+    // Only check if the directory actually exists on disk.
+    if (!fs.existsSync(dirPath)) continue;
+
+    try {
+      const stdout = execFileSync("git", ["ls-files", "--cached", `${dirName}/`], {
+        cwd: projectRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 3000,
+      });
+      if (stdout.trim()) {
+        stillTracked.push(dirName);
+      }
+    } catch {
+      // git not available, not a git repo, or command failed — skip.
+    }
+  }
+
+  if (stillTracked.length === 0) return;
+
+  const dirList = stillTracked.map((d) => `  ${d}/`).join("\n");
+  const rmCommands = stillTracked.map((d) => `  git rm --cached -r ${d}/`).join("\n");
+
+  process.stderr.write(
+    `\n\x1b[33m⚠  repositoryVisibility is "public" but these directories are still tracked by Git:\x1b[0m\n` +
+      `${dirList}\n\n` +
+      `\x1b[90m.gitignore will prevent new commits, but existing history still exposes them.\x1b[0m\n` +
+      `\x1b[90mRun these commands to remove them from tracking:\x1b[0m\n\n` +
+      `${rmCommands}\n` +
+      `\x1b[90mThen commit the removal:\x1b[0m\n` +
+      `  \x1b[36mgit commit -m "Remove sensitive dirs from tracking (public repo)"\x1b[0m\n\n`
+  );
 }
 
 /** Clear the in-memory settings cache (useful after writing new settings). */

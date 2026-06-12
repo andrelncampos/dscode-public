@@ -197,3 +197,36 @@ The `inclusion` field is optional YAML frontmatter in `SKILL.md`. When absent, d
 **Delivered by:** Spec 110 (skills-inclusion-modes).
 
 ---
+
+### V17: Subagent Architecture & Context Isolation
+
+Specialized AI assistants that execute tasks in isolated context windows, preserving
+the main conversation context and reducing token costs:
+
+- **Context isolation:** Subagents run with their own message array, system prompt,
+  and tool set. Only the final summary is returned to the main conversation —
+  exploration logs, search results, and intermediate reasoning never pollute the
+  main context.
+- **Built-in Explore subagent:** A read-only codebase explorer using the cheap model
+  (`deepseek-v4-flash`, thinking disabled). Handles file discovery, code search, and
+  architecture mapping. Configurable thoroughness levels (quick, medium, thorough).
+  The main agent auto-delegates when a task matches exploration patterns.
+- **Skills as subagents:** The existing `SKILL.md` system gains a `mode` field.
+  `mode: prompt` (default, current behavior) injects the skill as a system message.
+  `mode: agent` spawns the skill as an isolated subagent with its own model, tools,
+  and thinking settings — it does the work and returns only the result.
+- **Cost optimization:** Subagents default to cheap models (`deepseek-v4-flash`)
+  with thinking disabled. Budget tracking records subagent API calls separately.
+- **Tool restrictions:** Subagents can be limited to read-only tools (Read, Grep,
+  Glob) to prevent unintended modifications.
+- **Auto-delegation:** The main agent decides when to delegate based on subagent
+  descriptions (for custom skills) or built-in heuristics (for Explore).
+- **Backward compatible:** All existing skills continue working unchanged. Skills
+  without `mode` default to `prompt`. The Explore subagent is always available and
+  requires no configuration.
+
+**Delivered by:**
+- Spec 120 (explore-subagent) — built-in Explore subagent for codebase exploration.
+- Spec 130 (skills-as-subagents) — skills with `mode: agent` run as isolated subagents.
+
+---

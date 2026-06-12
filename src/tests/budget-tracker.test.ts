@@ -34,7 +34,7 @@ test("recordBudgetCost creates budget file and records cost", () => {
 
   recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
 
-  const budgetPath = path.join(projectRoot, "management", "budget.md");
+  const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
   assert.ok(fs.existsSync(budgetPath));
 
   const content = fs.readFileSync(budgetPath, "utf8");
@@ -111,7 +111,7 @@ test("recordBudgetCost uses cache-hit tokens for cost computation", () => {
 
 test("getBudgetCosts handles malformed budget file gracefully", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
-  const dscodeDir = path.join(projectRoot, "management");
+  const dscodeDir = path.join(projectRoot, ".dscode");
   fs.mkdirSync(dscodeDir, { recursive: true });
   fs.writeFileSync(path.join(dscodeDir, "budget.md"), "not a valid budget file\njust some text\n");
 

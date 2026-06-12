@@ -4,6 +4,7 @@ import type { ILlmProvider, LlmStreamEvent, LlmChatOptions } from "../common/llm
 import type { ModelUsage } from "../session";
 import { withRetry } from "../common/api-retry";
 import { createGeminiClient } from "../common/gemini-client";
+import { getAuxiliaryModel } from "../common/model-catalog";
 
 const GEMINI_MODEL_PREFIX = "gemini-";
 const GEMINI_PRO_MODEL_PATTERN = /^gemini-2\.5-pro/;
@@ -28,23 +29,8 @@ export class GeminiProvider implements ILlmProvider {
     return true; // All Gemini text models support image inputs
   }
 
-  getCheapModel(model: string): string | null {
-    switch (model) {
-      case "gemini-3.5-flash":
-        return "gemini-3.1-flash-lite";
-      case "gemini-3-flash":
-        return "gemini-3.1-flash-lite";
-      case "gemini-2.5-pro":
-        return "gemini-2.5-flash";
-      case "gemini-2.5-flash":
-        return "gemini-3.1-flash-lite";
-      case "gemini-3.1-flash-lite":
-        return null;
-      default: {
-        if (model.toLowerCase().startsWith("gemini-")) return "gemini-3.1-flash-lite";
-        return null;
-      }
-    }
+  getAuxiliaryModel(model: string): string | null {
+    return getAuxiliaryModel(model);
   }
 
   async *chat(options: LlmChatOptions): AsyncIterable<LlmStreamEvent> {

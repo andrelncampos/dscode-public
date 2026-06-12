@@ -13,3 +13,7 @@ release/
 
 # External reference files
 EXTERNAL/
+
+# DsCode: public-repository sensitive entries
+/management/
+/.agents/
