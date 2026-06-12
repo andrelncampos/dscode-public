@@ -1,5 +1,6 @@
 import type { SkillInfo } from "../../session";
 import type { SlashCommandKind } from "../types/commands";
+import type { I18nTFunction } from "../../i18n/translate";
 
 export type { SlashCommandKind } from "../types/commands";
 
@@ -17,187 +18,187 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     kind: "skills",
     name: "skills",
     label: "/skills",
-    description: "List available skills",
+    description: "cmd.list-skills",
   },
   {
     kind: "model",
     name: "model",
     label: "/model",
-    description: "Select model, thinking mode and effort control",
+    description: "cmd.select-model",
   },
   {
     kind: "new",
     name: "new",
     label: "/new",
-    description: "Start a fresh conversation",
+    description: "cmd.start-fresh",
   },
   {
     kind: "init",
     name: "init",
     label: "/init",
-    description: "Initialize an AGENTS.md file with instructions for LLM",
+    description: "cmd.initialize-agents",
   },
   {
     kind: "resume",
     name: "resume",
     label: "/resume",
-    description: "Pick a previous conversation to continue",
+    description: "cmd.resume-conversation",
   },
   {
     kind: "continue",
     name: "continue",
     label: "/continue",
-    description: "Continue the active conversation or pick one to resume",
+    description: "cmd.continue-conversation",
   },
   {
     kind: "undo",
     name: "undo",
     label: "/undo",
-    description: "Restore code and/or conversation to a previous point",
+    description: "cmd.undo-restore",
   },
   {
     kind: "mcp",
     name: "mcp",
     label: "/mcp",
-    description: "Show MCP server status and available tools",
+    description: "cmd.mcp-status",
   },
   {
     kind: "raw",
     name: "raw",
     label: "/raw",
     args: ["lite", "normal", "raw-scrollback"],
-    description: "Toggle display mode for viewing or collapsing reasoning content",
+    description: "cmd.toggle-display-mode",
   },
   {
     kind: "steering-add",
     name: "steering-add",
     label: "/steering-add",
-    description: "Add a steering rule to the STEERINGS section of AGENTS.md",
+    description: "cmd.steering-add",
   },
   {
     kind: "steering-list",
     name: "steering-list",
     label: "/steering-list",
-    description: "List all steering rules from the STEERINGS section of AGENTS.md",
+    description: "cmd.steering-list",
   },
   {
     kind: "spec-init",
     name: "spec-init",
     label: "/spec-init",
-    description: "Initialize SDD structure: vision, arch, roadmap, ADR, and lessons files",
+    description: "cmd.spec-init",
   },
   {
     kind: "spec-plan",
     name: "spec-plan",
     label: "/spec-plan",
-    description: "Plan specs from brainstorming, align with vision, update roadmap",
+    description: "cmd.spec-plan",
   },
   {
     kind: "spec-new",
     name: "spec-new",
     label: "/spec-new",
     args: ["<spec-number>"],
-    description: "Create a new spec with requirements, design, and task documents",
+    description: "cmd.spec-new",
   },
   {
     kind: "spec-verify",
     name: "spec-verify",
     label: "/spec-verify",
     args: ["<spec-number>"],
-    description: "Verify spec completeness, determinism, and alignment with vision",
+    description: "cmd.spec-verify",
   },
   {
     kind: "spec-implement",
     name: "spec-implement",
     label: "/spec-implement",
     args: ["<spec-number>"],
-    description: "Implement all tasks from a spec sequentially",
+    description: "cmd.spec-implement",
   },
   {
     kind: "spec-audit",
     name: "spec-audit",
     label: "/spec-audit",
     args: ["<spec-number>"],
-    description: "Audit implementation quality and correctness for a spec",
+    description: "cmd.spec-audit",
   },
   {
     kind: "spec-list",
     name: "spec-list",
     label: "/spec-list",
-    description: "List all specs with their statuses from the roadmap",
+    description: "cmd.spec-list",
   },
   {
     kind: "spec-status",
     name: "spec-status",
     label: "/spec-status",
     args: ["[spec-number]"],
-    description: "Show detailed status of a specific spec or all specs",
+    description: "cmd.spec-status",
   },
   {
     kind: "exit",
     name: "exit",
     label: "/exit",
-    description: "Quit DsCode CLI",
+    description: "cmd.quit-dscode",
   },
   {
     kind: "cls",
     name: "cls",
     label: "/cls",
-    description: "Clear the terminal screen",
+    description: "cmd.clear-screen",
   },
   {
     kind: "model-list",
     name: "model-list",
     label: "/model-list",
-    description: "List configured LLM providers with their models and pricing",
+    description: "cmd.model-list",
   },
   {
     kind: "model-add",
     name: "model-add",
     label: "/model-add",
     args: ["<provider>"],
-    description: "Add a new LLM provider with API key and base URL",
+    description: "cmd.model-add",
   },
   {
     kind: "model-remove",
     name: "model-remove",
     label: "/model-remove",
     args: ["<provider>"],
-    description: "Remove a configured LLM provider",
+    description: "cmd.model-remove",
   },
   {
     kind: "model-info",
     name: "model-info",
     label: "/model-info",
     args: ["<model-id>"],
-    description: "Show detailed information about a specific model",
+    description: "cmd.model-info",
   },
   {
     kind: "model-key",
     name: "model-key",
     label: "/model-key",
     args: ["<provider>"],
-    description: "Update API key for a configured provider",
+    description: "cmd.model-key",
   },
   {
     kind: "model-default",
     name: "model-default",
     label: "/model-default",
     args: ["<model-id>"],
-    description: "Set the default model",
+    description: "cmd.model-default",
   },
   {
     kind: "model-params",
     name: "model-params",
     label: "/model-params",
-    description: "Configure generation parameters (temperature, max_tokens, top_p)",
+    description: "cmd.model-params",
   },
   {
     kind: "model-thinking",
     name: "model-thinking",
     label: "/model-thinking",
     args: ["<model-id>"],
-    description: "Configure thinking budget for extended-thinking models",
+    description: "cmd.model-thinking",
   },
 ];
 
@@ -232,8 +233,9 @@ export function findExactSlashCommand(items: SlashCommandItem[], token: string):
   return matches.find((item) => item.kind !== "skill") ?? matches[0] ?? null;
 }
 
-export function formatSlashCommandDescription(description: string): string {
-  return (description || "(no description)").trim().replace(/\s+/g, " ");
+export function formatSlashCommandDescription(description: string, t: I18nTFunction): string {
+  const translated = t(description);
+  return translated.trim().replace(/\s+/g, " ");
 }
 
 export function formatSlashCommandLabel(item: SlashCommandItem): string {

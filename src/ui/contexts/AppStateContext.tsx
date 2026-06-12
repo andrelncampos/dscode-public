@@ -28,6 +28,7 @@ import {
   renderRawModeMessages,
 } from "../utils";
 import { buildExitSummaryText } from "../exit-summary";
+import { getActiveTFunction } from "../../i18n/context";
 import { renderMessageToStdout } from "../components/MessageView/utils";
 import { ANSI_CLEAR_SCREEN } from "../constants";
 import { ViewKind } from "../types";
@@ -545,7 +546,7 @@ export function AppStateProvider({
         setTimeout(() => {
           const activeSessionId = sessionManager.getActiveSessionId();
           const session = activeSessionId ? sessionManager.getSession(activeSessionId) : null;
-          const summary = buildExitSummaryText({ session, projectRoot });
+          const summary = buildExitSummaryText({ session, projectRoot, t: getActiveTFunction() });
           process.stdout.write("\n");
           process.stdout.write(chalk.rgb(34, 154, 195)("> /exit "));
           process.stdout.write("\n\n");

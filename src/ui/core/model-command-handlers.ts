@@ -1,5 +1,6 @@
 import type { ResolvedDeepcodingSettings } from "../../settings";
 import type { ModelEntry } from "../../common/model-catalog";
+import type { I18nTFunction } from "../../i18n/translate";
 import { MODEL_CATALOG, getModelCapabilities } from "../../common/model-catalog";
 import { DEFAULT_MODEL_PRICING, formatTokenCount } from "../../common/model-capabilities";
 import { encryptCredential, decryptCredential, isEncryptedCredential } from "../../common/credential-vault";
@@ -13,6 +14,7 @@ export type ModelCommandContext = {
   input: string;
   settingsDir: string;
   wizardState?: Record<string, unknown>;
+  t: I18nTFunction;
 };
 
 export type ModelCommandResult = {
@@ -66,9 +68,9 @@ function listExtendedThinkingModels(): string {
 // ── Handlers ──────────────────────────────────────────────────────
 
 export function handleModelList(ctx: ModelCommandContext): ModelCommandResult {
-  const { catalog, settings } = ctx;
+  const { catalog, settings, t } = ctx;
   if (catalog.length === 0) {
-    return { message: "No models in catalog.", needsMoreInput: false, settingsChanged: false };
+    return { message: t("model.no-models-in-catalog"), needsMoreInput: false, settingsChanged: false };
   }
 
   const providers = [...new Set(catalog.map((m) => m.provider))];
@@ -77,20 +79,37 @@ export function handleModelList(ctx: ModelCommandContext): ModelCommandResult {
   for (const provider of providers) {
     const models = getProviderModels(catalog, provider);
     const keyOk = hasKeyForProvider(settings, provider);
-    const keyStatus = keyOk ? "key" : "no key";
-    const baseUrl = settings.engines[provider]?.baseURL || PROVIDER_DEFAULT_BASE_URLS[provider] || "unknown";
+    const keyStatus = keyOk ? t("model.status-key") : t("model.status-no-key");
+    const baseUrl =
+      settings.engines[provider]?.baseURL || PROVIDER_DEFAULT_BASE_URLS[provider] || t("model.unknown-base-url");
     const prices = models
       .map((m) => DEFAULT_MODEL_PRICING[m.id]?.inputPrice)
       .filter((p): p is number => p !== undefined);
     const priceRange =
-      prices.length > 0 ? `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)}/1M` : "no pricing";
+      prices.length > 0
+        ? `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)}/1M`
+        : t("model.status-no-pricing");
 
-    lines.push(`── ${provider} ──`);
-    lines.push(`  ${keyOk ? "✅" : "❌"} ${keyStatus}  ·  ${baseUrl}  ·  ${models.length} models  ·  ${priceRange}`);
+    lines.push(t("model.format-section-header", { provider }));
+    const keyIcon = keyOk ? "✅" : "❌";
+    lines.push(
+      t("model.format-provider-line", {
+        keyStatus: `${keyIcon} ${keyStatus}`,
+        baseUrl,
+        modelCount: String(models.length),
+        priceRange,
+      })
+    );
     for (const m of models) {
-      const p = DEFAULT_MODEL_PRICING[m.id];
-      const priceStr = p ? `$${p.inputPrice}/${p.outputPrice}` : "no pricing";
-      lines.push(`    ${m.id.padEnd(22)} ${m.displayName.padEnd(20)} ${priceStr}`);
+      const pData = DEFAULT_MODEL_PRICING[m.id];
+      const priceStr = pData ? `$${pData.inputPrice}/${pData.outputPrice}` : t("model.status-no-pricing");
+      lines.push(
+        t("model.format-model-line", {
+          modelId: m.id.padEnd(22),
+          displayName: m.displayName.padEnd(20),
+          pricing: priceStr,
+        })
+      );
     }
     lines.push("");
   }
@@ -99,6 +118,7 @@ export function handleModelList(ctx: ModelCommandContext): ModelCommandResult {
 }
 
 export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const ws = (ctx.wizardState ?? {}) as Record<string, unknown>;
   const step = (ws.step as string) || "init";
   const provider = (ws.provider as string) || "";
@@ -111,7 +131,9 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
         (p) => !hasKeyForProvider(ctx.settings, p)
       );
       return {
-        message: `Usage: /model-add <provider>. Valid providers: ${unconfigured.length > 0 ? unconfigured.join(", ") : "none available"}.`,
+        message: t("model.usage-model-add", {
+          providers: unconfigured.length > 0 ? unconfigured.join(", ") : t("model.label-no"),
+        }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -120,7 +142,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
     if (!MODEL_CATALOG.some((m) => m.provider === provName)) {
       const valid = [...new Set(MODEL_CATALOG.map((m) => m.provider))].join(", ");
       return {
-        message: `Unknown provider '${provName}'. Valid providers: ${valid}.`,
+        message: t("model.unknown-provider", { provider: provName, valid }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -128,7 +150,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
 
     if (hasKeyForProvider(ctx.settings, provName)) {
       return {
-        message: `Provider '${provName}' already has an API key configured. Use /model-key ${provName} to update it.`,
+        message: t("model.already-configured", { provider: provName }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -136,7 +158,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
 
     const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[provName] || "";
     return {
-      message: `Base URL: ${defaultBaseUrl}. Press ENTER to accept default, or type a custom URL:`,
+      message: t("model.wizard-base-url", { defaultBaseUrl }),
       needsMoreInput: true,
       wizardState: { step: "baseUrl", provider: provName, defaultBaseUrl },
       settingsChanged: false,
@@ -149,21 +171,23 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
     if (input) {
       if (!input.startsWith("http://") && !input.startsWith("https://")) {
         return {
-          message: "Invalid URL. Must start with http:// or https://.",
+          message: t("model.wizard-invalid-url"),
           needsMoreInput: true,
           wizardState: { ...ws },
           settingsChanged: false,
         };
       }
       return {
-        message: `API Key required. Obtain one at: ${PROVIDER_KEY_URLS[provider] || "the provider's website"}.\nEnter API key (or ESC to cancel):`,
+        message: t("model.wizard-api-key-prompt", {
+          keyUrl: PROVIDER_KEY_URLS[provider] || t("model.unknown-base-url"),
+        }),
         needsMoreInput: true,
         wizardState: { step: "apiKey", provider, baseUrl: input, defaultBaseUrl },
         settingsChanged: false,
       };
     }
     return {
-      message: `API Key required. Obtain one at: ${PROVIDER_KEY_URLS[provider] || "the provider's website"}.\nEnter API key (or ESC to cancel):`,
+      message: t("model.wizard-api-key-prompt", { keyUrl: PROVIDER_KEY_URLS[provider] || t("model.unknown-base-url") }),
       needsMoreInput: true,
       wizardState: { step: "apiKey", provider, baseUrl: defaultBaseUrl, defaultBaseUrl },
       settingsChanged: false,
@@ -174,7 +198,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
     const apiKey = ctx.input.trim();
     if (!apiKey || apiKey.length < 8) {
       return {
-        message: "API key must be at least 8 characters.",
+        message: t("model.wizard-key-too-short"),
         needsMoreInput: true,
         wizardState: { ...ws },
         settingsChanged: false,
@@ -182,7 +206,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
     }
     const baseUrl = (ws.baseUrl as string) || "";
     return {
-      message: `Press ENTER to confirm, or type "retry" to re-enter:\n  Provider: ${provider}\n  Base URL: ${baseUrl}\n  API Key: ${maskKey(apiKey)}`,
+      message: t("model.wizard-confirm", { provider, baseUrl, maskedKey: maskKey(apiKey) }),
       needsMoreInput: true,
       wizardState: { step: "confirm", provider, baseUrl, apiKey },
       settingsChanged: false,
@@ -194,7 +218,7 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
     if (input === "retry") {
       const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[provider] || "";
       return {
-        message: `Base URL: ${defaultBaseUrl}. Press ENTER to accept default, or type a custom URL:`,
+        message: t("model.wizard-base-url", { defaultBaseUrl }),
         needsMoreInput: true,
         wizardState: { step: "baseUrl", provider, defaultBaseUrl },
         settingsChanged: false,
@@ -216,29 +240,34 @@ export function handleModelAdd(ctx: ModelCommandContext): ModelCommandResult {
 
     const models = getProviderModels(MODEL_CATALOG, provider);
     const modelLines = models.map((m) => {
-      const p = DEFAULT_MODEL_PRICING[m.id];
-      const priceStr = p ? `$${p.inputPrice}/$${p.outputPrice}` : "no pricing";
-      return `  ${m.id}  ${m.displayName}  ${priceStr}`;
+      const pData = DEFAULT_MODEL_PRICING[m.id];
+      const priceStr = pData ? `$${pData.inputPrice}/$${pData.outputPrice}` : t("model.status-no-pricing");
+      return t("model.format-model-line", {
+        modelId: m.id.padEnd(22),
+        displayName: m.displayName.padEnd(20),
+        pricing: priceStr,
+      });
     });
 
     const successLines = [
-      `Provider:  ${provider}`,
-      `Base URL:  ${baseUrl}`,
-      `API Key:   ${maskKey(apiKey)}`,
-      ``,
-      `Available models (${models.length}):`,
+      t("model.format-provider", { provider }),
+      t("model.format-base-url", { baseUrl }),
+      t("model.format-api-key", { maskedKey: maskKey(apiKey) }),
+      "",
+      t("model.format-available-models", { count: String(models.length) }),
       ...modelLines,
-      ``,
-      `Use /model to select a ${provider} model.`,
+      "",
+      t("model.format-use-model", { provider }),
     ];
 
     return { message: successLines.join("\n"), needsMoreInput: false, settingsChanged: true };
   }
 
-  return { message: "Unexpected wizard state.", needsMoreInput: false, settingsChanged: false };
+  return { message: t("model.wizard-unexpected"), needsMoreInput: false, settingsChanged: false };
 }
 
 export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const ws = (ctx.wizardState ?? {}) as Record<string, unknown>;
   const step = (ws.step as string) || "init";
 
@@ -251,12 +280,12 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
       }
       writeSettings(settings);
       return {
-        message: `✅ Provider '${provider}' removed. Models from this provider are still listed in /model but will need an API key to use.`,
+        message: t("model.removed", { provider }),
         needsMoreInput: false,
         settingsChanged: true,
       };
     }
-    return { message: "Cancelled.", needsMoreInput: false, settingsChanged: false };
+    return { message: t("model.cancelled"), needsMoreInput: false, settingsChanged: false };
   }
 
   const parts = ctx.input.trim().split(/\s+/);
@@ -264,7 +293,9 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
   if (!provider) {
     const configured = Object.keys(ctx.settings.engines).filter((p) => ctx.settings.engines[p]?.apiKey);
     return {
-      message: `Usage: /model-remove <provider>. Currently configured: ${configured.length > 0 ? configured.join(", ") : "none"}.`,
+      message: t("model.usage-model-remove", {
+        configured: configured.length > 0 ? configured.join(", ") : t("model.label-no"),
+      }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -273,7 +304,7 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
   if (!MODEL_CATALOG.some((m) => m.provider === provider)) {
     const valid = [...new Set(MODEL_CATALOG.map((m) => m.provider))].join(", ");
     return {
-      message: `Unknown provider '${provider}'. Valid providers: ${valid}.`,
+      message: t("model.unknown-provider", { provider, valid }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -283,7 +314,7 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
   const rawSettings = readSettings();
   if (!rawSettings?.engines?.[provider]) {
     return {
-      message: `Provider '${provider}' is not configured. Nothing to remove.`,
+      message: t("model.not-configured", { provider }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -298,11 +329,11 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
 
   let warning: string;
   if (isSoleProvider && isCurrentProvider) {
-    warning = `Warning: ${provider} is the only configured provider and is currently active. Removing it will leave no API keys. Continue? Type 'yes' to confirm.`;
+    warning = t("model.remove-sole-warning", { provider });
   } else if (isCurrentProvider) {
-    warning = `Warning: the current model '${ctx.settings.model}' uses ${provider}. After removal, switch to another model with /model. Continue? Type 'yes' to confirm.`;
+    warning = t("model.remove-current-warning", { model: ctx.settings.model, provider });
   } else {
-    warning = `Remove provider '${provider}'? Type 'yes' to confirm.`;
+    warning = t("model.remove-confirm", { provider });
   }
 
   return {
@@ -314,11 +345,12 @@ export function handleModelRemove(ctx: ModelCommandContext): ModelCommandResult 
 }
 
 export function handleModelInfo(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const parts = ctx.input.trim().split(/\s+/);
   const modelId = parts[1]?.toLowerCase();
   if (!modelId) {
     return {
-      message: "Usage: /model-info <model-id>. Example: /model-info gpt-5.5",
+      message: t("model.usage-model-info"),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -327,7 +359,7 @@ export function handleModelInfo(ctx: ModelCommandContext): ModelCommandResult {
   const caps = getModelCapabilities(modelId);
   if (!caps) {
     return {
-      message: `Unknown model '${modelId}'. Use /model to see available models.`,
+      message: t("model.unknown-model", { modelId }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -335,36 +367,43 @@ export function handleModelInfo(ctx: ModelCommandContext): ModelCommandResult {
 
   const entry = MODEL_CATALOG.find((m) => m.id === modelId);
   if (!entry) {
-    return { message: `Unknown model '${modelId}'.`, needsMoreInput: false, settingsChanged: false };
+    return { message: t("model.unknown-model", { modelId }), needsMoreInput: false, settingsChanged: false };
   }
 
   const keyOk = hasKeyForProvider(ctx.settings, entry.provider);
   const lines = [
-    `Model:       ${caps.displayName} (${caps.id})`,
-    `Provider:    ${caps.provider}`,
-    `Context:     ${formatTokenCount(caps.contextWindow)}`,
-    `Max Output:  ${formatTokenCount(caps.maxOutput)}`,
-    `Multimodal:  ${caps.multimodal ? "yes" : "no"}`,
-    `Thinking:    ${caps.reasoning.type}`,
+    t("model.info-model", { displayName: caps.displayName, id: caps.id }),
+    t("model.info-provider", { provider: caps.provider }),
+    t("model.info-context", { context: formatTokenCount(caps.contextWindow) }),
+    t("model.info-max-output", { maxOutput: formatTokenCount(caps.maxOutput) }),
+    t("model.info-multimodal", { multimodal: caps.multimodal ? t("model.label-yes") : t("model.label-no") }),
+    t("model.info-thinking", { type: caps.reasoning.type }),
   ];
   if (caps.reasoning.type !== "none") {
-    lines.push(`  Default:   ${caps.reasoning.defaultEffort}`);
+    lines.push(t("model.info-default", { effort: caps.reasoning.defaultEffort }));
     if (caps.reasoning.budgetTokens) {
-      lines.push(`  Budget:    ${formatTokenCount(caps.reasoning.budgetTokens)}`);
+      lines.push(t("model.info-budget", { budget: formatTokenCount(caps.reasoning.budgetTokens) }));
     }
   }
-  const p = caps.pricing;
-  if (p) {
-    lines.push(`Pricing:     $${p.inputPrice}/$${p.outputPrice} per 1M tokens (cached: $${p.cacheReadPrice}/1M)`);
+  const pData = caps.pricing;
+  if (pData) {
+    lines.push(
+      t("model.info-pricing", {
+        input: String(pData.inputPrice),
+        output: String(pData.outputPrice),
+        cached: String(pData.cacheReadPrice),
+      })
+    );
   } else {
-    lines.push(`Pricing:     not available`);
+    lines.push(t("model.info-pricing-na"));
   }
-  lines.push(`Status:      ${keyOk ? "✅ API key configured" : "❌ No API key configured"}`);
+  lines.push(keyOk ? t("model.info-status-key-ok") : t("model.info-status-no-key"));
 
   return { message: lines.join("\n"), needsMoreInput: false, settingsChanged: false };
 }
 
 export function handleModelDefault(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const parts = ctx.input.trim().split(/\s+/);
   const modelId = parts[1]?.toLowerCase();
   const currentModel = ctx.settings.model;
@@ -373,7 +412,7 @@ export function handleModelDefault(ctx: ModelCommandContext): ModelCommandResult
 
   if (!modelId) {
     return {
-      message: `Usage: /model-default <model-id>. Current default: ${currentDisplay} (${currentModel}).`,
+      message: t("model.usage-model-default", { display: currentDisplay, modelId: currentModel }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -382,7 +421,7 @@ export function handleModelDefault(ctx: ModelCommandContext): ModelCommandResult
   const entry = MODEL_CATALOG.find((m) => m.id === modelId);
   if (!entry) {
     return {
-      message: `Unknown model '${modelId}'. Use /model to see available models.`,
+      message: t("model.unknown-model", { modelId }),
       needsMoreInput: false,
       settingsChanged: false,
     };
@@ -390,16 +429,16 @@ export function handleModelDefault(ctx: ModelCommandContext): ModelCommandResult
 
   if (modelId === currentModel) {
     return {
-      message: `${entry.displayName} is already the default model.`,
+      message: t("model.already-default", { displayName: entry.displayName }),
       needsMoreInput: false,
       settingsChanged: false,
     };
   }
 
   const keyOk = hasKeyForProvider(ctx.settings, entry.provider);
-  let message = `✅ Default model set to ${entry.displayName} (${entry.id}).`;
+  let message = t("model.set-default", { displayName: entry.displayName, modelId: entry.id });
   if (!keyOk) {
-    message += `\nWarning: No API key configured for ${entry.provider}. This model won't work until you configure one with /model-add ${entry.provider} or /model-key ${entry.provider}.`;
+    message += "\n" + t("model.no-api-key-warning", { provider: entry.provider });
   }
 
   const settings = readSettings() ?? {};
@@ -410,6 +449,7 @@ export function handleModelDefault(ctx: ModelCommandContext): ModelCommandResult
 }
 
 export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const ws = (ctx.wizardState ?? {}) as Record<string, unknown>;
   const step = (ws.step as string) || "init";
   const parts = ctx.input.trim().split(/\s+/);
@@ -419,7 +459,9 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
     if (!provider) {
       const configured = Object.keys(ctx.settings.engines).filter((p) => ctx.settings.engines[p]?.apiKey);
       return {
-        message: `Usage: /model-key <provider>. Configured providers: ${configured.length > 0 ? configured.join(", ") : "none"}.`,
+        message: t("model.usage-model-key", {
+          providers: configured.length > 0 ? configured.join(", ") : t("model.label-no"),
+        }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -428,7 +470,7 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
     if (!MODEL_CATALOG.some((m) => m.provider === provider)) {
       const valid = [...new Set(MODEL_CATALOG.map((m) => m.provider))].join(", ");
       return {
-        message: `Unknown provider '${provider}'. Valid providers: ${valid}.`,
+        message: t("model.unknown-provider", { provider, valid }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -436,11 +478,9 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
 
     if (!ctx.settings.engines[provider]) {
       const envVar = `DEEPCODE_ENGINE_${provider.toUpperCase()}_API_KEY`;
-      const envHint = process.env[envVar]
-        ? `\nNote: ${provider} may have a key set via environment variable ${envVar}. Setting a key in settings.json will override the env var.`
-        : "";
+      const envHint = process.env[envVar] ? "\n" + t("model.env-var-hint", { provider, envVar }) : "";
       return {
-        message: `Provider '${provider}' is not configured. Use /model-add ${provider} first.${envHint}`,
+        message: t("model.provider-unconfigured", { provider }) + envHint,
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -449,26 +489,26 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
     // Show current key status
     const settings = readSettings();
     const rawKey = settings?.engines?.[provider]?.apiKey;
-    let currentStatus: string;
+    let currentKeyDisplay: string;
     if (rawKey) {
       if (isEncryptedCredential(rawKey)) {
         try {
           const decrypted = decryptCredential(rawKey, provider);
-          currentStatus = `Current key: ${maskKey(decrypted)}`;
+          currentKeyDisplay = maskKey(decrypted);
         } catch {
-          currentStatus = "Current key: encrypted (cannot decrypt — keyfile may be missing).";
+          currentKeyDisplay = t("model.key-encrypted");
         }
       } else {
-        currentStatus = `Current key: ${maskKey(rawKey)}`;
+        currentKeyDisplay = maskKey(rawKey);
       }
     } else if (ctx.settings.engines[provider]?.apiKey) {
-      currentStatus = `Current key: set via environment variable DEEPCODE_ENGINE_${provider.toUpperCase()}_API_KEY.`;
+      currentKeyDisplay = t("model.key-env-var", { providerUpper: provider.toUpperCase() });
     } else {
-      currentStatus = "Current key: not set.";
+      currentKeyDisplay = t("model.key-not-set");
     }
 
     return {
-      message: `${currentStatus}\nEnter new API key (or ESC to cancel):`,
+      message: t("model.key-current", { display: currentKeyDisplay }) + "\n" + t("model.wizard-enter-key"),
       needsMoreInput: true,
       wizardState: { step: "enterKey", provider },
       settingsChanged: false,
@@ -479,7 +519,7 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
     const apiKey = ctx.input.trim();
     if (!apiKey || apiKey.length < 8) {
       return {
-        message: "API key must be at least 8 characters.",
+        message: t("model.wizard-key-too-short"),
         needsMoreInput: true,
         wizardState: { ...ws },
         settingsChanged: false,
@@ -494,16 +534,17 @@ export function handleModelKey(ctx: ModelCommandContext): ModelCommandResult {
     writeSettings(settings);
 
     return {
-      message: `✅ API key for ${provider} updated. ${maskKey(apiKey)}`,
+      message: t("model.key-updated", { provider, maskedKey: maskKey(apiKey) }),
       needsMoreInput: false,
       settingsChanged: true,
     };
   }
 
-  return { message: "Unexpected wizard state.", needsMoreInput: false, settingsChanged: false };
+  return { message: t("model.wizard-unexpected"), needsMoreInput: false, settingsChanged: false };
 }
 
 export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const ws = (ctx.wizardState ?? {}) as Record<string, unknown>;
   const step = (ws.step as string) || "init";
 
@@ -515,12 +556,12 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
     const topP = ctx.settings.topP;
 
     const lines = [
-      "Current generation parameters:",
-      `  Temperature:  ${temperature} (range: 0.0–2.0)`,
-      `  Max Tokens:   ${maxTokens} (range: 1–${modelMaxOutput})`,
-      `  Top P:        ${topP !== undefined ? topP : "not set"} (range: 0.0–1.0, or "not set")`,
+      t("model.params-current"),
+      t("model.params-temperature", { value: String(temperature) }),
+      t("model.params-max-tokens", { value: String(maxTokens), max: String(modelMaxOutput) }),
+      t("model.params-top-p", { value: topP !== undefined ? String(topP) : t("model.params-not-set") }),
       "",
-      "Which parameter? (temperature/max_tokens/top_p) or 'done' to finish:",
+      t("model.params-choose"),
     ];
 
     return {
@@ -555,7 +596,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
       else parts.push("top_p=not set");
 
       return {
-        message: `✅ Generation parameters updated: ${parts.join(", ")}.`,
+        message: t("model.params-updated", { params: parts.join(", ") }),
         needsMoreInput: false,
         settingsChanged: true,
       };
@@ -563,9 +604,14 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
 
     if (choice === "temperature" || choice === "max_tokens" || choice === "top_p") {
       const prompts: Record<string, string> = {
-        temperature: `Enter temperature (0.0–2.0, current: ${pending.temperature ?? 1.0}):`,
-        max_tokens: `Enter max tokens (1–${modelMax}, current: ${pending.maxTokens ?? modelMax}):`,
-        top_p: `Enter top_p (0.0–1.0, or 'none' to unset, current: ${pending.topP !== undefined ? pending.topP : "not set"}):`,
+        temperature: t("model.params-enter-temperature", { current: String(pending.temperature ?? 1.0) }),
+        max_tokens: t("model.params-enter-max-tokens", {
+          max: String(modelMax),
+          current: String(pending.maxTokens ?? modelMax),
+        }),
+        top_p: t("model.params-enter-top-p", {
+          current: pending.topP !== undefined ? String(pending.topP) : t("model.params-not-set"),
+        }),
       };
       return {
         message: prompts[choice],
@@ -576,7 +622,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
     }
 
     return {
-      message: "Invalid parameter. Choose temperature, max_tokens, top_p, or 'done'.",
+      message: t("model.params-invalid-choice"),
       needsMoreInput: true,
       wizardState: { ...ws },
       settingsChanged: false,
@@ -591,7 +637,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
       const val = parseFloat(input);
       if (isNaN(val) || val < 0 || val > 2) {
         return {
-          message: "Temperature must be between 0.0 and 2.0.",
+          message: t("model.params-error-temperature"),
           needsMoreInput: true,
           wizardState: { ...ws },
           settingsChanged: false,
@@ -602,7 +648,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
       const val = parseInt(input, 10);
       if (isNaN(val) || val < 1 || val > modelMax) {
         return {
-          message: `Max tokens must be between 1 and ${modelMax}.`,
+          message: t("model.params-error-max-tokens", { max: String(modelMax) }),
           needsMoreInput: true,
           wizardState: { ...ws },
           settingsChanged: false,
@@ -616,7 +662,7 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
         const val = parseFloat(input);
         if (isNaN(val) || val < 0 || val > 1) {
           return {
-            message: "Top P must be between 0.0 and 1.0, or 'none' to unset.",
+            message: t("model.params-error-top-p"),
             needsMoreInput: true,
             wizardState: { ...ws },
             settingsChanged: false,
@@ -627,12 +673,12 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
     }
 
     const lines = [
-      "Current generation parameters:",
-      `  Temperature:  ${pending.temperature ?? 1.0} (range: 0.0–2.0)`,
-      `  Max Tokens:   ${pending.maxTokens ?? modelMax} (range: 1–${modelMax})`,
-      `  Top P:        ${pending.topP !== undefined ? pending.topP : "not set"} (range: 0.0–1.0, or "not set")`,
+      t("model.params-current"),
+      t("model.params-temperature", { value: String(pending.temperature ?? 1.0) }),
+      t("model.params-max-tokens", { value: String(pending.maxTokens ?? modelMax), max: String(modelMax) }),
+      t("model.params-top-p", { value: pending.topP !== undefined ? String(pending.topP) : t("model.params-not-set") }),
       "",
-      "Which parameter? (temperature/max_tokens/top_p) or 'done' to finish:",
+      t("model.params-choose"),
     ];
 
     return {
@@ -643,10 +689,11 @@ export function handleModelParams(ctx: ModelCommandContext): ModelCommandResult 
     };
   }
 
-  return { message: "Unexpected wizard state.", needsMoreInput: false, settingsChanged: false };
+  return { message: t("model.wizard-unexpected"), needsMoreInput: false, settingsChanged: false };
 }
 
 export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResult {
+  const { t } = ctx;
   const ws = (ctx.wizardState ?? {}) as Record<string, unknown>;
   const step = (ws.step as string) || "init";
 
@@ -655,7 +702,7 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
     const modelId = parts[1]?.toLowerCase();
     if (!modelId) {
       return {
-        message: `Usage: /model-thinking <model-id>. Models with configurable thinking budget: ${listExtendedThinkingModels()}.`,
+        message: t("model.usage-model-thinking", { models: listExtendedThinkingModels() }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -664,7 +711,7 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
     const entry = MODEL_CATALOG.find((m) => m.id === modelId);
     if (!entry) {
       return {
-        message: `Unknown model '${modelId}'. Use /model to see available models.`,
+        message: t("model.unknown-model", { modelId }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -672,7 +719,11 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
 
     if (entry.reasoning.type !== "extended") {
       return {
-        message: `Model '${entry.displayName}' has reasoning type '${entry.reasoning.type}'. Thinking budget is only configurable for extended thinking models. Models with configurable budgets: ${listExtendedThinkingModels()}.`,
+        message: t("model.thinking-not-extended", {
+          displayName: entry.displayName,
+          type: entry.reasoning.type,
+          models: listExtendedThinkingModels(),
+        }),
         needsMoreInput: false,
         settingsChanged: false,
       };
@@ -682,7 +733,11 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
     const maxOutput = entry.maxOutput;
 
     return {
-      message: `Current thinking budget: ${currentBudget} tokens\nMax output tokens: ${maxOutput}\n\nEnter thinking budget in tokens (1024–${maxOutput}, or ENTER for default 8192):`,
+      message: t("model.thinking-current", {
+        budget: String(currentBudget),
+        maxOutput: String(maxOutput),
+        default: "8192",
+      }),
       needsMoreInput: true,
       wizardState: { step: "enterBudget", modelId, maxOutput, displayName: entry.displayName },
       settingsChanged: false,
@@ -702,7 +757,7 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
       budget = parseInt(input, 10);
       if (isNaN(budget) || budget < 1024 || budget > maxOutput) {
         return {
-          message: `Budget must be between 1024 and ${maxOutput}.`,
+          message: t("model.thinking-error-range", { max: String(maxOutput) }),
           needsMoreInput: true,
           wizardState: { ...ws },
           settingsChanged: false,
@@ -716,11 +771,11 @@ export function handleModelThinking(ctx: ModelCommandContext): ModelCommandResul
     writeSettings(settings);
 
     return {
-      message: `✅ Thinking budget for ${displayName} set to ${budget} tokens.`,
+      message: t("model.thinking-updated", { displayName, budget: String(budget) }),
       needsMoreInput: false,
       settingsChanged: true,
     };
   }
 
-  return { message: "Unexpected wizard state.", needsMoreInput: false, settingsChanged: false };
+  return { message: t("model.wizard-unexpected"), needsMoreInput: false, settingsChanged: false };
 }

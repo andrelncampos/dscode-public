@@ -1,5 +1,6 @@
 import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
+import { getActiveTFunction } from "../../i18n/context";
 
 export type CommandContext = {
   buffer: { text: string };
@@ -101,7 +102,7 @@ const FIXED_TEXT_COMMANDS: Partial<Record<SlashCommandKind, string>> = {
 
 export function executeSlashCommand(item: SlashCommandItem, ctx: CommandContext): boolean {
   if (ctx.busy && item.kind !== "exit") {
-    ctx.setStatusMessage("wait for the current response or press esc to interrupt");
+    ctx.setStatusMessage(getActiveTFunction()("status.busy-wait"));
     return false;
   }
 

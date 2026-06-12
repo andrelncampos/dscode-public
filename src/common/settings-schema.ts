@@ -100,6 +100,7 @@ export const deepcodingSettingsSchema = z.strictObject({
   budget: budgetSettingsSchema.optional(),
   terminalTitleTemplate: z.string().optional(),
   topP: z.number().min(0).max(1).optional(),
+  locale: z.enum(["en", "pt", "es"]).optional(),
   thinkingBudgets: z.record(z.string(), z.number().int().min(1024)).optional(),
 });
 

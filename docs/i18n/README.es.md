@@ -73,7 +73,20 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 
 ## Instalación
 
-### Vía npm (recomendado)
+### Vía binario (recomendado)
+
+Descarga el binario para tu sistema operativo desde la [página de releases](https://github.com/andrelncampos/dscode/releases). Sin prerrequisitos — el binario es autocontenido.
+
+| Sistema operativo | Archivo |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+
+Cada release incluye un `checksums.txt` con hashes SHA256 para verificar la integridad de la descarga.
+
+### Vía npm
 
 ```bash
 npm install -g @andrelncampos/dscode
@@ -87,20 +100,9 @@ npm update -g @andrelncampos/dscode   # actualiza
 npm uninstall -g @andrelncampos/dscode   # desinstala
 ```
 
-### Vía binario (futuro)
-
-> ⚠️ **Aún no hay releases publicadas.** Las instrucciones a continuación muestran el formato cuando se publique la primera release.
-
-| Sistema operativo | Archivo |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-Cada release incluye un `checksums.txt` con hashes SHA256.
-
 ### Instalación desde el código fuente
+
+> Para contribuidores o quienes necesiten la versión más reciente en desarrollo.
 
 ```bash
 git clone https://github.com/andrelncampos/dscode.git
@@ -232,9 +234,9 @@ mi-proyecto/
 
 ### Paso 1: Instala
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+**Vía binario (recomendado):** Descarga el archivo para tu sistema desde la [página de releases](https://github.com/andrelncampos/dscode/releases), extráelo y ejecuta `dscode`.
+
+**O vía npm:** `npm install -g @andrelncampos/dscode` (requiere [Node.js 24+](https://nodejs.org)).
 
 ### Paso 2: Configura tu clave
 

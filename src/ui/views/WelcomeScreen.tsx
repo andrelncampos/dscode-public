@@ -5,6 +5,8 @@ import path from "node:path";
 import type { SkillInfo } from "../../session";
 import type { ResolvedDeepcodingSettings } from "../../settings";
 import { buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescription } from "../core/slash-commands";
+import type { I18nTFunction } from "../../i18n/translate";
+import { useLocale } from "../../i18n/context";
 import { ThemedGradient } from "./ThemedGradient";
 import { AsciiLogo } from "../ascii-art";
 import { useAppContext } from "../contexts";
@@ -18,27 +20,28 @@ type WelcomeScreenProps = {
   width: number;
 };
 
-function getShortcutTips(): Array<{ label: string; description: string }> {
+function getShortcutTips(t: I18nTFunction): Array<{ label: string; description: string }> {
   const profile = detectTerminalRuntime();
   const tips: Array<{ label: string; description: string }> = [
-    { label: "Enter", description: "Send the prompt" },
-    { label: "Ctrl+J", description: "Insert a newline" },
+    { label: "Enter", description: t("welcome.tip-send-prompt") },
+    { label: "Ctrl+J", description: t("welcome.tip-insert-newline") },
   ];
   if (!profile.isClassicWindowsConsole) {
-    tips.push({ label: "Shift+Enter", description: "Insert a newline (terminal-dependent)" });
+    tips.push({ label: "Shift+Enter", description: t("welcome.tip-insert-newline-alt") });
   }
   tips.push(
-    { label: "Ctrl+V", description: "Paste an image from the clipboard" },
-    { label: "Esc", description: "Interrupt the current model turn" },
-    { label: "/", description: "Open the skills and commands menu" },
-    { label: "Ctrl+D twice", description: "Quit DsCode CLI" }
+    { label: "Ctrl+V", description: t("welcome.tip-paste-image") },
+    { label: "Esc", description: t("welcome.tip-interrupt") },
+    { label: "/", description: t("welcome.tip-slash-commands") },
+    { label: "Ctrl+D twice", description: t("welcome.tip-quit") }
   );
   return tips;
 }
 
 export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeScreenProps): React.ReactElement {
   const { version } = useAppContext();
-  const tips = useMemo(() => buildWelcomeTips(skills), [skills]);
+  const { t } = useLocale();
+  const tips = useMemo(() => buildWelcomeTips(skills, t), [skills, t]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
   const compact = width < WELCOME_PANEL_MIN_WIDTH + 20;
   const cwd = formatHomeRelativePath(projectRoot);
@@ -59,7 +62,7 @@ export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeS
           {"  │  "}
           thinking: <Text color={settings.thinkingEnabled ? "#06b6d4" : "gray"}>{effortLabel}</Text>
           {"  │  "}
-          cwd: <Text color="#06b6d4">{compact ? "~" : cwd}</Text>
+          {t("status.cwd")}: <Text color="#06b6d4">{compact ? "~" : cwd}</Text>
           {"  ◈"}
         </Text>
       </Box>
@@ -67,8 +70,9 @@ export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeS
       {/* Version line */}
       <Box justifyContent="center" marginTop={compact ? 0 : 0}>
         <Text color="gray" dimColor>
-          v{version || "unknown"} <Text dimColor>by Andre LN Campos</Text> —{" "}
-          {settings.thinkingEnabled ? "thinking mode active" : "non-thinking mode"}
+          {t("welcome.version", { version: version || "unknown" })}{" "}
+          <Text dimColor>{t("welcome.label-by")} Andre LN Campos</Text> —{" "}
+          {settings.thinkingEnabled ? t("welcome.thinking-active") : t("welcome.non-thinking")}
         </Text>
       </Box>
 
@@ -100,17 +104,17 @@ export function formatHomeRelativePath(value: string, home = os.homedir()): stri
   return normalizedValue;
 }
 
-export function buildWelcomeTips(skills: SkillInfo[]): Array<{ label: string; description: string }> {
+export function buildWelcomeTips(skills: SkillInfo[], t: I18nTFunction): Array<{ label: string; description: string }> {
   const slashTips = buildSlashCommands(skills)
     .filter((item) => item.kind !== "skill" || item.skill?.isLoaded)
     .map((item) => ({
       label: item.label,
-      description: formatSlashCommandDescription(item.description),
+      description: formatSlashCommandDescription(item.description, t),
     }));
 
   return [
     ...slashTips,
-    ...getShortcutTips().filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
+    ...getShortcutTips(t).filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
   ];
 }
 

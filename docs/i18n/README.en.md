@@ -73,7 +73,20 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ## Installation
 
-### Via npm (recommended)
+### Via binary (recommended)
+
+Download the binary for your operating system from the [releases page](https://github.com/andrelncampos/dscode/releases). No prerequisites — the binary is self-contained.
+
+| Operating System | File |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+
+Each release includes a `checksums.txt` with SHA256 hashes to verify download integrity.
+
+### Via npm
 
 ```bash
 npm install -g @andrelncampos/dscode
@@ -87,20 +100,9 @@ npm update -g @andrelncampos/dscode   # update
 npm uninstall -g @andrelncampos/dscode   # uninstall
 ```
 
-### Via binary (future)
-
-> ⚠️ **No releases have been published yet.** The instructions below show the download format once the first release is published.
-
-| Operating System | File |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-Each release includes a `checksums.txt` with SHA256 hashes.
-
 ### Installing from source
+
+> For contributors or those who need the latest development version.
 
 ```bash
 git clone https://github.com/andrelncampos/dscode.git
@@ -232,9 +234,9 @@ my-project/
 
 ### Step 1: Install
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+**Via binary (recommended):** Download the file for your system from the [releases page](https://github.com/andrelncampos/dscode/releases), extract it, and run `dscode`.
+
+**Or via npm:** `npm install -g @andrelncampos/dscode` (requires [Node.js 24+](https://nodejs.org)).
 
 ### Step 2: Configure your key
 

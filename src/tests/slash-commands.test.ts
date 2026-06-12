@@ -133,7 +133,8 @@ test("findExactSlashCommand returns the matching skill", () => {
 });
 
 test("formatSlashCommandDescription keeps descriptions on one line", () => {
-  assert.equal(formatSlashCommandDescription("Line one\n  line two"), "Line one line two");
+  const mockT = (key: string) => key;
+  assert.equal(formatSlashCommandDescription("Line one\n  line two", mockT), "Line one line two");
 });
 
 test("formatSlashCommandLabel marks loaded skills", () => {

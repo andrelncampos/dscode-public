@@ -71,6 +71,7 @@ import type {
 } from "./memory/turn-transcript-types";
 
 import * as ModelCommandHandlers from "./ui/core/model-command-handlers";
+import { getActiveTFunction } from "./i18n/context";
 import { MODEL_CATALOG } from "./common/model-catalog";
 
 export type { PermissionScope } from "./settings";
@@ -1047,6 +1048,7 @@ export class SessionManager {
             input: text,
             settingsDir: path.join(os.homedir(), ".dscode"),
             wizardState,
+            t: getActiveTFunction(),
           };
           const result = handler(ctx);
           if (result.message) {

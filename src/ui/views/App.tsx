@@ -27,6 +27,10 @@ import { ANSI_CLEAR_SCREEN } from "../constants";
 import { ViewKind } from "../types";
 import { PromptInput } from "./PromptInput";
 import { resolveCurrentSettings } from "../../settings";
+import { resolveLocale } from "../../i18n/locale";
+import { getDictionary, resolveDictionary } from "../../i18n/dictionary";
+import { createTFunction } from "../../i18n/translate";
+import { LocaleContext, setActiveTFunction, type LocaleContextValue } from "../../i18n/context";
 import type { PromptSubmission } from "../types/commands";
 import type { SessionMessage } from "../../session";
 
@@ -73,10 +77,17 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
     screenHeight,
   } = state;
 
-  // Stable reference for activeAskPermissions — only changes when the content changes,
-  // preventing PermissionPrompt from resetting on unrelated re-renders (e.g. nowTick).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stableAskPermissions = useMemo(() => activeAskPermissions, [JSON.stringify(activeAskPermissions)]);
+  // Locale resolution — computed once at startup, stable for process lifetime
+  const locale = resolveLocale(resolvedSettings.locale);
+  const rawDict = getDictionary(locale);
+  const dict = resolveDictionary(locale, rawDict);
+  const t = createTFunction(dict);
+  const localeValue: LocaleContextValue = { locale, t };
+  // Register t-function for non-React modules (model-command-handlers, exit-summary).
+  // Deferred to useEffect so the render pass stays pure.
+  useEffect(() => {
+    setActiveTFunction(t);
+  }, [t]);
 
   // Provider keys for ModelsDropdown: which providers have API keys configured
   const providerKeys = useMemo(() => {
@@ -257,19 +268,31 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
 
   if (shouldShowWelcomeOverlay) {
     return (
-      <Box flexDirection="column" width={screenWidth} height={screenHeight} justifyContent="center" alignItems="center">
-        <WelcomeScreen projectRoot={projectRoot} settings={resolvedSettings} skills={skills} width={screenWidth} />
-        <Box marginTop={2}>
-          <Text bold color="cyan">
-            Press Enter to start
-          </Text>
+      <LocaleContext.Provider value={localeValue}>
+        <Box
+          flexDirection="column"
+          width={screenWidth}
+          height={screenHeight}
+          justifyContent="center"
+          alignItems="center"
+        >
+          <WelcomeScreen projectRoot={projectRoot} settings={resolvedSettings} skills={skills} width={screenWidth} />
+          <Box marginTop={2}>
+            <Text bold color="cyan">
+              {t("status.press-enter-start")}
+            </Text>
+          </Box>
         </Box>
-      </Box>
+      </LocaleContext.Provider>
     );
   }
 
   if (mode === RawMode.Raw) {
-    return <RawModeExitPrompt onExit={(prev) => actions.handleRawModeChange(prev)} />;
+    return (
+      <LocaleContext.Provider value={localeValue}>
+        <RawModeExitPrompt onExit={(prev) => actions.handleRawModeChange(prev)} />
+      </LocaleContext.Provider>
+    );
   }
 
   function renderInteractiveArea(): React.ReactElement | null {
@@ -345,14 +368,14 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
 
     if (
       activeStatus === "ask_permission" &&
-      stableAskPermissions &&
-      stableAskPermissions.length > 0 &&
+      activeAskPermissions &&
+      activeAskPermissions.length > 0 &&
       !pendingPermissionReply &&
       !busy
     ) {
       return (
         <PermissionPrompt
-          requests={stableAskPermissions}
+          requests={activeAskPermissions}
           onSubmit={handlePermissionResult}
           onCancel={handlePermissionCancel}
         />
@@ -399,30 +422,32 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
   }
 
   return (
-    <Box flexDirection="column" width={screenWidth} minWidth={80} overflowX="hidden">
-      <Static items={staticItems}>{renderStaticItem}</Static>
-      <StatusHeader
-        statsLine=""
-        lastBashCommand={lastBashCommand}
-        modelName={resolvedSettings.model}
-        statusMessage={statusLine}
-        busy={busy}
-        streamProgress={streamProgress}
-        nowTick={nowTick}
-        screenWidth={screenWidth}
-      />
-      {errorLine ? (
-        <ErrorBanner
-          message={errorLine}
-          severity="error"
-          maxWidth={screenWidth}
-          dismissable
-          onDismiss={() => actions.setErrorLine(null)}
-          autoDismiss
+    <LocaleContext.Provider value={localeValue}>
+      <Box flexDirection="column" width={screenWidth} minWidth={80} overflowX="hidden">
+        <Static items={staticItems}>{renderStaticItem}</Static>
+        <StatusHeader
+          statsLine=""
+          lastBashCommand={lastBashCommand}
+          modelName={resolvedSettings.model}
+          statusMessage={statusLine}
+          busy={busy}
+          streamProgress={streamProgress}
+          nowTick={nowTick}
+          screenWidth={screenWidth}
         />
-      ) : null}
-      {renderInteractiveArea()}
-    </Box>
+        {errorLine ? (
+          <ErrorBanner
+            message={errorLine}
+            severity="error"
+            maxWidth={screenWidth}
+            dismissable
+            onDismiss={() => actions.setErrorLine(null)}
+            autoDismiss
+          />
+        ) : null}
+        {renderInteractiveArea()}
+      </Box>
+    </LocaleContext.Provider>
   );
 }
 

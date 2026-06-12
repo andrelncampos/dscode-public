@@ -1,27 +1,27 @@
 export type ErrorClassification = {
-  label: string;
-  hint: string;
+  labelKey: string;
+  hintKey: string;
 };
 
-const ERROR_PATTERNS: ReadonlyArray<{ pattern: string; label: string; hint: string }> = [
-  { pattern: "API key", label: "Authentication Error", hint: "Check your API key in settings.json" },
-  { pattern: "401", label: "Authentication Error", hint: "Check your API key in settings.json" },
-  { pattern: "timeout", label: "Timeout", hint: "The server took too long. Press Enter to retry." },
-  { pattern: "timed out", label: "Timeout", hint: "The server took too long. Press Enter to retry." },
-  { pattern: "ECONNREFUSED", label: "Connection Refused", hint: "Check your internet connection and base URL." },
-  { pattern: "ENOTFOUND", label: "Network Error", hint: "Check your internet connection and base URL." },
-  { pattern: "fetch failed", label: "Network Error", hint: "Check your internet connection and base URL." },
-  { pattern: "aborted", label: "Cancelled", hint: "Request was cancelled. You can try again." },
-  { pattern: "interrupted", label: "Cancelled", hint: "Request was cancelled. You can try again." },
-  { pattern: "permission", label: "Permission Error", hint: "Check your permission settings with /permissions." },
+const ERROR_PATTERNS: ReadonlyArray<{ pattern: string; labelKey: string; hintKey: string }> = [
+  { pattern: "API key", labelKey: "error.auth-label", hintKey: "error.auth-hint" },
+  { pattern: "401", labelKey: "error.auth-label", hintKey: "error.auth-hint" },
+  { pattern: "timeout", labelKey: "error.timeout-label", hintKey: "error.timeout-hint" },
+  { pattern: "timed out", labelKey: "error.timeout-label", hintKey: "error.timeout-hint" },
+  { pattern: "ECONNREFUSED", labelKey: "error.connection-refused-label", hintKey: "error.connection-refused-hint" },
+  { pattern: "ENOTFOUND", labelKey: "error.network-label", hintKey: "error.network-hint" },
+  { pattern: "fetch failed", labelKey: "error.network-label", hintKey: "error.network-hint" },
+  { pattern: "aborted", labelKey: "error.cancelled-label", hintKey: "error.cancelled-hint" },
+  { pattern: "interrupted", labelKey: "error.cancelled-label", hintKey: "error.cancelled-hint" },
+  { pattern: "permission", labelKey: "error.permission-label", hintKey: "error.permission-hint" },
 ];
 
 export function classifyError(message: string): ErrorClassification {
   const lower = message.toLowerCase();
-  for (const { pattern, label, hint } of ERROR_PATTERNS) {
+  for (const { pattern, labelKey, hintKey } of ERROR_PATTERNS) {
     if (lower.includes(pattern.toLowerCase())) {
-      return { label, hint };
+      return { labelKey, hintKey };
     }
   }
-  return { label: "Error", hint: "Press Enter to continue." };
+  return { labelKey: "error.generic-label", hintKey: "error.generic-hint" };
 }

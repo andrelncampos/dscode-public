@@ -41,7 +41,8 @@ export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   "gemini-3-flash": { inputPrice: 1.0, outputPrice: 6.0, cacheReadPrice: 0.1 },
   "gemini-3.1-flash-lite": { inputPrice: 0.25, outputPrice: 1.5, cacheReadPrice: 0.025 },
   "gemini-2.5-pro": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
-  "gemini-2.5-flash": { inputPrice: 0.5, outputPrice: 3.0, cacheReadPrice: 0.05 },
+  // gemini-2.5-pro ≤ 200k tokens: { inputPrice: 1.25, outputPrice: 10.0, cacheReadPrice: 0.125 }
+  "gemini-2.5-flash": { inputPrice: 0.3, outputPrice: 2.5, cacheReadPrice: 0.03 },
 };
 
 /**

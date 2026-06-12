@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text } from "ink";
+import { useLocale } from "../../i18n/context";
 import { useTerminalInput } from "../hooks";
 import type { AskPermissionRequest, AskPermissionScope, UserToolPermission } from "../../common/permissions";
 import type { PermissionScope } from "../../settings";
@@ -42,6 +43,7 @@ const ALWAYS_ALLOWED_SCOPES = new Set<AskPermissionScope>([
 ]);
 
 export function PermissionPrompt({ requests, onSubmit, onCancel }: Props): React.ReactElement | null {
+  const { t } = useLocale();
   // Stable key derived from content, not reference
   const requestsKey = useMemo(
     () => requests.map((r) => `${r.toolCallId}:${r.name}:${r.command}:${r.scopes.join(",")}`).join("|"),
@@ -57,7 +59,7 @@ export function PermissionPrompt({ requests, onSubmit, onCancel }: Props): React
 
   const effectiveIndex = findNextPromptIndex(prompts, index, alwaysAllows);
   const prompt = prompts[effectiveIndex] ?? null;
-  const options = prompt ? buildOptions(prompt.scope) : [];
+  const options = prompt ? buildOptions(prompt.scope, t) : [];
 
   // Reset only when the semantic content of requests changes
   useEffect(() => {
@@ -200,17 +202,17 @@ function buildScopePrompts(requests: AskPermissionRequest[]): ScopePrompt[] {
   return prompts;
 }
 
-function buildOptions(scope: AskPermissionScope): PromptOption[] {
-  const options: PromptOption[] = [{ kind: "allow", label: "Yes" }];
+function buildOptions(scope: AskPermissionScope, t: (key: string) => string): PromptOption[] {
+  const options: PromptOption[] = [{ kind: "allow", label: t("permission.allow") }];
   if (isAlwaysAllowedScope(scope)) {
     options.push({
       kind: "always",
-      label: "Yes, and always allow ",
+      label: t("permission.ask"),
       scopeDescription: describeScope(scope),
       scopeColor: getScopeRiskColor(scope),
     });
   }
-  options.push({ kind: "deny", label: "No" });
+  options.push({ kind: "deny", label: t("permission.deny") });
   return options;
 }
 

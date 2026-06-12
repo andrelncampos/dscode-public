@@ -79,7 +79,20 @@ DsCode 对以下人群有用：
 
 ## 安装
 
-### 通过 npm（推荐）
+### 通过二进制文件（推荐）
+
+从 [Releases 页面](https://github.com/andrelncampos/dscode/releases) 下载适合你操作系统的二进制文件。无需任何前提条件 — 二进制文件是独立的。
+
+| 操作系统 | 文件 |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+
+每个 release 包含一个 `checksums.txt` 文件用于 SHA256 校验下载完整性。
+
+### 通过 npm
 
 ```bash
 npm install -g @andrelncampos/dscode
@@ -93,20 +106,9 @@ npm update -g @andrelncampos/dscode   # 更新
 npm uninstall -g @andrelncampos/dscode   # 卸载
 ```
 
-### 通过二进制文件（未来）
-
-> ⚠️ **尚未发布任何 release。** 以下说明展示了首次发布后的下载格式。
-
-| 操作系统 | 文件 |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-每个 release 包含一个 `checksums.txt` 文件用于 SHA256 校验。
-
 ### 从源代码安装
+
+> 面向贡献者或需要最新开发版本的用户。
 
 ```bash
 git clone https://github.com/andrelncampos/dscode.git
@@ -242,9 +244,9 @@ my-project/
 
 ### 第 1 步：安装
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+**通过二进制文件（推荐）：** 从 [Releases 页面](https://github.com/andrelncampos/dscode/releases) 下载适合你系统的文件，解压后运行 `dscode`。
+
+**或通过 npm：** `npm install -g @andrelncampos/dscode`（需要 [Node.js 24+](https://nodejs.org)）。
 
 ### 第 2 步：配置你的密钥
 
