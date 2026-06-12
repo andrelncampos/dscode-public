@@ -13,6 +13,8 @@ const esDictionary = {
   "cmd.toggle-display-mode": "Alternar modo de visualizaci\u00f3n para ver u ocultar contenido de razonamiento",
   "cmd.steering-add": "Agregar una regla de direcci\u00f3n a la secci\u00f3n STEERINGS de AGENTS.md",
   "cmd.steering-list": "Listar todas las reglas de direcci\u00f3n de la secci\u00f3n STEERINGS de AGENTS.md",
+  "cmd.steering-remove": "Eliminar la N-ésima regla de dirección por posición del AGENTS.md",
+  "cmd.steering-alter": "Modificar la N-ésima regla de dirección por posición en el AGENTS.md",
   "cmd.spec-init": "Inicializar estructura SDD: archivos vision, arch, roadmap, ADR y lessons",
   "cmd.spec-plan": "Planificar specs desde brainstorming, alinear con visi\u00f3n, actualizar roadmap",
   "cmd.spec-new": "Crear una nueva spec con documentos de requisitos, dise\u00f1o y tareas",

@@ -82,6 +82,18 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     description: "cmd.steering-list",
   },
   {
+    kind: "steering-remove",
+    name: "steering-remove",
+    label: "/steering-remove",
+    description: "cmd.steering-remove",
+  },
+  {
+    kind: "steering-alter",
+    name: "steering-alter",
+    label: "/steering-alter",
+    description: "cmd.steering-alter",
+  },
+  {
     kind: "spec-init",
     name: "spec-init",
     label: "/spec-init",

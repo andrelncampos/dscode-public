@@ -19,6 +19,7 @@ import {
 } from "../core/ask-user-question";
 import { PermissionPrompt, type PermissionPromptResult } from "./PermissionPrompt";
 import { computeSessionCost } from "../../common/model-capabilities";
+import { getModelCapabilities } from "../../common/model-catalog";
 import { getBudgetCosts } from "../../common/budget-tracker";
 import { RawMode, useRawModeContext } from "../contexts";
 import { useAppState, useAppActions } from "../contexts/AppStateContext";
@@ -406,6 +407,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         promptDraft={promptDraft}
         sessionTokens={sessionTokens}
         sessionCost={sessionCost}
+        sessionContextWindow={getModelCapabilities(resolvedSettings.model)?.contextWindow}
         dailyCost={budgetCosts.todayCost}
         projectCost={budgetCosts.projectTotal}
         onSubmit={handleSubmit}

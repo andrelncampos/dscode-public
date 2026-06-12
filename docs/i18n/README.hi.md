@@ -376,7 +376,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 
 ## Steering system
 
-**Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `STEERINGS` section of the `.dscode/AGENTS.md` file.
+**Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `## Steering` section of the `.dscode/AGENTS.md` file. The full management lifecycle includes adding, listing, altering, and removing rules by position.
 
 ```mermaid
 flowchart LR
@@ -384,12 +384,17 @@ flowchart LR
     A --> S[🧠 Next session loads the rule]
     S --> B[✅ AI follows the rule automatically]
     U2[👤 /steering-list] --> V[📋 Lists active rules]
+    U3[👤 /steering-alter 2] --> W[✏️ Alters the 2nd rule]
+    U4[👤 /steering-remove 3] --> X[🗑️ Removes the 3rd rule]
 ```
 
 **Example:**
 ```
 /steering-add always respond in English
 /steering-add never push without explicit authorization
+/steering-list
+/steering-alter 2 never push or merge without authorization
+/steering-remove 1
 ```
 
 <!-- end TODO -->
@@ -470,6 +475,30 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 | **agent-drift-guard** | Detects and corrects execution drift |
 | **karpathy-guidelines** | Best practices to reduce common LLM mistakes |
 | **plan-and-execute** | Structured planning with progress tracking |
+
+### Inclusion modes
+
+Each `SKILL.md` can declare how it should be loaded via the optional `inclusion` field in YAML frontmatter:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | Loaded automatically via keyword matching in the prompt and available in the `/skills` menu |
+| `manual` | **Never** loaded automatically. Activated only with `#skill-name` prefix or via the `/skills` menu |
+
+**Example SKILL.md with `inclusion: manual`:**
+```markdown
+---
+name: my-deploy
+description: Deploys to production
+inclusion: manual
+---
+
+# Deploy
+
+Before deploying, verify...
+```
+
+To activate a manual skill, type `#my-deploy` at the start of the prompt — the `#` prefix is stripped and the skill is loaded.
 
 <!-- end TODO -->
 

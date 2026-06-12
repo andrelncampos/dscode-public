@@ -298,6 +298,7 @@ export type SkillInfo = {
   path: string;
   description: string;
   isLoaded?: boolean;
+  inclusion?: "auto" | "manual";
 };
 
 type SessionManagerOptions = {
@@ -400,6 +401,10 @@ export class SessionManager {
       renderInitPrompt: () => this.renderInitCommandPrompt(),
       renderSteeringAddPrompt: (steeringText: string) => this.renderSteeringAddCommandPrompt(steeringText),
       renderSteeringListPrompt: () => this.renderSteeringListCommandPrompt(),
+      renderSteeringRemovePrompt: (position: number, replacementText?: string) =>
+        this.renderSteeringRemoveCommandPrompt(position, replacementText),
+      renderSteeringAlterPrompt: (position: number, replacementText?: string) =>
+        this.renderSteeringAlterCommandPrompt(position, replacementText),
       renderSpecInitPrompt: () => this.renderSpecInitPrompt(),
       renderSpecPlanPrompt: (planText: string) => this.renderSpecPlanPrompt(planText),
       renderSpecNewPrompt: (specNumber: number) => this.renderSpecNewPrompt(specNumber),
@@ -574,6 +579,7 @@ export class SessionManager {
 
     for (const skill of skills) {
       if (skill.isLoaded) continue;
+      if (skill.inclusion === "manual") continue;
 
       // Rule 1: skill name matches (hyphens/spaces equivalent)
       const normalizedName = skill.name.toLowerCase().replace(/-/g, " ");
@@ -709,6 +715,9 @@ export class SessionManager {
     try {
       const skillMd = fs.readFileSync(skillPath, "utf8");
       const parsed = matter(skillMd);
+      const rawInclusion = typeof parsed.data.inclusion === "string" ? parsed.data.inclusion.trim() : "";
+      const inclusion: "auto" | "manual" | undefined =
+        rawInclusion === "auto" || rawInclusion === "manual" ? (rawInclusion as "auto" | "manual") : undefined;
       return {
         name:
           typeof parsed.data.name === "string" && parsed.data.name.trim()
@@ -716,6 +725,7 @@ export class SessionManager {
             : fallbackSkill.name,
         path: displayPath,
         description: typeof parsed.data.description === "string" ? parsed.data.description.trim() : "",
+        inclusion,
       };
     } catch {
       return fallbackSkill;
@@ -2397,6 +2407,18 @@ export class SessionManager {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "steering_list.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     return ejs.render(template, {});
+  }
+
+  private renderSteeringRemoveCommandPrompt(position: number, replacementText?: string): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "steering_remove.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { position, replacementText: replacementText ?? null });
+  }
+
+  private renderSteeringAlterCommandPrompt(position: number, replacementText?: string): string {
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "steering_alter.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, { position, replacementText: replacementText ?? null });
   }
 
   private renderSpecInitPrompt(): string {

@@ -31,6 +31,8 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "raw",
     "steering-add",
     "steering-list",
+    "steering-remove",
+    "steering-alter",
     "spec-init",
     "spec-plan",
     "spec-new",

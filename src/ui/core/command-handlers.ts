@@ -74,10 +74,28 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     process.stdout.write("\x1b[2J\x1b[H");
     ctx.clearSlashToken();
   },
+  "steering-remove": (_item, ctx) => {
+    ctx.onSubmit({
+      text: "/steering-remove " + ctx.buffer.text.replace(/^\/steering-remove\s+/, ""),
+      imageUrls: [],
+      selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
+    });
+    ctx.resetPromptInput();
+  },
+  "steering-alter": (_item, ctx) => {
+    ctx.onSubmit({
+      text: "/steering-alter " + ctx.buffer.text.replace(/^\/steering-alter\s+/, ""),
+      imageUrls: [],
+      selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
+    });
+    ctx.resetPromptInput();
+  },
 };
 
 const BUFFER_TEXT_COMMANDS: Set<SlashCommandKind> = new Set([
   "steering-add",
+  "steering-remove",
+  "steering-alter",
   "spec-plan",
   "spec-new",
   "spec-verify",

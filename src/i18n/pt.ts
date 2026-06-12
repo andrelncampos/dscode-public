@@ -13,6 +13,8 @@ const ptDictionary = {
   "cmd.toggle-display-mode": "Alternar modo de exibi\u00e7\u00e3o para ver ou ocultar conte\u00fado de racioc\u00ednio",
   "cmd.steering-add": "Adicionar uma regra de dire\u00e7\u00e3o \u00e0 se\u00e7\u00e3o STEERINGS do AGENTS.md",
   "cmd.steering-list": "Listar todas as regras de dire\u00e7\u00e3o da se\u00e7\u00e3o STEERINGS do AGENTS.md",
+  "cmd.steering-remove": "Remover a N-ésima regra de direção por posição do AGENTS.md",
+  "cmd.steering-alter": "Alterar a N-ésima regra de direção por posição no AGENTS.md",
   "cmd.spec-init": "Inicializar estrutura SDD: arquivos vision, arch, roadmap, ADR e lessons",
   "cmd.spec-plan": "Planejar specs a partir de brainstorming, alinhar com vis\u00e3o, atualizar roadmap",
   "cmd.spec-new": "Criar uma nova spec com documentos de requisitos, design e tarefas",

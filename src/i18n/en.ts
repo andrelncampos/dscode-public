@@ -11,6 +11,8 @@ const enDictionary = {
   "cmd.toggle-display-mode": "Toggle display mode for viewing or collapsing reasoning content",
   "cmd.steering-add": "Add a steering rule to the STEERINGS section of AGENTS.md",
   "cmd.steering-list": "List all steering rules from the STEERINGS section of AGENTS.md",
+  "cmd.steering-remove": "Remove the Nth steering rule by position from AGENTS.md",
+  "cmd.steering-alter": "Alter the Nth steering rule by position in AGENTS.md",
   "cmd.spec-init": "Initialize SDD structure: vision, arch, roadmap, ADR, and lessons files",
   "cmd.spec-plan": "Plan specs from brainstorming, align with vision, update roadmap",
   "cmd.spec-new": "Create a new spec with requirements, design, and task documents",
