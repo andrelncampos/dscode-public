@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { MODEL_CATALOG, THINKING_OPTIONS_BY_TYPE, getModelCapabilities } from "../common/model-catalog";
 import { DEFAULT_MODEL_PRICING } from "../common/model-capabilities";
 
-test("MODEL_CATALOG has exactly 16 entries", () => {
-  assert.equal(MODEL_CATALOG.length, 16);
+test("MODEL_CATALOG has exactly 22 entries", () => {
+  assert.equal(MODEL_CATALOG.length, 22);
 });
 
 test("MODEL_CATALOG has exactly one default model", () => {
