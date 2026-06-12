@@ -216,7 +216,8 @@ mi-proyecto/
 │       └── lessons.md         # Lecciones aprendidas
 │
 ~/.dscode/                     # Config del usuario
-├── settings.json              # Clave de API, modelo por defecto
+├── settings.json              # Clave de API (cifrada), modelo por defecto
+├── .credential-key            # Clave de cifrado AES-256 (permisos 0600)
 └── logs/debug.log             # Logs de depuración
 
 ~/.agents/skills/<skill>/SKILL.md    # Skills del usuario
@@ -285,7 +286,7 @@ Cuando la IA haga cambios en archivos, **revisa cada diff** antes de hacer commi
 
 ## Todos los comandos slash
 
-Escribe `/` en el prompt para abrir el menú. Son **20 comandos built-in** + skills dinámicos (`/<skill-name>`):
+Escribe `/` en el prompt para abrir el menú. Son **28 comandos built-in** + skills dinámicos (`/<skill-name>`):
 
 ### Sesión
 
@@ -302,6 +303,21 @@ Escribe `/` en el prompt para abrir el menú. Son **20 comandos built-in** + ski
 |---|---|
 | `/model` | Seleccionar entre 16 modelos de 4 proveedores, con thinking mode y reasoning effort por proveedor |
 | `/raw` | Alternar modo de visualización: `lite` (resumido), `normal` (completo), `raw-scrollback` (scroll) |
+
+### Proveedor y modelo
+
+| Comando | Descripción |
+|---|---|
+| `/model-list` | Listar todos los proveedores configurados con estado, modelos y precios |
+| `/model-add <provider>` | Agregar un nuevo proveedor LLM con wizard guiado (API key + URL base) |
+| `/model-remove <provider>` | Eliminar un proveedor de la configuración |
+| `/model-info <id>` | Mostrar detalles del modelo: capacidades, precio, thinking, contexto |
+| `/model-key <provider>` | Actualizar la API key de un proveedor (sobrescribe la anterior) |
+| `/model-default <id>` | Establecer el modelo predeterminado |
+| `/model-params` | Editor interactivo de parámetros: temperature, max_tokens, top_p |
+| `/model-thinking <id>` | Configurar thinking budget para modelos con extended thinking |
+
+> 💡 **Claves cifradas**: Las API keys se almacenan cifradas (AES-256-GCM) en `settings.json`. La migración de claves en texto plano es automática. Use `/model-key` para actualizar.
 
 ### Skills y agentes
 
@@ -320,9 +336,9 @@ Escribe `/` en el prompt para abrir el menú. Son **20 comandos built-in** + ski
 | `/spec-init` | Inicializar estructura SDD: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Planear specs a partir de brainstorm, alinear con visión y actualizar roadmap |
 | `/spec-new <n>` | Crear nuevo spec con requisitos, diseño y tareas |
-| `/spec-verify <n>` | Verificar completitud y alineación con la visión |
+| `/spec-verify <n>` | Verificar y **autocorregir** fallos en requisitos y diseño (idempotente — ejecuta cuantas veces quieras) |
 | `/spec-implement <n>` | Implementar todas las tareas del spec secuencialmente |
-| `/spec-audit <n>` | Auditar calidad y corrección de la implementación |
+| `/spec-audit <n>` | Auditar y **autocorregir** bugs, tests y desvíos de diseño (idempotente — cada pasada mejora sin degradar) |
 | `/spec-list` | Listar todos los specs con estado del roadmap |
 | `/spec-status [n]` | Mostrar estado detallado de un spec específico o de todos |
 
@@ -364,16 +380,18 @@ flowchart LR
 
 DsCode implementa un ciclo completo de desarrollo orientado a especificaciones. Todos los archivos se guardan en `management/`.
 
+Los dos puntos de control de calidad — **spec-verify** y **spec-audit** — no solo reportan problemas: los **autocorrigen**. Ambos son **idempotentes**: puedes ejecutarlos varias veces y cada pasada mejora la calidad sin degradar lo que ya estaba correcto.
+
 ```mermaid
 flowchart TD
     INIT["/spec-init"] --> PLAN["/spec-plan"]
     PLAN --> NEW["/spec-new &lt;n&gt;"]
-    NEW --> VERIFY["/spec-verify &lt;n&gt;"]
+    NEW --> VERIFY["/spec-verify &lt;n&gt; 🔄"]
     VERIFY -->|OK| IMPL["/spec-implement &lt;n&gt;"]
-    VERIFY -->|Problemas| NEW
-    IMPL --> AUDIT["/spec-audit &lt;n&gt;"]
+    VERIFY -->|"Autocorrige ↻"| VERIFY
+    IMPL --> AUDIT["/spec-audit &lt;n&gt; 🔄"]
     AUDIT -->|OK| DONE[✅ Spec completado]
-    AUDIT -->|Problemas| IMPL
+    AUDIT -->|"Autocorrige ↻"| AUDIT
 ```
 
 | Archivo | Contenido |
@@ -383,6 +401,29 @@ flowchart TD
 | `roadmap.md` | Lista de specs con estado (planned/in-progress/done) |
 | `adr.md` | Architecture Decision Records |
 | `lessons.md` | Lecciones aprendidas a lo largo del desarrollo |
+
+### SDD en la práctica — un ejemplo completo
+
+Imagina que quieres agregar **soporte para OpenAI** en DsCode. El flujo real:
+
+```
+/spec-plan
+  ↓  Escribes: "quiero soporte nativo de OpenAI con thinking mode"
+  ↓  La IA analiza la visión, crea el spec 40, actualiza el roadmap
+/spec-new 40
+  ↓  La IA genera requirements.md, design.md y task.md completos
+/spec-verify 40
+  ↓  La IA encuentra 3 fallos de trazabilidad y los AUTOCORRIGE
+  ↓  Ejecútalo de nuevo. Si OK → siguiente paso
+/spec-implement 40
+  ↓  La IA crea openai-provider.ts, openai-converter.ts, tests...
+  ↓  Cada tarea se ejecuta en orden. Typecheck y tests en cada paso
+/spec-audit 40
+  ↓  La IA encuentra 1 bug y 1 test desactualizado y los CORRIGE
+  ↓  Ejecútalo de nuevo. Si OK → spec completado ✅
+```
+
+> 💡 **Consejo**: `spec-verify` y `spec-audit` son tus aliados. Ejecútalos hasta que digan "0 issues found". Cada pasada mejora la calidad sin riesgo de regresión.
 
 ---
 
@@ -770,7 +811,7 @@ Consulta [SECURITY.md](../../SECURITY.md) para la política completa.
 
 - Reporta vulnerabilidades de forma privada (no abras una issue pública).
 - DsCode enmascara datos sensibles en logs de depuración, pero siempre revisa antes de compartir.
-- Mantén tu clave de API segura: usa variables de entorno o `settings.json` con permisos restringidos (`chmod 600`).
+- Mantén tu clave de API segura: usa variables de entorno o `settings.json` con permisos restringidos (`chmod 600`). Las claves en `settings.json` se cifran con AES-256-GCM. La clave de cifrado se almacena en `~/.dscode/.credential-key`.
 
 ---
 

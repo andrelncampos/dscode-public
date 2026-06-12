@@ -145,6 +145,60 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/cls",
     description: "Clear the terminal screen",
   },
+  {
+    kind: "model-list",
+    name: "model-list",
+    label: "/model-list",
+    description: "List configured LLM providers with their models and pricing",
+  },
+  {
+    kind: "model-add",
+    name: "model-add",
+    label: "/model-add",
+    args: ["<provider>"],
+    description: "Add a new LLM provider with API key and base URL",
+  },
+  {
+    kind: "model-remove",
+    name: "model-remove",
+    label: "/model-remove",
+    args: ["<provider>"],
+    description: "Remove a configured LLM provider",
+  },
+  {
+    kind: "model-info",
+    name: "model-info",
+    label: "/model-info",
+    args: ["<model-id>"],
+    description: "Show detailed information about a specific model",
+  },
+  {
+    kind: "model-key",
+    name: "model-key",
+    label: "/model-key",
+    args: ["<provider>"],
+    description: "Update API key for a configured provider",
+  },
+  {
+    kind: "model-default",
+    name: "model-default",
+    label: "/model-default",
+    args: ["<model-id>"],
+    description: "Set the default model",
+  },
+  {
+    kind: "model-params",
+    name: "model-params",
+    label: "/model-params",
+    description: "Configure generation parameters (temperature, max_tokens, top_p)",
+  },
+  {
+    kind: "model-thinking",
+    name: "model-thinking",
+    label: "/model-thinking",
+    args: ["<model-id>"],
+    description: "Configure thinking budget for extended-thinking models",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

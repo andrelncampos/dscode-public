@@ -22,7 +22,8 @@
 | 50 | anthropic-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P6, P7 |
 | 60 | model-selection-configuration | audited | V13, V6, ADR-002, P7 |
 | 70 | google-gemini-provider | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
-| 80 | model-engine-configuration-ux | planned | V13, V6, ADR-002, ADR-005, P7, L1 |
+| 80 | model-engine-configuration-ux | audited | V13, V6, ADR-002, ADR-005, P7, L1 |
+| 90 | product-i18n | planned | V14, P6 |
 
 ---
 
@@ -35,6 +36,9 @@ Spec 30 (provider-agnostic LLM layer)
   ├── Spec 60 (model selection & config)
   │     └── Spec 80 (engine config UX)
   └── Spec 70 (Google Gemini adapter)
+
+Spec 90 (product i18n)
+  (standalone — no dependencies on other specs)
 ```
 
 Spec 30 is the **required precursor** to 40, 50, 60, and 70. The provider interface

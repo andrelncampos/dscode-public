@@ -83,6 +83,14 @@ const BUFFER_TEXT_COMMANDS: Set<SlashCommandKind> = new Set([
   "spec-implement",
   "spec-audit",
   "spec-status",
+  "model-list",
+  "model-add",
+  "model-remove",
+  "model-info",
+  "model-key",
+  "model-default",
+  "model-params",
+  "model-thinking",
 ]);
 
 const FIXED_TEXT_COMMANDS: Partial<Record<SlashCommandKind, string>> = {

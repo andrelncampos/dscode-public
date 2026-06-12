@@ -41,6 +41,14 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "spec-status",
     "exit",
     "cls",
+    "model-list",
+    "model-add",
+    "model-remove",
+    "model-info",
+    "model-key",
+    "model-default",
+    "model-params",
+    "model-thinking",
   ]);
 });
 

@@ -4,6 +4,7 @@ import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import { resolveMemorySettings } from "./memory/memory-settings";
 import type { MemorySettings } from "./memory/turn-transcript-types";
 import { atomicWriteJsonFileSync } from "./common/file-utils";
+import { isEncryptedCredential, decryptCredential, encryptCredential } from "./common/credential-vault";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -74,6 +75,8 @@ export type DeepcodingSettings = {
   memory?: Partial<MemorySettings>;
   budget?: BudgetSettings;
   terminalTitleTemplate?: string;
+  topP?: number;
+  thinkingBudgets?: Record<string, number>;
 };
 
 export type ResolvedDeepcodingSettings = {
@@ -95,6 +98,8 @@ export type ResolvedDeepcodingSettings = {
   memory: MemorySettings;
   budget: BudgetSettings;
   terminalTitleTemplate?: string;
+  topP?: number;
+  thinkingBudgets: Record<string, number>;
 };
 
 export type ModelConfigSelection = {
@@ -104,6 +109,14 @@ export type ModelConfigSelection = {
 };
 
 export type SettingsProcessEnv = Record<string, string | undefined>;
+
+function resolveApiKey(rawKey: string | undefined, engineName: string): string | undefined {
+  if (!rawKey) return undefined;
+  if (isEncryptedCredential(rawKey)) {
+    return decryptCredential(rawKey, engineName);
+  }
+  return rawKey;
+}
 
 function resolveReasoningEffort(value: unknown): ThinkingEffort | undefined {
   if (typeof value !== "string") return undefined;
@@ -362,6 +375,13 @@ export function resolveSettingsSources(
     ...collectEngineEnv(processEnv),
   };
 
+  // Decrypt any encrypted API keys in engine configs
+  for (const [engineName, config] of Object.entries(engines)) {
+    if (config.apiKey) {
+      config.apiKey = resolveApiKey(config.apiKey, engineName);
+    }
+  }
+
   const model =
     trimString(systemEnv.MODEL) ||
     trimString(projectSettings?.model) ||
@@ -436,6 +456,10 @@ export function resolveSettingsSources(
     trimString(userSettings?.terminalTitleTemplate) ||
     DEFAULT_SETTINGS.terminalTitleTemplate;
 
+  const topP = projectSettings?.topP ?? userSettings?.topP;
+
+  const thinkingBudgets = projectSettings?.thinkingBudgets ?? userSettings?.thinkingBudgets ?? {};
+
   return {
     env,
     apiKey: trimString(env.API_KEY) || undefined,
@@ -455,6 +479,8 @@ export function resolveSettingsSources(
     memory,
     budget,
     terminalTitleTemplate,
+    topP,
+    thinkingBudgets,
   };
 }
 
@@ -677,7 +703,23 @@ export function readProjectSettings(projectRoot: string = process.cwd()): Deepco
   return readSettingsFile(path.join(projectRoot, ".deepcode", "settings.json"));
 }
 
+function encryptApiKeys(settings: DeepcodingSettings): DeepcodingSettings {
+  if (!settings.engines) return settings;
+  const engines = { ...settings.engines };
+  for (const [name, config] of Object.entries(engines)) {
+    if (config.apiKey && !isEncryptedCredential(config.apiKey)) {
+      engines[name] = {
+        ...config,
+        apiKey: encryptCredential(config.apiKey, name),
+        apiKeyEncrypted: true,
+      };
+    }
+  }
+  return { ...settings, engines };
+}
+
 function writeSettingsFile(settingsPath: string, settings: DeepcodingSettings): void {
+  settings = encryptApiKeys(settings);
   atomicWriteJsonFileSync(settingsPath, settings);
 }
 

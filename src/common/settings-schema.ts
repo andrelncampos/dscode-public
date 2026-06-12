@@ -68,6 +68,7 @@ const memorySettingsSchema = z
 export type EngineEntry = {
   apiKey?: string;
   baseURL?: string;
+  apiKeyEncrypted?: boolean;
 };
 
 const budgetSettingsSchema = z.object({
@@ -78,6 +79,7 @@ const budgetSettingsSchema = z.object({
 const engineEntrySchema = z.object({
   apiKey: z.string().optional(),
   baseURL: z.string().optional(),
+  apiKeyEncrypted: z.boolean().optional(),
 });
 
 export const deepcodingSettingsSchema = z.strictObject({
@@ -97,6 +99,8 @@ export const deepcodingSettingsSchema = z.strictObject({
   memory: memorySettingsSchema,
   budget: budgetSettingsSchema.optional(),
   terminalTitleTemplate: z.string().optional(),
+  topP: z.number().min(0).max(1).optional(),
+  thinkingBudgets: z.record(z.string(), z.number().int().min(1024)).optional(),
 });
 
 export type DeepcodingSettingsValidated = z.infer<typeof deepcodingSettingsSchema>;
