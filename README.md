@@ -224,7 +224,8 @@ meu-projeto/
 │   └── <session-id>.jsonl       # Mensagens de cada sessão
 │
 ~/.dscode/                       # Config do usuário
-├── settings.json                # Chave de API, modelo padrão
+├── settings.json                # Chave de API (criptografada), modelo padrão
+├── .credential-key              # Chave de criptografia AES-256 (permissões 0600)
 └── logs/debug.log               # Logs de depuração
 
 ~/.agents/skills/<skill>/SKILL.md    # Skills do usuário
@@ -293,7 +294,7 @@ Quando a IA fizer alterações em arquivos, **revise cada diff** antes de commit
 
 ## Todos os comandos slash
 
-Digite `/` no prompt para abrir o menu. São **20 comandos built-in** + skills dinâmicos (`/<skill-name>`):
+Digite `/` no prompt para abrir o menu. São **28 comandos built-in** + skills dinâmicos (`/<skill-name>`):
 
 ### Sessão
 
@@ -310,6 +311,21 @@ Digite `/` no prompt para abrir o menu. São **20 comandos built-in** + skills d
 |---|---|
 | `/model` | Selecionar entre 16 modelos de 4 provedores, com thinking mode e reasoning effort por provedor |
 | `/raw` | Alternar modo de exibição: `lite` (resumido), `normal` (completo), `raw-scrollback` (scroll) |
+
+### Provider e modelo
+
+| Comando | Descrição |
+|---|---|
+| `/model-list` | Listar todos os provedores configurados com status, modelos e preços |
+| `/model-add <provider>` | Adicionar um novo provedor LLM com wizard guiado (API key + base URL) |
+| `/model-remove <provider>` | Remover um provedor da configuração |
+| `/model-info <id>` | Mostrar detalhes de um modelo: capacidades, preço, thinking, contexto |
+| `/model-key <provider>` | Atualizar a API key de um provedor (sobrescreve a anterior) |
+| `/model-default <id>` | Definir o modelo padrão |
+| `/model-params` | Editor interativo de parâmetros de geração: temperature, max_tokens, top_p |
+| `/model-thinking <id>` | Configurar thinking budget para modelos com extended thinking |
+
+> 💡 **Chaves criptografadas**: As API keys são armazenadas criptografadas (AES-256-GCM) no `settings.json`. A migração de chaves plaintext é automática no primeiro uso. Use `/model-key` para atualizar.
 
 ### Skills e agentes
 
@@ -328,9 +344,9 @@ Digite `/` no prompt para abrir o menu. São **20 comandos built-in** + skills d
 | `/spec-init` | Inicializar estrutura SDD: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Planejar specs a partir de brainstorm, alinhar com visão e atualizar roadmap |
 | `/spec-new <n>` | Criar novo spec com requisitos, design e tarefas |
-| `/spec-verify <n>` | Verificar completude e alinhamento com a visão |
+| `/spec-verify <n>` | Verificar completude e alinhamento com a visão — **corrige automaticamente** as falhas encontradas (idempotente: rode quantas vezes quiser) |
 | `/spec-implement <n>` | Implementar todas as tarefas do spec sequencialmente |
-| `/spec-audit <n>` | Auditar qualidade e corretude da implementação |
+| `/spec-audit <n>` | Auditar qualidade e corretude da implementação — **corrige automaticamente** bugs, testes e desvios de design (idempotente: cada passagem melhora sem degradar) |
 | `/spec-list` | Listar todos os specs com status do roadmap |
 | `/spec-status [n]` | Mostrar status detalhado de um spec específico ou de todos |
 
@@ -372,16 +388,18 @@ flowchart LR
 
 O DsCode implementa um ciclo completo de desenvolvimento orientado a especificações. Todos os arquivos ficam em `management/`.
 
+Os dois checkpoints de qualidade — **spec-verify** e **spec-audit** — não apenas reportam problemas: eles **corrigem-nos automaticamente**. Ambos são **idempotentes**: pode executá-los várias vezes seguidas que cada passagem melhora a qualidade sem degradar o que já estava correto.
+
 ```mermaid
 flowchart TD
     INIT["/spec-init"] --> PLAN["/spec-plan"]
     PLAN --> NEW["/spec-new &lt;n&gt;"]
-    NEW --> VERIFY["/spec-verify &lt;n&gt;"]
+    NEW --> VERIFY["/spec-verify &lt;n&gt; 🔄"]
     VERIFY -->|OK| IMPL["/spec-implement &lt;n&gt;"]
-    VERIFY -->|Problemas| NEW
-    IMPL --> AUDIT["/spec-audit &lt;n&gt;"]
+    VERIFY -->|"Corrige falhas ↻"| VERIFY
+    IMPL --> AUDIT["/spec-audit &lt;n&gt; 🔄"]
     AUDIT -->|OK| DONE[✅ Spec concluído]
-    AUDIT -->|Problemas| IMPL
+    AUDIT -->|"Corrige bugs ↻"| AUDIT
 ```
 
 | Arquivo | Conteúdo |
@@ -391,6 +409,29 @@ flowchart TD
 | `roadmap.md` | Lista de specs com status (planned/in-progress/done) |
 | `adr.md` | Architecture Decision Records |
 | `lessons.md` | Lições aprendidas ao longo do desenvolvimento |
+
+### SDD na prática — um exemplo completo
+
+Imagine que você quer adicionar **suporte a OpenAI** no DsCode. O fluxo real:
+
+```
+/spec-plan
+  ↓  Você digita: "quero suporte nativo a OpenAI com thinking mode"
+  ↓  A IA analisa a visão, cria a spec 40, atualiza o roadmap
+/spec-new 40
+  ↓  A IA gera requirements.md, design.md e task.md completos
+/spec-verify 40
+  ↓  A IA encontra 3 falhas de rastreabilidade e CORRIGE automaticamente
+  ↓  Rode de novo. Se der OK → próximo passo
+/spec-implement 40
+  ↓  A IA cria openai-provider.ts, openai-converter.ts, testes...
+  ↓  Cada tarefa é executada em ordem. Typecheck e testes a cada passo
+/spec-audit 40
+  ↓  A IA encontra 1 bug e 1 teste desatualizado e CORRIGE
+  ↓  Rode de novo. Se der OK → spec concluído ✅
+```
+
+> 💡 **Dica**: `spec-verify` e `spec-audit` são seus aliados. Rode-os até dizerem "0 issues found". Cada passagem melhora a qualidade sem risco de regressão.
 
 ---
 
@@ -778,7 +819,7 @@ Consulte [SECURITY.md](SECURITY.md) para a política completa.
 
 - Reporte vulnerabilidades de forma privada (não abra uma issue pública).
 - O DsCode mascara dados sensíveis nos logs de depuração, mas sempre revise antes de compartilhar.
-- Mantenha sua chave de API segura: use variáveis de ambiente ou `settings.json` com permissões restritas (`chmod 600`).
+- Mantenha sua chave de API segura: use variáveis de ambiente ou `settings.json` com permissões restritas (`chmod 600`). As chaves no `settings.json` são criptografadas com AES-256-GCM. A chave de criptografia fica em `~/.dscode/.credential-key`.
 
 ---
 

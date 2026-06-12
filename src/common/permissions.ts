@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { DeepcodingSettings, PermissionScope, PermissionSettings } from "../settings";
+import { atomicWriteJsonFileSync } from "./file-utils";
 import { isAbsoluteFilePath, normalizeFilePath } from "./state";
 
 export type BashPermissionScope = Exclude<PermissionScope, "mcp"> | "unknown";
@@ -504,24 +505,15 @@ export function appendProjectPermissionAllows(
   if (existingPermissions && !changed) {
     return;
   }
-  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-  fs.writeFileSync(
-    settingsPath,
-    `${JSON.stringify(
-      {
-        ...settings,
-        permissions: {
-          ...permissions,
-          deny,
-          ask,
-          allow,
-        },
-      },
-      null,
-      2
-    )}\n`,
-    "utf8"
-  );
+  atomicWriteJsonFileSync(settingsPath, {
+    ...settings,
+    permissions: {
+      ...permissions,
+      deny,
+      ask,
+      allow,
+    },
+  });
 }
 
 export function normalizeAskPermissions(value: unknown): AskPermissionRequest[] | undefined {

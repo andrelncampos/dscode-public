@@ -30,6 +30,14 @@ export const COMMAND_KINDS = [
   "spec-status",
   "exit",
   "cls",
+  "model-list",
+  "model-add",
+  "model-remove",
+  "model-info",
+  "model-key",
+  "model-default",
+  "model-params",
+  "model-thinking",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];
@@ -52,6 +60,14 @@ export const PROMPT_COMMAND_KINDS = [
   "spec-list",
   "spec-status",
   "exit",
+  "model-list",
+  "model-add",
+  "model-remove",
+  "model-info",
+  "model-key",
+  "model-default",
+  "model-params",
+  "model-thinking",
 ] as const;
 
 export type PromptCommand = (typeof PROMPT_COMMAND_KINDS)[number];

@@ -136,3 +136,22 @@ User-facing controls for choosing and configuring LLM providers:
 - Spec 80 (Model & Engine Configuration UX) — provider management commands, API key configuration, generation parameters, thinking budget tuning.
 
 ---
+
+### V14: Multi-Language Product UI
+
+The DsCode CLI product interface (menus, wizards, tips, error messages) speaks the user's language, detected automatically from the operating system locale.
+
+- **Zero-cost translation lookup:** All UI strings are served from static dictionaries — no API calls, no dynamic translation. Detection via `process.env.LANG` / `LC_ALL` / `Intl` on POSIX, `GetUserDefaultUILanguage` on Windows.
+- **Locale override:** Users can force a specific language via `settings.json` (`"locale": "pt"`) or environment variable (`DEEPCODE_LOCALE=pt`), bypassing OS detection.
+- **Idiomatic translations:** Each language has a single dictionary file with all UI strings. No placeholder or machine-translated text.
+- **Backward compatible:** Non-translated languages fall back to English. Existing English UI is the default and zero behavior changes when locale detection fails.
+- **~120 strings:** Covers slash command descriptions, welcome screen tips, keyboard shortcuts, model command wizard messages, and error messages.
+
+**Delivered by:** Spec 90 (product-i18n) — locale detection, dictionary files, React context injection, and translation of all ~120 UI strings to Portuguese and Spanish.
+
+**Intentionally out of scope:**
+- AI conversation language — the LLM system prompt and tool descriptions remain in English.
+- README localization — already handled separately.
+- RTL language support (Arabic, Hebrew, etc.).
+
+---

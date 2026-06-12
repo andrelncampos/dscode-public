@@ -224,7 +224,8 @@ my-project/
 │       └── lessons.md         # Lessons learned
 │
 ~/.dscode/                     # User config
-├── settings.json              # API key, default model
+├── settings.json              # API key (encrypted), default model
+├── .credential-key            # AES-256 encryption key (0600 permissions)
 └── logs/debug.log             # Debug logs
 
 ~/.agents/skills/<skill>/SKILL.md    # User skills
@@ -297,7 +298,7 @@ AI 将检查代码并提出改进建议。使用 `Ctrl+O` 展开输出或查看�
 
 ## All slash commands
 
-Type `/` in the prompt to open the menu. There are **20 built-in commands** + dynamic skills (`/<skill-name>`):
+Type `/` in the prompt to open the menu. There are **28 built-in commands** + dynamic skills (`/<skill-name>`):
 
 ### Session
 
@@ -314,6 +315,21 @@ Type `/` in the prompt to open the menu. There are **20 built-in commands** + dy
 |---|---|
 | `/model` | 从 4 个提供商的 16 个模型中选择，支持提供商感知的 thinking mode 和 reasoning effort |
 | `/raw` | Toggle display mode: `lite` (summarized), `normal` (full), `raw-scrollback` (scroll) |
+
+### Provider & model
+
+| Command | Description |
+|---|---|
+| `/model-list` | List all configured providers with status, models and pricing |
+| `/model-add <provider>` | Add a new LLM provider with guided wizard (API key + base URL) |
+| `/model-remove <provider>` | Remove a provider from configuration |
+| `/model-info <id>` | Show model details: capabilities, pricing, thinking, context |
+| `/model-key <provider>` | Update API key for a provider (overwrites previous) |
+| `/model-default <id>` | Set the default model |
+| `/model-params` | Interactive generation parameter editor: temperature, max_tokens, top_p |
+| `/model-thinking <id>` | Configure thinking budget for extended-thinking models |
+
+> 💡 **Encrypted keys**: API keys are stored encrypted (AES-256-GCM) in `settings.json`. Plaintext key migration is automatic on first use. Use `/model-key` to update.
 
 ### Skills and agents
 
@@ -332,9 +348,9 @@ Type `/` in the prompt to open the menu. There are **20 built-in commands** + dy
 | `/spec-init` | Initialize SDD structure: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Plan specs from a brainstorm, align with vision, and update roadmap |
 | `/spec-new <n>` | Create a new spec with requirements, design, and tasks |
-| `/spec-verify <n>` | Verify completeness and alignment with vision |
+| `/spec-verify <n>` | Verify and **auto-fix** gaps in requirements and design (idempotent — run as many times as you want) |
 | `/spec-implement <n>` | Implement all spec tasks sequentially |
-| `/spec-audit <n>` | Audit implementation quality and correctness |
+| `/spec-audit <n>` | Audit and **auto-fix** implementation bugs, tests, and design deviations (idempotent — each pass improves without degrading) |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
 
@@ -384,16 +400,18 @@ flowchart LR
 
 DsCode implements a complete spec-driven development cycle. All files live in `management/`.
 
+The two quality checkpoints — **spec-verify** and **spec-audit** — don't just report problems: they **auto-fix them**. Both are **idempotent**: you can run them multiple times and each pass improves quality without degrading what was already correct.
+
 ```mermaid
 flowchart TD
     INIT["/spec-init"] --> PLAN["/spec-plan"]
     PLAN --> NEW["/spec-new &lt;n&gt;"]
-    NEW --> VERIFY["/spec-verify &lt;n&gt;"]
+    NEW --> VERIFY["/spec-verify &lt;n&gt; 🔄"]
     VERIFY -->|OK| IMPL["/spec-implement &lt;n&gt;"]
-    VERIFY -->|Issues| NEW
-    IMPL --> AUDIT["/spec-audit &lt;n&gt;"]
+    VERIFY -->|"Auto-fixes ↻"| VERIFY
+    IMPL --> AUDIT["/spec-audit &lt;n&gt; 🔄"]
     AUDIT -->|OK| DONE[✅ Spec complete]
-    AUDIT -->|Issues| IMPL
+    AUDIT -->|"Auto-fixes ↻"| AUDIT
 ```
 
 | File | Content |
@@ -403,6 +421,29 @@ flowchart TD
 | `roadmap.md` | List of specs with status (planned/in-progress/done) |
 | `adr.md` | Architecture Decision Records |
 | `lessons.md` | Lessons learned throughout development |
+
+### SDD in practice — a complete example
+
+Imagine you want to add **OpenAI support** to DsCode. The real flow:
+
+```
+/spec-plan
+  ↓  You type: "I want native OpenAI support with thinking mode"
+  ↓  The AI analyzes the vision, creates spec 40, updates the roadmap
+/spec-new 40
+  ↓  The AI generates complete requirements.md, design.md and task.md
+/spec-verify 40
+  ↓  The AI finds 3 traceability gaps and AUTO-FIXES them
+  ↓  Run it again. If OK → next step
+/spec-implement 40
+  ↓  The AI creates openai-provider.ts, openai-converter.ts, tests...
+  ↓  Each task runs in order. Typecheck and tests at every step
+/spec-audit 40
+  ↓  The AI finds 1 bug and 1 stale test and FIXES them
+  ↓  Run it again. If OK → spec complete ✅
+```
+
+> 💡 **Tip**: `spec-verify` and `spec-audit` are your allies. Run them until they say "0 issues found". Each pass improves quality with zero regression risk.
 
 <!-- end TODO -->
 

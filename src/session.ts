@@ -31,6 +31,7 @@ import {
 import { McpManager } from "./mcp/mcp-manager";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
+import { clearSettingsCache } from "./settings";
 import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
@@ -68,6 +69,9 @@ import type {
   TurnErrorRecord,
   MemorySettings,
 } from "./memory/turn-transcript-types";
+
+import * as ModelCommandHandlers from "./ui/core/model-command-handlers";
+import { MODEL_CATALOG } from "./common/model-catalog";
 
 export type { PermissionScope } from "./settings";
 export type {
@@ -351,6 +355,7 @@ export class SessionManager {
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
   private activeSessionId: string | null = null;
   private activePromptController: AbortController | null = null;
+  private pendingCommandWizard: { command: string; wizardState: Record<string, unknown> } | null = null;
   private readonly sessionControllers = new Map<string, AbortController>();
   private readonly processTimeoutControls = new Map<string, ProcessTimeoutControl>();
   private readonly liveProcessKeys = new Set<string>();
@@ -1016,6 +1021,46 @@ export class SessionManager {
         const skillMessage = this.buildSkillMessage(sessionId, skillPrompt, skill);
         this.appendSessionMessage(sessionId, skillMessage);
         this.onAssistantMessage(skillMessage, true);
+      }
+
+      // ── Model command dispatch ──────────────────────────────
+      if (this.pendingCommandWizard || (userPrompt.text && userPrompt.text.trim().startsWith("/model-"))) {
+        const text = userPrompt.text ?? "";
+        let command: string;
+        let wizardState: Record<string, unknown> | undefined;
+        if (this.pendingCommandWizard) {
+          command = this.pendingCommandWizard.command;
+          wizardState = this.pendingCommandWizard.wizardState;
+        } else {
+          const cmdMatch = text.trim().match(/^\/(model-\w+)/);
+          command = cmdMatch ? cmdMatch[1] : "model-list";
+          wizardState = undefined;
+        }
+        const parts = command.split("-");
+        const handlerName = "handle" + parts.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+        const handler = (ModelCommandHandlers as Record<string, Function>)[handlerName];
+        if (handler) {
+          const ctx: ModelCommandHandlers.ModelCommandContext = {
+            settings: this.getResolvedSettings() as unknown as ModelCommandHandlers.ModelCommandContext["settings"],
+            catalog: MODEL_CATALOG,
+            input: text,
+            settingsDir: path.join(os.homedir(), ".dscode"),
+            wizardState,
+          };
+          const result = handler(ctx);
+          if (result.message) {
+            const sysMsg = this.buildSystemMessage(sessionId, result.message);
+            this.appendSessionMessage(sessionId, sysMsg);
+          }
+          if (result.settingsChanged) clearSettingsCache();
+          if (result.needsMoreInput) {
+            this.pendingCommandWizard = { command, wizardState: result.wizardState ?? {} };
+          } else {
+            this.pendingCommandWizard = null;
+          }
+          return;
+        }
       }
     }
     this.activeSessionId = sessionId;
