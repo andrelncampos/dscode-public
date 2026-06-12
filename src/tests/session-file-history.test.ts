@@ -21,7 +21,6 @@ import {
   createChatResponse,
   buildTestMessage,
   hasGit,
-  flushPromises,
 } from "./session-helpers";
 
 registerSessionHooks();
