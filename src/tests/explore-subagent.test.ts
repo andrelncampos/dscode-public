@@ -294,7 +294,6 @@ describe("runExploreSubagent", () => {
   });
 
   it("records budget for each API call", async () => {
-    const usageCalls: Array<Record<string, unknown>> = [];
     // Override recordBudgetCost via the module — the function is imported directly
     // so we verify the mock client is called with usage data
     let apiCallCount = 0;

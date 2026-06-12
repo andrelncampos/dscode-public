@@ -8,6 +8,7 @@ import { isEncryptedCredential, decryptCredential, encryptCredential } from "./c
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { execFileSync } from "node:child_process";
 
 export type DeepcodingEnv = Record<string, string | undefined> & {
   MODEL?: string;
@@ -931,8 +932,6 @@ function ensurePublicRepoGitignore(projectRoot: string): void {
  * exact commands the user can run to remove them.
  */
 function warnIfSensitiveDirsAreTracked(projectRoot: string): void {
-  const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
-
   const stillTracked: string[] = [];
   for (const entry of PUBLIC_SENSITIVE_ENTRIES) {
     // entry is like "/management/" — strip the leading/trailing slashes
