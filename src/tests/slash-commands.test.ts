@@ -88,7 +88,7 @@ test("findExactSlashCommand returns built-in /init", () => {
   const item = findExactSlashCommand(items, "/init");
   assert.ok(item);
   assert.equal(item?.kind, "init");
-  assert.equal(item?.description, "Initialize an AGENTS.md file with instructions for LLM");
+  assert.equal(item?.description, "cmd.initialize-agents");
 });
 
 test("findExactSlashCommand returns built-in /continue", () => {
