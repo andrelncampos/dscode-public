@@ -155,3 +155,45 @@ The DsCode CLI product interface (menus, wizards, tips, error messages) speaks t
 - RTL language support (Arabic, Hebrew, etc.).
 
 ---
+
+### V15: Steering Management Commands
+
+Full lifecycle management of steering rules within `AGENTS.md`:
+
+- `/steering-add` — add a new steering rule to the `## Steering` section. Detects conflicts with existing rules and asks the user before adding contradictory rules.
+- `/steering-list` — list all steering rules with positional numbering (1-based).
+- `/steering-remove <N>` — remove the Nth steering rule by position. The AI reads the file, locates the bullet, and removes it without touching other content.
+- `/steering-alter <N>` — replace the Nth steering rule with new text. Same position-based approach — reads, replaces, writes.
+
+Steering rules are always loaded into every session context (`inclusion: always`). They are short, concise, imperative guidelines (one to two sentences each) stored as bullet points under `## Steering` in `AGENTS.md`. The file is compatible with the open `AGENTS.md` standard used by Kiro and other AI coding tools.
+
+**Design decisions:**
+- Position-based referencing (1, 2, 3...) — no persistent IDs in the file. Keeps `AGENTS.md` clean and interoperable.
+- Steering is separate from skills: steering = "how to behave" (always loaded, small), skills = "what to do" (on-demand, can be large).
+- The AI performs the file edits using its existing file tools (Read, Write, Edit) — no new tool implementations needed.
+
+**Delivered by:** Spec 100 (steering-management).
+
+---
+
+### V16: Skills Inclusion Modes
+
+Fine-grained control over when skills are loaded into the AI context:
+
+- **`inclusion: auto`** (default, current behavior) — skill is loaded automatically via keyword matching against the user's prompt, and is also available via slash command and dropdown.
+- **`inclusion: manual`** — skill is NEVER loaded by keyword matching. It is only activated explicitly by the user through:
+  - `#skill-name` prefix in the prompt input (new syntax, distinct from `/` for commands).
+  - The `/skills` dropdown menu.
+  - Typing `#skill-name` and pressing Enter.
+
+The `inclusion` field is optional YAML frontmatter in `SKILL.md`. When absent, defaults to `auto` (backward compatible — all existing skills continue working unchanged).
+
+**Design decisions:**
+- `#` prefix for manual skills is semantically distinct from `/` (slash commands = system actions, `#` = load knowledge/instructions). Precedent: Kiro uses `#steering-file-name` for manual inclusion.
+- `fileMatch` (glob-based conditional loading) is intentionally deferred — requires additional design around "current file" tracking.
+- `always` mode for skills is intentionally omitted — use `AGENTS.md` steering for always-loaded content.
+- No new commands for skill lifecycle management — the AI's existing file tools (Write, Bash) already handle create/edit/delete of `SKILL.md` files.
+
+**Delivered by:** Spec 110 (skills-inclusion-modes).
+
+---

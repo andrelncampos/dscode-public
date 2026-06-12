@@ -23,7 +23,9 @@
 | 60 | model-selection-configuration | audited | V13, V6, ADR-002, P7 |
 | 70 | google-gemini-provider | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
 | 80 | model-engine-configuration-ux | audited | V13, V6, ADR-002, ADR-005, P7, L1 |
-| 90 | product-i18n | planned | V14, P6 |
+| 90 | product-i18n | audited | V14, P6 |
+| 100 | steering-management | planned | V15, ADR-006 |
+| 110 | skills-inclusion-modes | planned | V16, ADR-006 |
 
 ---
 
@@ -39,6 +41,12 @@ Spec 30 (provider-agnostic LLM layer)
 
 Spec 90 (product i18n)
   (standalone — no dependencies on other specs)
+
+Spec 100 (steering management)
+  (standalone — builds on existing AGENTS.md infrastructure)
+
+Spec 110 (skills inclusion modes)
+  (standalone — builds on existing SKILL.md infrastructure)
 ```
 
 Spec 30 is the **required precursor** to 40, 50, 60, and 70. The provider interface
