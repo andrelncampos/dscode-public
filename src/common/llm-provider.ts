@@ -7,6 +7,7 @@ export type LlmStreamEvent =
   | { type: "tool_call_start"; id: string; name: string }
   | { type: "tool_call_delta"; id: string; arguments: string }
   | { type: "usage"; usage: ModelUsage }
+  | { type: "signature"; signature: string }
   | { type: "error"; error: unknown };
 
 export type LlmChatOptions = {

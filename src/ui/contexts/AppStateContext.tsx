@@ -3,6 +3,7 @@ import { useStdout, useWindowSize } from "ink";
 import chalk from "chalk";
 import type { ModelConfigSelection, ResolvedDeepcodingSettings } from "../../settings";
 import { resolveCurrentSettings, writeModelConfigSelection } from "../../settings";
+import { getModelCapabilities } from "../../common/model-catalog";
 import { createOpenAIClient } from "../../common/openai-client";
 import { createLlmProvider } from "../../common/llm-provider-registry";
 import type { OpenAIMessageConverterOptions } from "../../common/openai-message-converter";
@@ -289,7 +290,7 @@ export function AppStateProvider({
       }
     },
     onSessionEntryUpdated: (entry) => {
-      setStatusLine(buildStatusLine(entry));
+      setStatusLine(buildStatusLine(entry, resolvedSettings));
       setLastBashCommand(entry.lastBashCommand);
       setSessionCwd(entry.cwd);
       sessionManager.updateTerminalTitle(entry.cwd);
@@ -417,7 +418,7 @@ export function AppStateProvider({
       sessionManager.setActiveSessionId(sessionId);
       resetStaticView(loadVisibleMessages(sessionManager, sessionId), setMessages, { clearScreen: true });
       const session = sessionManager.getSession(sessionId);
-      setStatusLine(session ? buildStatusLine(session) : "");
+      setStatusLine(session ? buildStatusLine(session, resolvedSettings) : "");
       setLastBashCommand(session?.lastBashCommand ?? null);
       setSessionCwd(session?.cwd ?? null);
       setRunningProcesses(session?.processes ?? null);
@@ -435,6 +436,7 @@ export function AppStateProvider({
       refreshSkills,
       setActiveAskPermissions,
       setPendingPermissionReply,
+      resolvedSettings,
     ]
   );
 
@@ -522,7 +524,16 @@ export function AppStateProvider({
           },
         ]);
       }
-      return `Model settings updated: ${formatModelConfig(current)} → ${formatModelConfig(next)}`;
+      let message = `Model settings updated: ${formatModelConfig(current)} → ${formatModelConfig(next)}`;
+      const caps = getModelCapabilities(next.model);
+      const provider = caps?.provider;
+      if (provider && provider !== "deepseek") {
+        const engineKey = next.engines[provider]?.apiKey;
+        if (!engineKey && !next.apiKey) {
+          message += `\nWarning: No API key configured for ${provider}. Set engines.${provider}.apiKey.`;
+        }
+      }
+      return message;
     },
     [projectRoot, sessionManager]
   );

@@ -81,7 +81,7 @@ test("getCheapModel returns gpt-5.4-mini for gpt-5.4", () => {
 
 test("getCheapModel returns null for already-cheap models", () => {
   const provider = new OpenAIProvider(makeClient());
-  assert.equal(provider.getCheapModel("gpt-5.4-mini"), null);
+  assert.equal(provider.getCheapModel("gpt-5.4-nano"), null);
   assert.equal(provider.getCheapModel("o1-mini"), null);
 });
 

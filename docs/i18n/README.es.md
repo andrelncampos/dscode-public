@@ -21,7 +21,7 @@
 <br/>
 </div>
 
-**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA — **DeepSeek V4, OpenAI, Anthropic o cualquier API compatible con OpenAI** — y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS. Su arquitectura cuenta con una **capa LLM agnóstica de proveedor**, que permite cambiar entre proveedores sin modificar código.
+**DsCode** es un asistente de programación con IA que se ejecuta directamente en la terminal. Conversas con un modelo de IA — **11 modelos entre DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude o cualquier API compatible con OpenAI** — y este analiza, sugiere, revisa y escribe código en tu proyecto. Funciona en Windows, Linux y macOS. Su arquitectura cuenta con una **capa LLM agnóstica de proveedor**, que permite cambiar entre proveedores sin modificar código.
 
 DsCode deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), pero tiene evolución propia, mantenido por [André Campos](https://github.com/andrelncampos).
 
@@ -147,7 +147,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | `env.BASE_URL` | string | URL base de la API del proveedor | `https://api.deepseek.com` |
 | `env.API_KEY` | string | Clave de API del proveedor | *(obligatorio)* |
 | `thinkingEnabled` | boolean | Activa modo de razonamiento | `true` para DeepSeek |
-| `reasoningEffort` | string | Intensidad del razonamiento: `"high"` o `"max"` | `"max"` para V4 Pro |
+| `reasoningEffort` | string | Intensidad del razonamiento: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` o `"none"` (varía por proveedor) | `"max"` para DeepSeek V4 Pro |
 | `temperature` | number | Creatividad de las respuestas (0 a 2) | *(predeterminado del proveedor)* |
 | `maxTokens` | number | Límite de tokens por respuesta | 65536 (Pro) / 32768 (Flash) |
 | `debugLogEnabled` | boolean | Guarda logs de depuración en `~/.dscode/logs/` | `false` |
@@ -168,6 +168,9 @@ DsCode calcula el costo estimado de la sesión según los tokens usados. Precios
 | `deepseek-v4-flash` | $0.14 | $0.28 | $0.0028 |
 | `gpt-5.4` | $1.25 | $10.00 | $0.625 |
 | `gpt-5.4-mini` | $0.15 | $0.60 | $0.075 |
+| `claude-opus-4-8` | $15.00 | $75.00 | $7.50 |
+| `claude-sonnet-4-6` | $3.00 | $15.00 | $1.50 |
+| `claude-haiku-4-5` | $0.80 | $4.00 | $0.40 |
 
 Para usar precios personalizados (o añadir un modelo no soportado):
 
@@ -290,7 +293,7 @@ Escribe `/` en el prompt para abrir el menú. Son **20 comandos built-in** + ski
 
 | Comando | Descripción |
 |---|---|
-| `/model` | Seleccionar modelo, thinking mode y reasoning effort |
+| `/model` | Seleccionar entre 11 modelos de 3 proveedores, con thinking mode y reasoning effort por proveedor |
 | `/raw` | Alternar modo de visualización: `lite` (resumido), `normal` (completo), `raw-scrollback` (scroll) |
 
 ### Skills y agentes
@@ -451,9 +454,9 @@ DsCode funciona de forma **conversacional**: escribes lo que necesitas, la IA re
 | **Tools** | Herramientas que la IA usa: `bash` (shell), `read`/`write`/`edit` (archivos), `glob`/`grep` (búsqueda), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (preguntas), `UpdatePlan` (tareas). | La IA decide cuáles usar. Puedes bloquear las peligrosas vía `permissions`. |
 | **Menciones `@`** | Escribe `@` en el prompt para buscar y referenciar archivos del proyecto. | Usa para dirigir a la IA: "Analiza @src/utils.ts" — ya sabe qué archivo leer. |
 | **Provider** | La empresa que proporciona el modelo de IA (DeepSeek, OpenAI, Anthropic, etc.). | Elige el proveedor según costo, calidad y privacidad. |
-| **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-4o`). | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
+| **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`). 11 modelos disponibles entre 3 proveedores. | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
 | **Thinking mode** | La IA "piensa" (razona) antes de responder, generando tokens internos que puedes ver o no. | Actívalo para tareas complejas (debug, arquitectura). Desactívalo para agilidad. |
-| **Reasoning effort** | Controla la profundidad del razonamiento: `"high"` (bueno, más rápido) o `"max"` (mejor, más lento). | Usa `"max"` para problemas difíciles y `"high"` para el día a día. |
+| **Reasoning effort** | Controla la profundidad del razonamiento: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` o `"none"` (varía por proveedor). | Usa máximo para problemas difíciles y medio/bajo para el día a día. |
 | **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). | Sucede automáticamente. Mantén los prompts estables para ahorrar. |
 | **Logs** | Archivos de depuración en `~/.dscode/logs/` que registran las llamadas de API. | Activa `debugLogEnabled` solo para diagnosticar problemas. |
 | **Permisos** | Control de lo que la IA puede hacer: leer archivos, escribir, acceder a la red, ejecutar comandos. | Configura permisos restrictivos si quieres revisar cada acción antes de ejecutarla. |
@@ -474,6 +477,7 @@ DsCode está optimizado para los modelos DeepSeek V4.
 ### Thinking mode
 - **Usar**: Tareas complejas (debug, arquitectura, diseño)
 - **Desactivar**: Tareas rápidas y simples
+- **Opciones**: `"max"` (razonamiento profundo), `"high"` (equilibrado), `"No thinking"` (desactivado)
 - **Visualización**: `/raw` alterna entre completo/resumido/oculto
 
 ### KV Cache — DeepSeek **no cobra** por tokens repetidos. Mantén el system prompt estable.
@@ -539,6 +543,67 @@ Cuando cambias el modelo a `gpt-5.4` (vía `/model`), DsCode usa automáticament
     "MODEL": "gpt-5.4-mini",
     "BASE_URL": "https://api.openai.com/v1",
     "API_KEY": "sk-tu-clave-openai"
+  },
+  "thinkingEnabled": false
+}
+```
+
+---
+
+## Cómo usar con Anthropic
+
+DsCode tiene **soporte nativo para Anthropic** mediante `AnthropicProvider`. Los modelos con prefijo `claude-` se enrutan automáticamente al provider Anthropic — sin configuración adicional.
+
+### Configuración para Anthropic
+
+```json
+{
+  "env": {
+    "MODEL": "claude-sonnet-4-6",
+    "BASE_URL": "https://api.anthropic.com/v1",
+    "API_KEY": "sk-ant-tu-clave-anthropic"
+  },
+  "thinkingEnabled": true,
+  "reasoningEffort": "high"
+}
+```
+
+> 💡 `thinkingEnabled` funciona con Anthropic: modelos Opus/Sonnet/Fable/Mythos usan `thinking {type:"adaptive", effort}` con 3 niveles (`"high"`, `"medium"`, `"low"`). Modelos Haiku usan `thinking {type:"enabled", budget_tokens}` con 2 niveles (`"max"`, `"high"`).
+
+### Usando múltiples proveedores con `engines`
+
+```json
+{
+  "env": {
+    "MODEL": "deepseek-v4-pro",
+    "API_KEY": "sk-clave-deepseek"
+  },
+  "engines": {
+    "anthropic": {
+      "apiKey": "sk-ant-clave-anthropic"
+    }
+  }
+}
+```
+
+### Qué cambia respecto a DeepSeek
+
+| Funcionalidad | Con Anthropic |
+|---|---|
+| **Thinking mode** | ✅ Soportado nativamente. Adaptive (`"high"`, `"medium"`, `"low"`) para Opus/Sonnet/Fable/Mythos; Extended (`"max"`, `"high"`) con budget_tokens para Haiku |
+| **WebSearch built-in** | ❌ No disponible. Usa MCP con servidor de búsqueda |
+| **KV Cache** | ❌ No disponible (exclusivo de DeepSeek) |
+| **Imágenes (Ctrl+V)** | ✅ Funciona con todos los modelos Claude |
+| **Modelos soportados** | `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-fable-5`, `claude-mythos-5` |
+
+### Ejemplo con modelo más barato
+
+```json
+{
+  "env": {
+    "MODEL": "claude-haiku-4-5",
+    "BASE_URL": "https://api.anthropic.com/v1",
+    "API_KEY": "sk-ant-tu-clave-anthropic"
   },
   "thinkingEnabled": false
 }

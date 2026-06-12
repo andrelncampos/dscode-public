@@ -20,9 +20,13 @@ export function buildThinkingRequestOptions(
   // Return type widens to allow OpenAI's flat format
 
   if (providerName === "openai") {
-    // OpenAI format: reasoning_effort as top-level parameter
+    // OpenAI format: reasoning_effort as top-level parameter.
+    // Map DsCode effort values to OpenAI-compatible values:
+    //   "max"  → "xhigh" (OpenAI has no "max"; xhigh is the highest tier)
+    //   "high" → "high"
     if (thinkingEnabled) {
-      return { reasoning_effort: reasoningEffort };
+      const openaiEffort = reasoningEffort === "max" ? "xhigh" : reasoningEffort;
+      return { reasoning_effort: openaiEffort };
     }
     return {};
   }

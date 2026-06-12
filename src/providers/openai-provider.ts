@@ -39,17 +39,21 @@ export class OpenAIProvider implements ILlmProvider {
   }
 
   getCheapModel(model: string): string | null {
+    // GPT-5.5 → gpt-5.4-mini
+    if (model === "gpt-5.5") return "gpt-5.4-mini";
     // GPT-5.4 → gpt-5.4-mini
     if (model === "gpt-5.4") return "gpt-5.4-mini";
-    // gpt-5.4-mini → null (already cheap)
-    if (model === "gpt-5.4-mini") return null;
+    // gpt-5.4-mini → gpt-5.4-nano
+    if (model === "gpt-5.4-mini") return "gpt-5.4-nano";
+    // gpt-5.4-nano → null (cheapest)
+    if (model === "gpt-5.4-nano") return null;
     // o-series → o-series-mini
     if (model === "o4") return "o4-mini";
     if (model === "o3") return "o3-mini";
     // o1, o1-mini, o3-mini, o4-mini → null (already cheap or no cheaper variant)
     if (model === "o1" || model === "o1-mini" || model === "o3-mini" || model === "o4-mini") return null;
     // Heuristic: already a mini/cheap variant
-    if (model.endsWith("-mini")) return null;
+    if (model.endsWith("-mini") || model.endsWith("-nano")) return null;
     // Fallback: unknown model, no cheap variant
     return null;
   }

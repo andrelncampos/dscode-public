@@ -6,10 +6,10 @@ import { AnthropicProvider } from "../providers/anthropic-provider";
 
 await test("supportsModel returns true for claude- prefixes", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.supportsModel("claude-sonnet-4-5"), true);
+  assert.equal(provider.supportsModel("claude-sonnet-4-6"), true);
   assert.equal(provider.supportsModel("claude-opus-4-8"), true);
   assert.equal(provider.supportsModel("claude-haiku-4-5"), true);
-  assert.equal(provider.supportsModel("CLAUDE-SONNET-4-5"), true); // case insensitive
+  assert.equal(provider.supportsModel("CLAUDE-SONNET-4-6"), true); // case insensitive
 });
 
 await test("supportsModel returns false for non-claude models", () => {
@@ -23,7 +23,7 @@ await test("supportsModel returns false for non-claude models", () => {
 await test("getTimeoutMs returns 300_000 for opus/sonnet", () => {
   const provider = new AnthropicProvider();
   assert.equal(provider.getTimeoutMs("claude-opus-4-8"), 300_000);
-  assert.equal(provider.getTimeoutMs("claude-sonnet-4-5"), 300_000);
+  assert.equal(provider.getTimeoutMs("claude-sonnet-4-6"), 300_000);
 });
 
 await test("getTimeoutMs returns 180_000 for haiku", () => {
@@ -35,7 +35,7 @@ await test("getTimeoutMs returns 180_000 for haiku", () => {
 
 await test("isMultimodal returns true for all models", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.isMultimodal("claude-sonnet-4-5"), true);
+  assert.equal(provider.isMultimodal("claude-sonnet-4-6"), true);
   assert.equal(provider.isMultimodal("claude-haiku-4-5"), true);
 });
 
@@ -48,7 +48,7 @@ await test("getCheapModel returns haiku for opus", () => {
 
 await test("getCheapModel returns haiku for sonnet", () => {
   const provider = new AnthropicProvider();
-  assert.equal(provider.getCheapModel("claude-sonnet-4-5"), "claude-haiku-4-5");
+  assert.equal(provider.getCheapModel("claude-sonnet-4-6"), "claude-haiku-4-5");
 });
 
 await test("getCheapModel returns null for haiku", () => {
@@ -71,7 +71,7 @@ await test("chat throws when no Anthropic client available", async () => {
   const provider = new AnthropicProvider();
   try {
     for await (const _ of provider.chat({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       messages: [],
     })) {
       // Should not reach here

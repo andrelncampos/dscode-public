@@ -45,9 +45,9 @@ test("buildThinkingRequestOptions returns empty object for OpenAI when thinking 
   assert.deepEqual(buildThinkingRequestOptions(false, undefined, undefined, "openai"), {});
 });
 
-test("buildThinkingRequestOptions returns OpenAI format with max effort", () => {
+test("buildThinkingRequestOptions returns OpenAI format with max effort mapped to xhigh", () => {
   assert.deepEqual(buildThinkingRequestOptions(true, undefined, "max", "openai"), {
-    reasoning_effort: "max",
+    reasoning_effort: "xhigh",
   });
 });
 
@@ -55,5 +55,29 @@ test("buildThinkingRequestOptions returns DeepSeek format when providerName not 
   assert.deepEqual(buildThinkingRequestOptions(true, undefined, "max"), {
     thinking: { type: "enabled" },
     extra_body: { reasoning_effort: "max" },
+  });
+});
+
+test("buildThinkingRequestOptions returns OpenAI format with 'none' effort", () => {
+  assert.deepEqual(buildThinkingRequestOptions(true, undefined, "none", "openai"), {
+    reasoning_effort: "none",
+  });
+});
+
+test("buildThinkingRequestOptions returns OpenAI format with 'low' effort", () => {
+  assert.deepEqual(buildThinkingRequestOptions(true, undefined, "low", "openai"), {
+    reasoning_effort: "low",
+  });
+});
+
+test("buildThinkingRequestOptions returns OpenAI format with 'medium' effort", () => {
+  assert.deepEqual(buildThinkingRequestOptions(true, undefined, "medium", "openai"), {
+    reasoning_effort: "medium",
+  });
+});
+
+test("buildThinkingRequestOptions returns OpenAI format with 'xhigh' effort", () => {
+  assert.deepEqual(buildThinkingRequestOptions(true, undefined, "xhigh", "openai"), {
+    reasoning_effort: "xhigh",
   });
 });

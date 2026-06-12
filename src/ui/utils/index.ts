@@ -5,6 +5,8 @@ import type { PromptDraft } from "../views/PromptInput";
 import type { ModelConfigSelection } from "../../settings";
 import type { SessionEntry, SessionMessage } from "../../session";
 import type { SessionManager } from "../../session";
+import { formatTokenCount } from "../../common/model-capabilities";
+import { getModelCapabilities } from "../../common/model-catalog";
 
 /**
  * Render all messages directly to stdout for Raw mode display.
@@ -77,17 +79,17 @@ export function isCurrentSessionEmpty(sessionManager: SessionManager): boolean {
   return !activeSessionId || !sessionManager.getSession(activeSessionId);
 }
 
-export function buildStatusLine(entry: SessionEntry): string {
+export function buildStatusLine(entry: SessionEntry, modelConfig?: ModelConfigSelection): string {
   const parts: string[] = [];
   parts.push(`status: ${entry.status}`);
-  if (typeof entry.activeTokens === "number" && entry.activeTokens > 0) {
-    parts.push(`tokens: ${entry.activeTokens}`);
+  if (modelConfig) {
+    parts.push(formatModelConfig(modelConfig));
   }
-  if (entry.cwd) {
-    parts.push(`cwd: ${entry.cwd}`);
+  if (typeof entry.activeTokens === "number" && entry.activeTokens > 0) {
+    parts.push(`⚡ ${formatTokenCount(entry.activeTokens)}`);
   }
   if (entry.lastUserPrompt) {
-    parts.push(entry.lastUserPrompt.length > 80 ? entry.lastUserPrompt.slice(0, 80) + "..." : entry.lastUserPrompt);
+    parts.push(entry.lastUserPrompt.length > 50 ? entry.lastUserPrompt.slice(0, 50) + "..." : entry.lastUserPrompt);
   }
   if (entry.failReason) {
     parts.push(`fail: ${entry.failReason}`);
@@ -105,5 +107,9 @@ export function formatThinkingMode(
 }
 
 export function formatModelConfig(settings: ModelConfigSelection): string {
-  return `${settings.model}, ${formatThinkingMode(settings)}`;
+  const caps = getModelCapabilities(settings.model);
+  const name = caps?.displayName ?? settings.model;
+  if (!settings.thinkingEnabled) return name;
+  const indicator = "\u0394"; // 𝚫 — mathematical bold capital delta for "thinking"
+  return `${name} ${indicator}${settings.reasoningEffort}`;
 }
