@@ -21,7 +21,7 @@
 <br/>
 </div>
 
-**DsCode** is a terminal-based AI coding assistant. You talk to an AI model — **11 models across DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, or any OpenAI-compatible API** — and it analyzes, suggests, reviews, and writes code in your project. It works on Windows, Linux, and macOS. Its architecture features a **provider-agnostic LLM layer**, letting you switch between providers without changing code.
+**DsCode** is a terminal-based AI coding assistant. You talk to an AI model — **16 models across DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini, or any OpenAI-compatible API** — and it analyzes, suggests, reviews, and writes code in your project. It works on Windows, Linux, and macOS. Its architecture features a **provider-agnostic LLM layer**, letting you switch between providers without changing code.
 
 DsCode is derived from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli) and has its own evolution, maintained by [André Campos](https://github.com/andrelncampos).
 
@@ -51,7 +51,7 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 - **Tech leads** who need to quickly review or understand codebases.
 - **People already using AI to code** who want a fast, terminal-integrated workflow.
 - **Teams that want to standardize** prompts, skills, agents, and steering to maintain consistency.
-- **Users of any LLM provider** — DeepSeek V4, OpenAI, Anthropic, or compatible APIs. The provider-agnostic layer makes switching effortless.
+- **Users of any LLM provider** — DeepSeek V4, OpenAI, Anthropic, Google Gemini, or compatible APIs. The provider-agnostic layer makes switching effortless.
 
 ---
 
@@ -138,6 +138,7 @@ DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscod
 | **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys |
 | **Anthropic** | [console.anthropic.com](https://console.anthropic.com) → API Keys |
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com) → API Keys |
 
 ### Available configuration options
 
@@ -171,6 +172,12 @@ DsCode estimates session cost based on token usage. Default prices:
 | `claude-opus-4-8` | $15.00 | $75.00 | $7.50 |
 | `claude-sonnet-4-6` | $3.00 | $15.00 | $1.50 |
 | `claude-haiku-4-5` | $0.80 | $4.00 | $0.40 |
+| `claude-fable-5` | $10.00 | $50.00 | $1.00 |
+| `claude-mythos-5` | $10.00 | $50.00 | $1.00 |
+| `gemini-3.5-flash` | $1.50 | $9.00 | $0.15 |
+| `gemini-3.1-flash-lite` | $0.25 | $1.50 | $0.025 |
+| `gemini-2.5-pro` | $2.50 | $15.00 | $0.25 |
+| `gemini-2.5-flash` | $0.50 | $3.00 | $0.05 |
 
 To use custom pricing (or add an unsupported model):
 
@@ -293,7 +300,7 @@ Type `/` in the prompt to open the menu. There are **20 built-in commands** + dy
 
 | Command | Description |
 |---|---|
-| `/model` | Select from 11 models across 3 providers, with provider-aware thinking mode and reasoning effort |
+| `/model` | Select from 16 models across 4 providers, with provider-aware thinking mode and reasoning effort |
 | `/raw` | Toggle display mode: `lite` (summarized), `normal` (full), `raw-scrollback` (scroll) |
 
 ### Skills and agents
@@ -453,8 +460,8 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 | **Skills** | Markdown guides that teach the AI to follow specific rules. | Create a skill to standardize reviews, code style, or team processes. |
 | **Tools** | Tools the AI uses: `bash` (shell), `read`/`write`/`edit` (files), `glob`/`grep` (search), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (questions), `UpdatePlan` (tasks). | The AI decides which to use. You can block dangerous ones via `permissions`. |
 | **`@` Mentions** | Type `@` in the prompt to search and reference project files. | Use to direct the AI: "Analyze @src/utils.ts" — it already knows which file to read. |
-| **Provider** | The company providing the AI model (DeepSeek, OpenAI, Anthropic, etc.). | Choose a provider based on cost, quality, and privacy. |
-| **Model** | The specific AI model (e.g., `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`). 11 models available across 3 providers. | Different models have different quality, speed, and cost. |
+| **Provider** | The company providing the AI model (DeepSeek, OpenAI, Anthropic, Google Gemini, etc.). | Choose a provider based on cost, quality, and privacy. |
+| **Model** | The specific AI model (e.g., `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 models available across 4 providers. | Different models have different quality, speed, and cost. |
 | **Thinking mode** | The AI "thinks" (reasons) before responding, generating internal tokens you may or may not see. | Enable for complex tasks (debugging, architecture). Disable for speed. |
 | **Reasoning effort** | Controls reasoning depth: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"`, or `"none"` (varies by provider). | Use max for hard problems and medium/low for everyday tasks. |
 | **Prompt cache** | DeepSeek caches repeated parts of the context to charge fewer tokens (KV Cache). | Happens automatically. Keep prompts stable to save money. |
@@ -604,6 +611,68 @@ DsCode has **native Anthropic support** via `AnthropicProvider`. Models with the
     "MODEL": "claude-haiku-4-5",
     "BASE_URL": "https://api.anthropic.com/v1",
     "API_KEY": "sk-ant-your-anthropic-key"
+  },
+  "thinkingEnabled": false
+}
+```
+
+---
+
+## Using with Google Gemini
+
+DsCode has **native Google Gemini support** via `GeminiProvider`. Models with the `gemini-` prefix are automatically routed to the Gemini provider — no additional configuration needed. Gemini is the first provider implemented with **zero SDK** — it uses Node 24's native `fetch()`.
+
+### Gemini configuration
+
+```json
+{
+  "env": {
+    "MODEL": "gemini-3.5-flash",
+    "BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
+    "API_KEY": "AIza-your-gemini-key"
+  },
+  "thinkingEnabled": true,
+  "reasoningEffort": "high"
+}
+```
+
+> 💡 `thinkingEnabled` works with Gemini: the provider sends `thinkingConfig: { thinkingBudget: 8192, includeThoughts: true }` in `generationConfig`. Gemini uses "thinking budget" instead of "reasoning effort".
+
+### Using multiple providers with `engines`
+
+```json
+{
+  "env": {
+    "MODEL": "deepseek-v4-pro",
+    "API_KEY": "sk-deepseek-key"
+  },
+  "engines": {
+    "gemini": {
+      "apiKey": "AIza-your-gemini-key"
+    }
+  }
+}
+```
+
+### What changes compared to DeepSeek
+
+| Feature | With Gemini |
+|---|---|
+| **Thinking mode** | ✅ Natively supported via `thinkingConfig`. Budget of 8192 tokens. |
+| **Built-in WebSearch** | ❌ Not available. Use MCP with a search server. |
+| **KV Cache** | ❌ Not available (DeepSeek-exclusive) |
+| **Images (Ctrl+V)** | ✅ Works with all Gemini models |
+| **Supported models** | `gemini-3.5-flash`, `gemini-3-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash` |
+| **Compaction** | Uses `getCheapModel()`: `gemini-3.5-flash` → `gemini-3.1-flash-lite` to reduce cost |
+
+### Example with a cheaper model
+
+```json
+{
+  "env": {
+    "MODEL": "gemini-3.1-flash-lite",
+    "BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
+    "API_KEY": "AIza-your-gemini-key"
   },
   "thinkingEnabled": false
 }

@@ -18,22 +18,32 @@ export function buildLoadingText(input: LoadingTextInput): string {
   }
 
   if (!progress) {
-    return "Thinking...";
+    return "Thinking\u2026";
   }
 
   const startedAt = parseTimestamp(progress.startedAt);
   if (startedAt === null) {
-    return "Thinking...";
+    return "Thinking\u2026";
   }
 
   const elapsedMs = Math.max(0, now - startedAt);
-  if (elapsedMs < STALL_THRESHOLD_MS) {
-    return "Thinking...";
-  }
-
   const elapsedSeconds = Math.floor(elapsedMs / 1000);
   const tokens = progress.formattedTokens || "0";
-  return `Thinking... (${elapsedSeconds}s) · ↓ ${tokens} tokens`;
+
+  // Quick win #1: differentiate reasoning vs generating vs tool calls
+  const activityLabel =
+    progress.activity === "reasoning" ? "Reasoning" : progress.activity === "generating" ? "Generating" : "Thinking";
+
+  // Quick win #2 + #3: show tool name and count when applicable
+  if (progress.toolCallName && progress.toolCallCount) {
+    return `Tool ${progress.toolCallCount} \u00b7 ${progress.toolCallName}\u2026`;
+  }
+
+  if (elapsedMs < STALL_THRESHOLD_MS) {
+    return `${activityLabel}\u2026`;
+  }
+
+  return `${activityLabel}\u2026 (${elapsedSeconds}s) \u00b7 \u2193 ${tokens} tokens`;
 }
 
 function buildProcessLoadingText(processes: RunningProcesses | undefined, now: number): string | null {

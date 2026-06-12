@@ -152,7 +152,7 @@ export class AnthropicProvider implements ILlmProvider {
 
   private async *streamToEvents(stream: AsyncIterable<AnthropicSdk.MessageStreamEvent>): AsyncIterable<LlmStreamEvent> {
     let inputTokens = 0;
-    let outputTokens = 0;
+    let outputTokens: number;
     let currentToolUseId = "";
     let pendingSignature = "";
 

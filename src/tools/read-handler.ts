@@ -342,7 +342,7 @@ function loadGitignoreMatcher(projectRoot: string): ((relPath: string, isDir: bo
     };
   }
 
-  let content = "";
+  let content: string;
   try {
     content = fs.readFileSync(gitignorePath, "utf8");
   } catch {

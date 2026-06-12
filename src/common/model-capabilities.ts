@@ -37,6 +37,11 @@ export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   "gpt-5.4": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
   "gpt-5.4-mini": { inputPrice: 0.75, outputPrice: 4.5, cacheReadPrice: 0.075 },
   "gpt-5.4-nano": { inputPrice: 0.2, outputPrice: 1.25, cacheReadPrice: 0.02 },
+  "gemini-3.5-flash": { inputPrice: 1.5, outputPrice: 9.0, cacheReadPrice: 0.15 },
+  "gemini-3-flash": { inputPrice: 1.0, outputPrice: 6.0, cacheReadPrice: 0.1 },
+  "gemini-3.1-flash-lite": { inputPrice: 0.25, outputPrice: 1.5, cacheReadPrice: 0.025 },
+  "gemini-2.5-pro": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
+  "gemini-2.5-flash": { inputPrice: 0.5, outputPrice: 3.0, cacheReadPrice: 0.05 },
 };
 
 /**

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { buildLoadingText } from "../ui";
 
 test("buildLoadingText returns plain Thinking... when no progress", () => {
-  assert.equal(buildLoadingText({ progress: null, now: Date.now() }), "Thinking...");
+  assert.equal(buildLoadingText({ progress: null, now: Date.now() }), "Thinking\u2026");
 });
 
 test("buildLoadingText shows running process elapsed time before thinking progress", () => {
@@ -44,7 +44,7 @@ test("buildLoadingText returns plain Thinking... while elapsed below 3s", () => 
     },
     now,
   });
-  assert.equal(text, "Thinking...");
+  assert.equal(text, "Thinking\u2026");
 });
 
 test("buildLoadingText shows elapsed seconds and tokens once past the threshold", () => {
@@ -60,7 +60,7 @@ test("buildLoadingText shows elapsed seconds and tokens once past the threshold"
     },
     now,
   });
-  assert.equal(text, "Thinking... (5s) · ↓ 850 tokens");
+  assert.equal(text, "Thinking\u2026 (5s) · ↓ 850 tokens");
 });
 
 test("buildLoadingText falls back to '0' when formattedTokens is missing", () => {
@@ -76,7 +76,7 @@ test("buildLoadingText falls back to '0' when formattedTokens is missing", () =>
     },
     now,
   });
-  assert.equal(text, "Thinking... (4s) · ↓ 0 tokens");
+  assert.equal(text, "Thinking\u2026 (4s) · ↓ 0 tokens");
 });
 
 test("buildLoadingText falls back to Thinking... when timestamp is unparseable", () => {
@@ -90,5 +90,5 @@ test("buildLoadingText falls back to Thinking... when timestamp is unparseable",
     },
     now: Date.now(),
   });
-  assert.equal(text, "Thinking...");
+  assert.equal(text, "Thinking\u2026");
 });
