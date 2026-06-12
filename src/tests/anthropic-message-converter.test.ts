@@ -94,7 +94,7 @@ await test("buildMessages extracts system messages to getSystemPrompt()", () => 
     msg({ role: "system", content: "You are a helpful assistant." }),
     msg({ role: "user", content: "Hello" }),
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(result.length, 1); // Only user message
   assert.equal(converter.getSystemPrompt(), "You are a helpful assistant.");
 });
@@ -102,7 +102,7 @@ await test("buildMessages extracts system messages to getSystemPrompt()", () => 
 await test("buildMessages converts user message to content blocks", () => {
   const converter = new AnthropicMessageConverter();
   const messages = [msg({ role: "user", content: "Hello" })];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(result.length, 1);
   const userMsg = result[0] as { role: string; content: { type: string; text: string }[] };
   assert.equal(userMsg.role, "user");
@@ -126,7 +126,7 @@ await test("buildMessages converts assistant message with tool calls", () => {
       },
     }),
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   const asst = result[0] as any;
   assert.equal(asst.role, "assistant");
   // Should have text block and tool_use block
@@ -154,7 +154,7 @@ await test("buildMessages wraps tool results in user role", () => {
       messageParams: { tool_call_id: "call_1" },
     }),
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(result.length, 2);
   const toolResult = result[1] as { role: string; content: { type: string; tool_use_id: string; content: string }[] };
   assert.equal(toolResult.role, "user");
@@ -175,7 +175,7 @@ await test("buildMessages includes thinking block when reasoning_content present
       },
     }),
   ];
-  const result = converter.buildMessages(messages, true, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, true, "claude-sonnet-4-6");
   const asst = result[0] as any;
   // First block should be thinking
   const thinkBlock = asst.content[0] as { type: string; thinking: string; signature: string };
@@ -194,7 +194,7 @@ await test("buildMessages filters compacted messages", () => {
     msg({ role: "user", content: "visible message" }),
     msg({ role: "user", content: "compacted message", compacted: true }),
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(result.length, 1);
   const userMsg = result[0] as { role: string; content: { text: string }[] };
   assert.equal(userMsg.content[0].text, "visible message");
@@ -212,7 +212,7 @@ await test("buildMessages injects interrupted tool results", () => {
     }),
     // No matching tool message → interrupted fallback
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(result.length, 2);
   const fallback = result[1] as { role: string; content: { type: string; tool_use_id: string; content: string }[] };
   assert.equal(fallback.role, "user");
@@ -233,7 +233,7 @@ await test("getSystemPrompt concatenates multiple system messages", () => {
     msg({ role: "system", content: "Second system message." }),
     msg({ role: "user", content: "Hello" }),
   ];
-  converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  converter.buildMessages(messages, false, "claude-sonnet-4-6");
   const prompt = converter.getSystemPrompt();
   assert.ok(prompt.includes("First system message."));
   assert.ok(prompt.includes("Second system message."));
@@ -243,7 +243,7 @@ await test("getSystemPrompt concatenates multiple system messages", () => {
 await test("getSystemPrompt returns empty string when no system messages", () => {
   const converter = new AnthropicMessageConverter();
   const messages = [msg({ role: "user", content: "Hello" })];
-  converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  converter.buildMessages(messages, false, "claude-sonnet-4-6");
   assert.equal(converter.getSystemPrompt(), "");
 });
 
@@ -259,7 +259,7 @@ await test("buildMessages does not include thinking when disabled", () => {
       },
     }),
   ];
-  const result = converter.buildMessages(messages, false, "claude-sonnet-4-5");
+  const result = converter.buildMessages(messages, false, "claude-sonnet-4-6");
   const asst = result[0] as any;
   // Should only have text, no thinking block
   const types = asst.content.map((c: { type: string }) => c.type);

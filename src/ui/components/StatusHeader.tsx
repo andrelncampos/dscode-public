@@ -7,7 +7,6 @@ type StatusHeaderProps = {
   statsLine: string;
   lastBashCommand: string | null;
   modelName: string;
-  cwd: string | null;
   /** Free-form status message (e.g. "Permission denied…"). Shown prominently above stats. */
   statusMessage: string | null;
   busy: boolean;
@@ -16,7 +15,7 @@ type StatusHeaderProps = {
   screenWidth: number;
 };
 
-const SEPARATOR = "─".repeat(20);
+const SEPARATOR = "•";
 
 /**
  * Truncates a command string to fit within maxLen by keeping the
@@ -36,7 +35,6 @@ export const StatusHeader = React.memo(function StatusHeader({
   statsLine,
   lastBashCommand,
   modelName,
-  cwd,
   statusMessage,
   busy,
   streamProgress,
@@ -76,21 +74,13 @@ export const StatusHeader = React.memo(function StatusHeader({
           <Text color="yellow">{statusMessage}</Text>
         </Box>
       ) : null}
-      {/* Line: model · tokens · cost · cwd */}
+      {/* Line: model · tokens · cost */}
       {statsLine ? (
         <Box justifyContent="space-between" width={screenWidth}>
           <Box flexShrink={1}>
             <Text color="magenta" wrap="truncate-end">
               {modelName}
             </Text>
-            {cwd ? (
-              <>
-                <Text dimColor> · </Text>
-                <Text dimColor wrap="truncate-end">
-                  {cwd}
-                </Text>
-              </>
-            ) : null}
           </Box>
           <Box flexShrink={0}>
             <Text dimColor>{statsLine}</Text>

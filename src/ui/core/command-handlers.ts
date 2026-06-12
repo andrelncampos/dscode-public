@@ -69,6 +69,10 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   exit: (_item, ctx) => {
     ctx.onSubmit({ text: "/exit", imageUrls: [], command: "exit" });
   },
+  cls: (_item, ctx) => {
+    process.stdout.write("\x1b[2J\x1b[H");
+    ctx.clearSlashToken();
+  },
 };
 
 const BUFFER_TEXT_COMMANDS: Set<SlashCommandKind> = new Set([

@@ -40,6 +40,7 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "spec-list",
     "spec-status",
     "exit",
+    "cls",
   ]);
 });
 

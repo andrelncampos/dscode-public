@@ -1,10 +1,6 @@
-import {
-  getThinkingOptionIndex,
-  MODEL_COMMAND_MODELS,
-  MODEL_COMMAND_THINKING_OPTIONS,
-} from "./components/ModelsDropdown";
+import { getThinkingOptionIndex } from "./components/ModelsDropdown";
 
-export { getThinkingOptionIndex, MODEL_COMMAND_MODELS, MODEL_COMMAND_THINKING_OPTIONS };
+export { getThinkingOptionIndex };
 export { buildPromptDraftFromSessionMessage } from "./utils";
 export { disableTerminalExtendedKeys, enableTerminalExtendedKeys, getPromptCursorPlacement } from "./hooks/cursor";
 export { default as AppContainer } from "./views/AppContainer";

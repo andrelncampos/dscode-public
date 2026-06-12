@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { Agent, fetch as undiciFetch } from "undici";
-import { resolveCurrentSettings } from "../settings";
+import { resolveCurrentSettings, type ThinkingEffort } from "../settings";
 
 // Custom undici Agent with a 180-second keepAlive timeout.  The default
 // global fetch (undici) only keeps connections alive for 4 seconds, which
@@ -29,7 +29,7 @@ export function createOpenAIClient(
   baseURL: string;
   temperature?: number;
   thinkingEnabled: boolean;
-  reasoningEffort: "high" | "max";
+  reasoningEffort: ThinkingEffort;
   debugLogEnabled: boolean;
   telemetryEnabled: boolean;
   maxTokens: number;

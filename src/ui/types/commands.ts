@@ -29,6 +29,7 @@ export const COMMAND_KINDS = [
   "spec-list",
   "spec-status",
   "exit",
+  "cls",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];

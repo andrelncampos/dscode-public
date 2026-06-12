@@ -28,9 +28,15 @@ export type ModelPricing = {
 export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   "deepseek-v4-pro": { inputPrice: 0.435, outputPrice: 0.87, cacheReadPrice: 0.003625 },
   "deepseek-v4-flash": { inputPrice: 0.14, outputPrice: 0.28, cacheReadPrice: 0.0028 },
-  "claude-opus-4-8": { inputPrice: 15.0, outputPrice: 75.0, cacheReadPrice: 1.5 },
-  "claude-sonnet-4-5": { inputPrice: 3.0, outputPrice: 15.0, cacheReadPrice: 0.3 },
-  "claude-haiku-4-5": { inputPrice: 0.8, outputPrice: 4.0, cacheReadPrice: 0.08 },
+  "claude-opus-4-8": { inputPrice: 5.0, outputPrice: 25.0, cacheReadPrice: 0.5 },
+  "claude-sonnet-4-6": { inputPrice: 3.0, outputPrice: 15.0, cacheReadPrice: 0.3 },
+  "claude-haiku-4-5": { inputPrice: 1.0, outputPrice: 5.0, cacheReadPrice: 0.1 },
+  "claude-fable-5": { inputPrice: 10.0, outputPrice: 50.0, cacheReadPrice: 1.0 },
+  "claude-mythos-5": { inputPrice: 10.0, outputPrice: 50.0, cacheReadPrice: 1.0 },
+  "gpt-5.5": { inputPrice: 5.0, outputPrice: 30.0, cacheReadPrice: 0.5 },
+  "gpt-5.4": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
+  "gpt-5.4-mini": { inputPrice: 0.75, outputPrice: 4.5, cacheReadPrice: 0.075 },
+  "gpt-5.4-nano": { inputPrice: 0.2, outputPrice: 1.25, cacheReadPrice: 0.02 },
 };
 
 /**

@@ -20,7 +20,10 @@ export type DeepcodingEnv = Record<string, string | undefined> & {
   MAX_TOKENS?: string;
 };
 
-export type ReasoningEffort = "high" | "max";
+import type { ThinkingEffort } from "./common/model-catalog";
+export type { ThinkingEffort };
+/** @deprecated Use ThinkingEffort instead. */
+export type ReasoningEffort = ThinkingEffort;
 
 export type McpServerConfig = {
   command: string;
@@ -80,7 +83,7 @@ export type ResolvedDeepcodingSettings = {
   model: string;
   temperature?: number;
   thinkingEnabled: boolean;
-  reasoningEffort: ReasoningEffort;
+  reasoningEffort: ThinkingEffort;
   debugLogEnabled: boolean;
   telemetryEnabled: boolean;
   maxTokens: number;
@@ -97,13 +100,15 @@ export type ResolvedDeepcodingSettings = {
 export type ModelConfigSelection = {
   model: string;
   thinkingEnabled: boolean;
-  reasoningEffort: ReasoningEffort;
+  reasoningEffort: ThinkingEffort;
 };
 
 export type SettingsProcessEnv = Record<string, string | undefined>;
 
-function resolveReasoningEffort(value: unknown): ReasoningEffort | undefined {
-  return value === "high" || value === "max" ? value : undefined;
+function resolveReasoningEffort(value: unknown): ThinkingEffort | undefined {
+  if (typeof value !== "string") return undefined;
+  const valid = new Set<string>(["none", "low", "medium", "high", "max", "xhigh"]);
+  return valid.has(value) ? (value as ThinkingEffort) : undefined;
 }
 
 function parseBoolean(value: unknown): boolean | undefined {
@@ -410,7 +415,11 @@ export function resolveSettingsSources(
     parsePositiveInt(projectEnv.MAX_TOKENS) ??
     parsePositiveInt(userSettings?.maxTokens) ??
     parsePositiveInt(userEnv.MAX_TOKENS) ??
-    (model === "deepseek-v4-pro" ? 131072 : model.startsWith("deepseek-") ? 65536 : 32768);
+    (model === "deepseek-v4-pro"
+      ? 131072
+      : model.startsWith("deepseek-") || model.startsWith("claude-") || model.startsWith("gpt-")
+        ? 65536
+        : 32768);
 
   const notify =
     trimString(systemEnv.NOTIFY) || trimString(projectSettings?.notify) || trimString(userSettings?.notify) || "";

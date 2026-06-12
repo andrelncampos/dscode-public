@@ -334,10 +334,10 @@ test("resolveSettings allows explicit thinkingEnabled to override model defaults
   assert.equal(resolved.thinkingEnabled, false);
 });
 
-test("resolveSettings defaults invalid reasoning effort to max", () => {
+test("resolveSettings defaults invalid reasoning effort to high", () => {
   const resolved = resolveSettings(
     {
-      reasoningEffort: "medium" as never,
+      reasoningEffort: "invalid" as never,
     },
     {
       model: "default-model",

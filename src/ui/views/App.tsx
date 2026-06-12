@@ -60,7 +60,6 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
     promptDraft,
     statusLine,
     lastBashCommand,
-    sessionCwd,
     errorLine,
     activeStatus,
     dismissedQuestionIds,
@@ -78,6 +77,15 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
   // preventing PermissionPrompt from resetting on unrelated re-renders (e.g. nowTick).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableAskPermissions = useMemo(() => activeAskPermissions, [JSON.stringify(activeAskPermissions)]);
+
+  // Provider keys for ModelsDropdown: which providers have API keys configured
+  const providerKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (resolvedSettings.apiKey) keys.add("deepseek");
+    if (resolvedSettings.engines.openai?.apiKey || resolvedSettings.apiKey) keys.add("openai");
+    if (resolvedSettings.engines.anthropic?.apiKey) keys.add("anthropic");
+    return keys;
+  }, [resolvedSettings.apiKey, resolvedSettings.engines.openai?.apiKey, resolvedSettings.engines.anthropic?.apiKey]);
 
   const handleSubmit = useCallback(
     (submission: PromptSubmission) => {
@@ -385,6 +393,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         onToggleHelp={() => actions.setHelpVisible(!helpVisible)}
         helpVisible={helpVisible}
         placeholder="Type your message..."
+        providerKeys={providerKeys}
       />
     );
   }
@@ -396,7 +405,6 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         statsLine=""
         lastBashCommand={lastBashCommand}
         modelName={resolvedSettings.model}
-        cwd={sessionCwd}
         statusMessage={statusLine}
         busy={busy}
         streamProgress={streamProgress}

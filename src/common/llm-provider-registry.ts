@@ -28,14 +28,23 @@ export function createLlmProvider(
   converterOptions?: OpenAIMessageConverterOptions
 ): CreateLlmProviderReturn {
   const settings = resolveCurrentSettings(projectRoot);
-  const createClient: CreateOpenAIClient = () => createOpenAIClient(projectRoot);
 
-  if (!settings.apiKey) {
+  // Determine engine name from model prefix for API key / base URL resolution.
+  // DeepSeek and OpenAI share createOpenAIClient; Anthropic uses its own client.
+  const engineName = isOpenAIModel(settings.model) ? "openai" : undefined;
+  const createClient: CreateOpenAIClient = () => createOpenAIClient(projectRoot, engineName);
+
+  if (!settings.apiKey && !settings.engines[engineName ?? ""]?.apiKey) {
     return { provider: null, createOpenAIClient: createClient };
   }
 
   // OpenAI routing
   if (isOpenAIModel(settings.model)) {
+    // Check if engine-specific API key is available (or global fallback)
+    const { client } = createClient();
+    if (!client) {
+      return { provider: null, createOpenAIClient: createClient };
+    }
     const provider = new OpenAIProvider(createClient, converterOptions);
     return { provider, createOpenAIClient: createClient };
   }

@@ -5,6 +5,7 @@ import * as crypto from "node:crypto";
 import matter from "gray-matter";
 import ejs from "ejs";
 import type { CreateLlmProviderReturn } from "./common/llm-provider-registry";
+import { getModelCapabilities } from "./common/model-catalog";
 import { DeepSeekProvider } from "./providers/deepseek-provider";
 import { launchNotifyScript } from "./common/notify";
 import { readTextFileWithMetadata, atomicWriteFileSync, atomicWriteJsonFileSync } from "./common/file-utils";
@@ -377,7 +378,7 @@ export class SessionManager {
     this.terminalTitleTemplate = options.terminalTitleTemplate;
     this.titleManager = options.terminalTitleTemplate
       ? new TerminalTitleManager(options.terminalTitleTemplate, {
-          cwd: path.basename(process.cwd()),
+          cwd: process.cwd(),
           model: this.getResolvedSettings().model,
         })
       : null;
@@ -451,9 +452,8 @@ export class SessionManager {
   /** Update the terminal window title, typically after a CWD change. */
   updateTerminalTitle(cwd: string | null): void {
     if (!this.terminalTitleTemplate || !this.titleManager) return;
-    const dirName = cwd ? path.basename(cwd) : path.basename(this.projectRoot);
     this.titleManager.update(this.terminalTitleTemplate, {
-      cwd: dirName,
+      cwd: cwd ?? this.projectRoot,
       model: this.getResolvedSettings().model,
     });
   }
@@ -847,7 +847,7 @@ export class SessionManager {
     this.titleManager?.update(this.terminalTitleTemplate!, {
       session: entry.summary ?? undefined,
       model: this.getResolvedSettings().model,
-      cwd: path.basename(process.cwd()),
+      cwd: process.cwd(),
     });
 
     index.entries.push(entry);
@@ -1133,20 +1133,17 @@ export class SessionManager {
 
         const { provider } = this.createLlmProvider(this.buildConverterOptions());
         if (!provider) {
+          const settings = this.createOpenAIClient();
+          const caps = getModelCapabilities(settings.model);
+          const providerName = caps?.provider ?? "unknown";
+          const failMsg = `No API key configured for ${providerName}. Set engines.${providerName}.apiKey in settings.json or the DEEPCODE_ENGINE_${providerName.toUpperCase()}_API_KEY environment variable.`;
           this.updateSessionEntry(sessionId, (entry) => ({
             ...entry,
             status: "failed",
-            failReason: "API key not found",
+            failReason: failMsg,
             updateTime: new Date().toISOString(),
           }));
-          this.onAssistantMessage(
-            this.buildAssistantMessage(
-              sessionId,
-              "API key not found. Please configure ~/.dscode/settings.json or ./.dscode/settings.json.",
-              null
-            ),
-            false
-          );
+          this.onAssistantMessage(this.buildAssistantMessage(sessionId, failMsg, null), false);
           return;
         }
 
@@ -1173,6 +1170,7 @@ export class SessionManager {
 
         let content = "";
         let reasoningContent = "";
+        let signature = "";
         let streamUsage: ModelUsage | null = null;
         const toolCallsByIndex = new Map<
           number,
@@ -1226,6 +1224,10 @@ export class SessionManager {
               }
               if (event.type === "error") {
                 throw event.error;
+              }
+              if (event.type === "signature") {
+                signature = event.signature;
+                continue;
               }
             }
           });
@@ -1286,7 +1288,7 @@ export class SessionManager {
         if (this.isInterrupted(sessionId)) {
           return;
         }
-        const assistantMessage = this.buildAssistantMessage(sessionId, content, toolCalls, thinking);
+        const assistantMessage = this.buildAssistantMessage(sessionId, content, toolCalls, thinking, signature);
         const permissionPlan = toolCalls
           ? computeToolCallPermissions({
               sessionId,
@@ -2492,17 +2494,22 @@ export class SessionManager {
     sessionId: string,
     content: string | null,
     toolCalls: unknown[] | null,
-    reasoningContent?: string | null
+    reasoningContent?: string | null,
+    signature?: string
   ): SessionMessage {
     const now = new Date().toISOString();
     const hasReasoningContent = reasoningContent != null;
-    const messageParams: { tool_calls?: unknown[]; reasoning_content?: string } | null =
-      toolCalls || hasReasoningContent ? {} : null;
+    const hasSignature = signature != null && signature !== "";
+    const messageParams: { tool_calls?: unknown[]; reasoning_content?: string; signature?: string } | null =
+      toolCalls || hasReasoningContent || hasSignature ? {} : null;
     if (toolCalls) {
       messageParams!.tool_calls = toolCalls;
     }
     if (hasReasoningContent) {
       messageParams!.reasoning_content = reasoningContent;
+    }
+    if (hasSignature) {
+      messageParams!.signature = signature;
     }
     return {
       id: crypto.randomUUID(),

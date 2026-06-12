@@ -30,7 +30,7 @@ export function SessionStatsHeader({
 
   // Always show token count; show cost only when pricing is available.
   const tokensText = `⚡ ${formatTokenCount(totalTokens ?? 0)}`;
-  const costText = cost !== null ? `💰 ${formatCost(cost)}` : "";
+  const costText = cost !== null ? `⏱️ ${formatCost(cost)}` : "";
   const statsLine = costText ? `${tokensText}  ${costText}` : tokensText;
 
   return (

@@ -139,6 +139,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/exit",
     description: "Quit DsCode CLI",
   },
+  {
+    kind: "cls",
+    name: "cls",
+    label: "/cls",
+    description: "Clear the terminal screen",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

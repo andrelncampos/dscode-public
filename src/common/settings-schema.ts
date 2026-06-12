@@ -2,7 +2,7 @@ import { z, type ZodError } from "zod";
 
 // ── Shared primitives ────────────────────────────────────────────
 
-const reasoningEffortSchema = z.enum(["high", "max"] as const);
+const thinkingEffortSchema = z.enum(["none", "low", "medium", "high", "max", "xhigh"] as const);
 
 const permissionScopeSchema = z.enum([
   "read-in-cwd",
@@ -85,7 +85,7 @@ export const deepcodingSettingsSchema = z.strictObject({
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   thinkingEnabled: z.boolean().optional(),
-  reasoningEffort: reasoningEffortSchema.optional(),
+  reasoningEffort: thinkingEffortSchema.optional(),
   debugLogEnabled: z.boolean().optional(),
   telemetryEnabled: z.boolean().optional(),
   maxTokens: z.number().int().positive().optional(),

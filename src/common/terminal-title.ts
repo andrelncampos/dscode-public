@@ -45,7 +45,7 @@ export interface TerminalTitleContext {
   session?: string;
   /** Current model name */
   model?: string;
-  /** Current working directory basename */
+  /** Current working directory path */
   cwd?: string;
 }
 
@@ -55,7 +55,7 @@ export interface TerminalTitleContext {
  * Supported placeholders:
  *   {{session}} - session summary / title
  *   {{model}}   - current model name
- *   {{cwd}}     - current working directory basename
+ *   {{cwd}}     - current working directory path
  *
  * Unknown placeholders are left as-is.
  */

@@ -89,6 +89,8 @@ type Props = PromptStreamState &
     dailyCost?: number;
     /** Project lifetime total cost in USD. */
     projectCost?: number;
+    /** Set of provider names that have configured API keys. */
+    providerKeys?: Set<string>;
   };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -140,6 +142,7 @@ export const PromptInput = React.memo(function PromptInput({
   sessionCost = null,
   dailyCost = 0,
   projectCost = 0,
+  providerKeys,
 }: Props): React.ReactElement {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -215,7 +218,7 @@ export const PromptInput = React.memo(function PromptInput({
     // Build stats suffix
     let stats = "";
     if (sessionTokens > 0) stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
-    if (sessionCost !== null) stats += ` · 💰 ${formatCost(sessionCost)}`;
+    if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     stats += ` · 📅 ${formatCost(dailyCost)}`;
     stats += ` · 📦 ${formatCost(projectCost)}`;
     return `${newlineHint} · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
@@ -735,7 +738,7 @@ export const PromptInput = React.memo(function PromptInput({
   const inlineHint = matchedCommand?.args ? ` ${matchedCommand.args.join(ARGS_SEPARATOR)}` : "";
 
   return (
-    <Box flexDirection="column" width={screenWidth}>
+    <Box flexDirection="column">
       {imageUrls.length > 0 ? (
         <Box>
           <Text color="magenta">{formatImageAttachmentStatus(imageUrls.length)}</Text>
@@ -751,21 +754,17 @@ export const PromptInput = React.memo(function PromptInput({
         </Box>
       ) : null}
       {/* Input */}
-      <Box
-        width={screenWidth}
-        borderStyle="single"
-        borderTop={true}
-        borderBottom={true}
-        borderLeft={false}
-        borderRight={false}
-        borderDimColor
-      >
-        <PromptPrefixLine busy={busy} />
-        <Box flexGrow={1} flexShrink={1} width={screenWidth - 2}>
-          <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder, pastesRef.current)}</Text>
-          {inlineHint ? <Text dimColor>{inlineHint}</Text> : null}
+      <Text> </Text>
+      <Box backgroundColor="#1a1a1a">
+        <Box flexDirection="row" flexShrink={1}>
+          <PromptPrefixLine busy={busy} />
+          <Box flexShrink={1}>
+            <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder, pastesRef.current)}</Text>
+            {inlineHint ? <Text dimColor>{inlineHint}</Text> : null}
+          </Box>
         </Box>
       </Box>
+      <Text> </Text>
       <RawModelDropdown
         open={openRawModelDropdown}
         onClose={setOpenRawModelDropdown}
@@ -787,6 +786,7 @@ export const PromptInput = React.memo(function PromptInput({
         onClose={() => setShowModelDropdown(false)}
         onModelConfigChange={onModelConfigChange}
         onStatusMessage={setStatusMessage}
+        providerKeys={providerKeys}
       />
       <FileMentionMenu
         open={showFileMentionMenu}
