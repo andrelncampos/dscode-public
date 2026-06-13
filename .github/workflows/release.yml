@@ -109,27 +109,29 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remover source code assets automáticos
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          REPO="${{ github.repository }}"
+          API="https://api.github.com/repos/${{ github.repository }}"
           TAG="${{ github.ref_name }}"
-          echo "Repo: $REPO | Tag: $TAG"
+          AUTH="Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
 
-          RELEASE_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.id')
+          echo "Tag: $TAG"
+          RELEASE_ID=$(curl -sS -H "$AUTH" "$API/releases/tags/$TAG" | jq -r '.id')
           echo "Release ID: $RELEASE_ID"
 
-          gh api "repos/$REPO/releases/$RELEASE_ID/assets" --jq '.[].name'
-          echo "---"
+          echo "Assets antes:"
+          curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[].name'
 
-          ASSET_IDS=$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --jq '.[] | select(.name | contains("Source code")) | .id')
+          ASSET_IDS=$(curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[] | select(.name | contains("Source code")) | .id')
           if [ -z "$ASSET_IDS" ]; then
             echo "Nenhum asset de source code encontrado."
           else
             for id in $ASSET_IDS; do
               echo "Removendo asset $id..."
-              gh api "repos/$REPO/releases/assets/$id" -X DELETE
+              curl -sS -X DELETE -H "$AUTH" "$API/releases/assets/$id"
             done
             echo "Assets de source code removidos."
           fi
+
+          echo "Assets depois:"
+          curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[].name'
