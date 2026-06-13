@@ -96,23 +96,79 @@ function measureTextPosition(text: string, width: number, initialColumn: number)
   for (const char of Array.from(text)) {
     if (char === "\n") {
       row++;
-      column = Math.min(initialColumn, width - 1);
+      column = initialColumn; // new line stays indented (Ink flex layout keeps text at prefix offset)
       continue;
     }
 
     const charColumns = textWidth(char);
     if (column + charColumns > width) {
       row++;
-      column = Math.min(initialColumn, width - 1);
+      column = initialColumn; // wrapped line stays indented (Ink flex child position)
     }
     column += charColumns;
     if (column >= width) {
       row++;
-      column = Math.min(initialColumn, width - 1);
+      column = initialColumn; // wrapped line stays indented
     }
   }
 
   return { row, column };
+}
+
+/**
+ * ANSI escape sequence regex — matches CSI, OSC, and other escape codes.
+ * Used to skip zero-width control sequences when measuring / wrapping text.
+ */
+const ANSI_ESCAPE_REGEX = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+
+/**
+ * Insert explicit newlines at calculated wrap points so that Ink never
+ * needs to soft-wrap the text.  This keeps the rendered layout in sync
+ * with {@link measureTextPosition}, fixing the known Ink + Yoga bug where
+ * soft-wrapping produces cursor-column offsets that accumulate per line.
+ *
+ * ANSI escape sequences are treated as zero-width and preserved intact.
+ */
+export function hardWrapText(text: string, width: number, initialColumn: number): string {
+  let result = "";
+  let column = Math.min(initialColumn, width - 1);
+  let i = 0;
+
+  while (i < text.length) {
+    // Skip ANSI escape sequences (zero visible width).
+    ANSI_ESCAPE_REGEX.lastIndex = i;
+    const esc = ANSI_ESCAPE_REGEX.exec(text);
+    if (esc && esc.index === i) {
+      result += esc[0];
+      i += esc[0].length;
+      continue;
+    }
+
+    const char = text[i]!;
+
+    // Preserve existing hard newlines.
+    if (char === "\n") {
+      result += "\n";
+      column = initialColumn;
+      i++;
+      continue;
+    }
+
+    const cw = characterWidth(char);
+    if (column + cw > width) {
+      result += "\n";
+      column = initialColumn;
+    }
+    result += char;
+    column += cw;
+    if (column >= width) {
+      result += "\n";
+      column = initialColumn;
+    }
+    i++;
+  }
+
+  return result;
 }
 
 function textWidth(value: string): number {

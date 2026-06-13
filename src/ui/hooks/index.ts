@@ -8,6 +8,7 @@ export {
   usePromptTerminalCursor,
   useTerminalFocusReporting,
   getPromptCursorPlacement,
+  hardWrapText,
 } from "./cursor";
 
 export { usePasteHandling } from "./usePasteHandling";

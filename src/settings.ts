@@ -785,9 +785,16 @@ function migrateLegacyApiKey(settings: DeepcodingSettings | null, settingsPath: 
   if (!apiKey) return false;
 
   // Determine target engine from the model field.
+  // Must stay in sync with OPENAI_MODEL_PREFIXES in llm-provider-registry.ts.
   const model = (raw.model ?? "").toLowerCase();
   let engine = "deepseek";
-  if (model.startsWith("gpt-") || model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4")) {
+  if (
+    model.startsWith("gpt-") ||
+    model.startsWith("o1") ||
+    model.startsWith("o3") ||
+    model.startsWith("o4") ||
+    model.startsWith("openai-")
+  ) {
     engine = "openai";
   } else if (model.startsWith("claude-")) {
     engine = "anthropic";
@@ -795,13 +802,30 @@ function migrateLegacyApiKey(settings: DeepcodingSettings | null, settingsPath: 
     engine = "gemini";
   }
 
+  // If the target engine already has an API key configured, don't overwrite it.
+  // Just remove the legacy env.API_KEY — the existing engine key takes precedence.
+  if (raw.engines?.[engine]?.apiKey) {
+    delete raw.env.API_KEY;
+    if (Object.keys(raw.env).length === 0) {
+      delete raw.env;
+    }
+    atomicWriteJsonFileSync(settingsPath, raw);
+    return true;
+  }
+
   // Encrypt and store in engines.
   const engines = { ...(raw.engines ?? {}) };
-  engines[engine] = {
-    ...(engines[engine] ?? {}),
-    apiKey: encryptCredential(apiKey, engine),
-    apiKeyEncrypted: true,
-  };
+  try {
+    engines[engine] = {
+      ...(engines[engine] ?? {}),
+      apiKey: encryptCredential(apiKey, engine),
+      apiKeyEncrypted: true,
+    };
+  } catch {
+    // Keyfile creation may fail on read-only home directories.
+    // Leave the legacy env.API_KEY in place and let the user fix the issue.
+    return false;
+  }
 
   // Remove the legacy field.
   delete raw.env.API_KEY;

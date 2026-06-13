@@ -50,6 +50,7 @@ import {
   usePasteHandling,
   useHistoryNavigation,
   getPromptCursorPlacement,
+  hardWrapText,
   usePromptTerminalCursor,
 } from "../hooks";
 import type { InputKey } from "../hooks";
@@ -244,6 +245,12 @@ export const PromptInput = React.memo(function PromptInput({
     () => getPromptCursorPlacement(buffer, screenWidth, 2, footerText),
     [buffer, footerText, screenWidth]
   );
+  /** Pre-wrap the Ink-rendered text so that soft-wrapping never kicks in and
+   *  the visual layout stays in sync with {@link getPromptCursorPlacement}. */
+  const renderedText = useMemo(() => {
+    const raw = renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder, pastesRef.current);
+    return hardWrapText(raw, screenWidth, 2);
+  }, [buffer, disabled, hasTerminalFocus, placeholder, pastesRef, screenWidth]);
   const usePositionedCursor = !disabled && hasTerminalFocus && !showFooterText;
   useTerminalFocusReporting(stdout, !disabled);
   useTerminalExtendedKeys(stdout, !disabled);
@@ -787,7 +794,7 @@ export const PromptInput = React.memo(function PromptInput({
         <Box flexDirection="row" flexShrink={1}>
           <PromptPrefixLine busy={busy} />
           <Box flexShrink={1}>
-            <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder, pastesRef.current)}</Text>
+            <Text>{renderedText}</Text>
             {inlineHint ? <Text dimColor>{inlineHint}</Text> : null}
           </Box>
         </Box>

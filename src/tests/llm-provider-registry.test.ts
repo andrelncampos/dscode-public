@@ -95,6 +95,26 @@ test("createLlmProvider with OpenAI model and missing key returns null provider"
   }
 });
 
+test("createLlmProvider with Anthropic model and missing key returns null provider", () => {
+  const root = makeTempProject(
+    makeSettings("claude-sonnet-4-6")
+    // No API key for anthropic
+  );
+  delete process.env.DEEPCODE_ENGINE_ANTHROPIC_API_KEY;
+  const result = createLlmProvider(root);
+  assert.equal(result.provider, null);
+});
+
+test("createLlmProvider with Gemini model and missing key returns null provider", () => {
+  const root = makeTempProject(
+    makeSettings("gemini-2.5-pro")
+    // No API key for gemini
+  );
+  delete process.env.DEEPCODE_ENGINE_GEMINI_API_KEY;
+  const result = createLlmProvider(root);
+  assert.equal(result.provider, null);
+});
+
 test("createLlmProvider exports a callable createOpenAIClient function", () => {
   const root = makeTempProject(makeSettings("deepseek-v4-pro", "sk-test", "deepseek"));
   const result = createLlmProvider(root);

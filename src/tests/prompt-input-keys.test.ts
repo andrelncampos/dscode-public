@@ -346,6 +346,8 @@ test("getPromptCursorPlacement targets the prompt row above divider and footer",
 
 test("getPromptCursorPlacement targets the reserved row after a trailing newline", () => {
   const placement = getPromptCursorPlacement({ text: "hello\n", cursor: 6 }, 80, 2, "Enter send");
+  // After \n, the new line stays indented at column 2 because Ink's flex layout
+  // keeps the text child at the prefix offset on all lines.
   assert.deepEqual(placement, { rowsUp: 3, column: 2 });
 });
 
@@ -355,6 +357,7 @@ test("getPromptCursorPlacement accounts for CJK character width", () => {
 });
 
 test("getPromptCursorPlacement accounts for multiline buffer rows", () => {
+  // After \n, second line stays at column 2 (prefix offset), so cursor after "world" = column 7
   const placement = getPromptCursorPlacement({ text: "hello\nworld", cursor: 11 }, 80, 2, "Enter send");
   assert.deepEqual(placement, { rowsUp: 3, column: 7 });
   const middle = getPromptCursorPlacement({ text: "hello\nworld", cursor: 2 }, 80, 2, "Enter send");

@@ -58,12 +58,18 @@ export function createLlmProvider(
 
   // Anthropic routing
   if (isAnthropicModel(settings.model)) {
+    if (!settings.engines.anthropic?.apiKey) {
+      return { provider: null, createOpenAIClient: createClient };
+    }
     const provider = new AnthropicProvider();
     return { provider, createOpenAIClient: createClient };
   }
 
   // Gemini routing
   if (isGeminiModel(settings.model)) {
+    if (!settings.engines.gemini?.apiKey) {
+      return { provider: null, createOpenAIClient: createClient };
+    }
     const provider = new GeminiProvider();
     return { provider, createOpenAIClient: createClient };
   }
