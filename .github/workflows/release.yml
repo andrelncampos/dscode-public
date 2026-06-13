@@ -98,40 +98,32 @@ jobs:
           echo "--- Release artifacts ---"
           ls -la release-out/
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
-        with:
-          files: release-out/*
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+      - name: Create release and remove source code assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Remover source code assets automáticos
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          API="https://api.github.com/repos/${{ github.repository }}"
           TAG="${{ github.ref_name }}"
-          AUTH="Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+          REPO="${{ github.repository }}"
 
-          echo "Tag: $TAG"
-          RELEASE_ID=$(curl -sS -H "$AUTH" "$API/releases/tags/$TAG" | jq -r '.id')
-          echo "Release ID: $RELEASE_ID"
+          echo "=== Criando release $TAG ==="
+          gh release create "$TAG" release-out/* \
+            --repo "$REPO" \
+            --title "$TAG" \
+            --generate-notes \
+            --latest
 
-          echo "Assets antes:"
-          curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[].name'
+          echo "=== Aguardando assets serem populados ==="
+          sleep 5
 
-          ASSET_IDS=$(curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[] | select(.name | contains("Source code")) | .id')
-          if [ -z "$ASSET_IDS" ]; then
-            echo "Nenhum asset de source code encontrado."
-          else
-            for id in $ASSET_IDS; do
-              echo "Removendo asset $id..."
-              curl -sS -X DELETE -H "$AUTH" "$API/releases/assets/$id"
-            done
-            echo "Assets de source code removidos."
-          fi
+          echo "=== Assets na release ==="
+          gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name'
 
-          echo "Assets depois:"
-          curl -sS -H "$AUTH" "$API/releases/$RELEASE_ID/assets" | jq -r '.[].name'
+          echo "=== Removendo source code assets ==="
+          gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | select(.name | contains("Source code")) | .id' | while read id; do
+            echo "Deletando asset $id..."
+            gh api -X DELETE "repos/$REPO/releases/assets/$id" --silent || echo "FALHA ao deletar $id"
+          done
+
+          echo "=== Assets finais ==="
+          gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name'
