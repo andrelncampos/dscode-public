@@ -2507,7 +2507,19 @@ export class SessionManager {
   private renderSpecInitPrompt(): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_init.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, {});
+    const visibility = this.getRepositoryVisibility();
+    return ejs.render(template, { repositoryVisibility: visibility });
+  }
+
+  private getRepositoryVisibility(): "public" | "private" {
+    try {
+      const settingsPath = path.join(this.projectRoot, ".dscode", "settings.json");
+      const raw = fs.readFileSync(settingsPath, "utf8");
+      const settings = JSON.parse(raw);
+      return settings?.repositoryVisibility === "public" ? "public" : "private";
+    } catch {
+      return "private";
+    }
   }
 
   private renderSpecPlanPrompt(planText: string): string {
