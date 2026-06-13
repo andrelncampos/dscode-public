@@ -2,7 +2,13 @@ import { getThinkingOptionIndex } from "./components/ModelsDropdown";
 
 export { getThinkingOptionIndex };
 export { buildPromptDraftFromSessionMessage } from "./utils";
-export { disableTerminalExtendedKeys, enableTerminalExtendedKeys, getPromptCursorPlacement } from "./hooks/cursor";
+export {
+  disableTerminalExtendedKeys,
+  enableTerminalExtendedKeys,
+  getPromptCursorPlacement,
+  hardWrapText,
+  measureTextPosition,
+} from "./hooks/cursor";
 export { default as AppContainer } from "./views/AppContainer";
 export { AskUserQuestionPrompt } from "./views/AskUserQuestionPrompt";
 export { HelpModal } from "./views/HelpModal";

@@ -29,3 +29,13 @@ Em vez de deixar o Ink fazer soft-wrap (não confiável), o texto renderizado é
 - ❌ Trocar `flexShrink={1}` por `width={screenWidth - 2}` — piora drasticamente (9+ caracteres de atraso)
 - ❌ Remover `flexShrink={1}` do Box de texto — quebra o layout básico
 - ❌ Tentar "compensar" o erro no `measureTextPosition` — o erro está no Yoga, não no cálculo
+
+**Regra arquitetural (2026-06-13):**
+
+> O `PromptInput` está **proibido** de depender de soft-wrap automático do Ink quando houver cursor, prefixo, margem, padding, prompt marker, ANSI ou qualquer offset visual. Para texto editável, a regra é: **o DsCode calcula as linhas visuais; o renderizador apenas imprime.**
+>
+> Pipeline: `buffer → visual lines (hardWrapText) → cursor position (measureTextPosition) → render`.
+>
+> O Ink não decide mais onde a linha quebra.
+
+**Testes de regressão:** `src/tests/hard-wrap-regression.test.ts` — 39 testes que validam a concordância exata entre `hardWrapText()` e `measureTextPosition()` para todas as posições de cursor, cobrindo: larguras diferentes, prefixo `> `, texto longo, backspace na fronteira de quebra, cursor no meio/fim da linha, acentos, ANSI zero-width, CJK (width=2), resize do terminal, `\n` explícito, prefixWidth=0, e digitação incremental.

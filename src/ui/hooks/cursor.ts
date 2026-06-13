@@ -89,7 +89,11 @@ function measureTextRows(text: string, width: number, initialColumn: number): nu
   return measureTextPosition(text, width, initialColumn).row + 1;
 }
 
-function measureTextPosition(text: string, width: number, initialColumn: number): { row: number; column: number } {
+export function measureTextPosition(
+  text: string,
+  width: number,
+  initialColumn: number
+): { row: number; column: number } {
   let row = 0;
   let column = Math.min(initialColumn, width - 1);
 
