@@ -42,12 +42,8 @@ export function createLlmProvider(
       ? "anthropic"
       : isGeminiModel(settings.model)
         ? "gemini"
-        : undefined;
+        : "deepseek";
   const createClient: CreateOpenAIClient = () => createOpenAIClient(projectRoot, engineName);
-
-  if (!settings.apiKey && !settings.engines[engineName ?? ""]?.apiKey) {
-    return { provider: null, createOpenAIClient: createClient };
-  }
 
   // OpenAI routing
   if (isOpenAIModel(settings.model)) {

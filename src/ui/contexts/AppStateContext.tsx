@@ -530,7 +530,7 @@ export function AppStateProvider({
       const provider = caps?.provider;
       if (provider && provider !== "deepseek") {
         const engineKey = next.engines[provider]?.apiKey;
-        if (!engineKey && !next.apiKey) {
+        if (!engineKey) {
           message += `\nWarning: No API key configured for ${provider}. Set engines.${provider}.apiKey.`;
         }
       }

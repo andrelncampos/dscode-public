@@ -34,43 +34,47 @@ function makeTempProject(settingsJsonContent: Record<string, unknown>): string {
   return tmp;
 }
 
-/** Build a valid settings object with API key in the `env` block. */
+/** Build a valid settings object with API key in the engines block. */
 function makeSettings(
   model: string,
   apiKey?: string,
+  engineName?: string,
   engines?: Record<string, { apiKey?: string; baseURL?: string }>
 ): Record<string, unknown> {
   const env: Record<string, string> = {};
-  if (apiKey) env.API_KEY = apiKey;
   env.MODEL = model;
   env.BASE_URL = "https://api.deepseek.com";
   const result: Record<string, unknown> = { env, model };
-  if (engines) result.engines = engines;
+  const allEngines: Record<string, { apiKey?: string; baseURL?: string }> = { ...(engines ?? {}) };
+  if (apiKey && engineName) {
+    allEngines[engineName] = { ...(allEngines[engineName] ?? {}), apiKey };
+  }
+  if (Object.keys(allEngines).length > 0) result.engines = allEngines;
   return result;
 }
 
 test("createLlmProvider with gpt-5.4 model creates OpenAIProvider", () => {
-  const root = makeTempProject(makeSettings("gpt-5.4", "sk-test", { openai: { apiKey: "sk-openai-test" } }));
+  const root = makeTempProject(makeSettings("gpt-5.4", "sk-test", "openai", { openai: { apiKey: "sk-openai-test" } }));
   const result = createLlmProvider(root);
   assert.ok(result.provider instanceof OpenAIProvider);
   assert.equal(result.provider?.providerName, "openai");
 });
 
 test("createLlmProvider with o1 model creates OpenAIProvider", () => {
-  const root = makeTempProject(makeSettings("o1", "sk-test", { openai: { apiKey: "sk-openai-test" } }));
+  const root = makeTempProject(makeSettings("o1", "sk-test", "openai", { openai: { apiKey: "sk-openai-test" } }));
   const result = createLlmProvider(root);
   assert.ok(result.provider instanceof OpenAIProvider);
 });
 
 test("createLlmProvider with deepseek-v4-pro model creates DeepSeekProvider", () => {
-  const root = makeTempProject(makeSettings("deepseek-v4-pro", "sk-test"));
+  const root = makeTempProject(makeSettings("deepseek-v4-pro", "sk-test", "deepseek"));
   const result = createLlmProvider(root);
   assert.ok(result.provider instanceof DeepSeekProvider);
   assert.equal(result.provider?.providerName, "deepseek");
 });
 
 test("createLlmProvider with unknown model creates DeepSeekProvider (default)", () => {
-  const root = makeTempProject(makeSettings("some-unknown-model", "sk-test"));
+  const root = makeTempProject(makeSettings("some-unknown-model", "sk-test", "deepseek"));
   const result = createLlmProvider(root);
   assert.ok(result.provider instanceof DeepSeekProvider);
 });
@@ -92,7 +96,7 @@ test("createLlmProvider with OpenAI model and missing key returns null provider"
 });
 
 test("createLlmProvider exports a callable createOpenAIClient function", () => {
-  const root = makeTempProject(makeSettings("deepseek-v4-pro", "sk-test"));
+  const root = makeTempProject(makeSettings("deepseek-v4-pro", "sk-test", "deepseek"));
   const result = createLlmProvider(root);
   assert.ok(typeof result.createOpenAIClient === "function");
   const client = result.createOpenAIClient();
