@@ -93,11 +93,15 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
   // Provider keys for ModelsDropdown: which providers have API keys configured
   const providerKeys = useMemo(() => {
     const keys = new Set<string>();
-    if (resolvedSettings.apiKey) keys.add("deepseek");
-    if (resolvedSettings.engines.openai?.apiKey || resolvedSettings.apiKey) keys.add("openai");
+    if (resolvedSettings.engines.deepseek?.apiKey) keys.add("deepseek");
+    if (resolvedSettings.engines.openai?.apiKey) keys.add("openai");
     if (resolvedSettings.engines.anthropic?.apiKey) keys.add("anthropic");
     return keys;
-  }, [resolvedSettings.apiKey, resolvedSettings.engines.openai?.apiKey, resolvedSettings.engines.anthropic?.apiKey]);
+  }, [
+    resolvedSettings.engines.deepseek?.apiKey,
+    resolvedSettings.engines.openai?.apiKey,
+    resolvedSettings.engines.anthropic?.apiKey,
+  ]);
 
   const handleSubmit = useCallback(
     (submission: PromptSubmission) => {

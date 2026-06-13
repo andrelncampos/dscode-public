@@ -34,7 +34,6 @@ test("resolveSettings reads top-level thinkingEnabled and notify", () => {
 
   assert.equal(resolved.model, "deepseek-v3.2");
   assert.equal(resolved.baseURL, "https://example.com/v1");
-  assert.equal(resolved.apiKey, "sk-test");
   assert.equal(resolved.temperature, 0.3);
   assert.equal(resolved.thinkingEnabled, true);
   assert.equal(resolved.reasoningEffort, "high");
@@ -180,7 +179,6 @@ test("resolveSettingsSources applies user, project, and DEEPCODE environment pre
   );
 
   assert.equal(resolved.model, "system-model");
-  assert.equal(resolved.apiKey, "project-key");
   assert.equal(resolved.thinkingEnabled, false);
   assert.equal(resolved.reasoningEffort, "high");
   assert.equal(resolved.temperature, 1.2);
@@ -607,7 +605,7 @@ test("DEEPCODE_ENGINE_OPENAI_API_KEY populates engines.openai.apiKey", () => {
   assert.equal(resolved.engines.openai.apiKey, "sk-env-openai");
 });
 
-test("Engine-specific API key overrides global API_KEY", () => {
+test("DEEPCODE_API_KEY goes to env but is no longer a global fallback", () => {
   const env = {
     DEEPCODE_ENGINE_OPENAI_API_KEY: "sk-engine-specific",
     DEEPCODE_API_KEY: "sk-global",
@@ -623,6 +621,6 @@ test("Engine-specific API key overrides global API_KEY", () => {
   );
   // The engine-specific key is in engines.openai
   assert.equal(resolved.engines.openai?.apiKey, "sk-engine-specific");
-  // The global key is still available as the top-level apiKey
-  assert.equal(resolved.apiKey, "sk-global");
+  // The global key is now only in env, NOT a top-level apiKey
+  assert.equal(resolved.env.API_KEY, "sk-global");
 });

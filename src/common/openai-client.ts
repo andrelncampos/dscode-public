@@ -43,13 +43,13 @@ export function createOpenAIClient(
     openai: "https://api.openai.com/v1",
   };
 
-  // Resolve API key and base URL: engine-specific → engine default → global
-  let apiKey = settings.apiKey;
+  // Resolve API key and base URL: engine-specific → engine default → none
+  let apiKey: string | undefined;
   let baseURL = settings.baseURL;
   if (engineName) {
     const engineConfig = settings.engines[engineName];
     if (engineConfig) {
-      apiKey = engineConfig.apiKey || apiKey;
+      apiKey = engineConfig.apiKey;
       baseURL = engineConfig.baseURL || ENGINE_DEFAULT_BASE_URLS[engineName] || baseURL;
     } else {
       // No engine config at all — use engine-specific default base URL

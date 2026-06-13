@@ -94,7 +94,7 @@ jobs:
           ls -la release-out/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@c062c08b532815e1b6df124d8e7c9b5aa36a0e5f # v2.0.8
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
           files: release-out/*
           draft: false

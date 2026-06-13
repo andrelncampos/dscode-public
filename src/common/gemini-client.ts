@@ -20,13 +20,13 @@ export function createGeminiClient(
 ): GeminiClientConfig {
   const settings = resolveCurrentSettings(projectRoot);
 
-  // Resolve API key: engine-specific → engine default → global fallback
-  let apiKey = settings.apiKey;
+  // Resolve API key: engine-specific → none
+  let apiKey: string | undefined;
   let baseURL: string;
 
   const engineConfig = settings.engines[engineName];
   if (engineConfig) {
-    apiKey = engineConfig.apiKey || apiKey;
+    apiKey = engineConfig.apiKey;
     baseURL = engineConfig.baseURL || GEMINI_DEFAULT_BASE_URL;
   } else {
     baseURL = GEMINI_DEFAULT_BASE_URL;

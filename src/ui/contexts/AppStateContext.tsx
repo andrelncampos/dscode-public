@@ -267,7 +267,22 @@ export function AppStateProvider({
   const sessionManager = useMemo(() => {
     return new SessionManager({
       projectRoot,
-      createOpenAIClient: () => createOpenAIClient(projectRoot),
+      createOpenAIClient: () => {
+        const s = resolveCurrentSettings(projectRoot);
+        const engineName =
+          s.model.toLowerCase().startsWith("gpt-") ||
+          s.model.toLowerCase().startsWith("o1") ||
+          s.model.toLowerCase().startsWith("o3") ||
+          s.model.toLowerCase().startsWith("o4") ||
+          s.model.toLowerCase().startsWith("openai-")
+            ? "openai"
+            : s.model.toLowerCase().startsWith("claude-")
+              ? "anthropic"
+              : s.model.toLowerCase().startsWith("gemini-")
+                ? "gemini"
+                : "deepseek";
+        return createOpenAIClient(projectRoot, engineName);
+      },
       createLlmProvider: (converterOptions?: OpenAIMessageConverterOptions) =>
         createLlmProvider(projectRoot, converterOptions),
       getResolvedSettings: () => resolveCurrentSettings(projectRoot),
@@ -530,7 +545,7 @@ export function AppStateProvider({
       const provider = caps?.provider;
       if (provider && provider !== "deepseek") {
         const engineKey = next.engines[provider]?.apiKey;
-        if (!engineKey && !next.apiKey) {
+        if (!engineKey) {
           message += `\nWarning: No API key configured for ${provider}. Set engines.${provider}.apiKey.`;
         }
       }

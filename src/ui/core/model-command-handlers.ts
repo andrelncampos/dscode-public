@@ -41,8 +41,7 @@ const PROVIDER_KEY_URLS: Record<string, string> = {
 };
 
 function hasKeyForProvider(settings: ResolvedDeepcodingSettings, provider: string): boolean {
-  if (provider === "deepseek") return Boolean(settings.apiKey);
-  if (provider === "openai") return Boolean(settings.engines.openai?.apiKey) || Boolean(settings.apiKey);
+  if (provider === "deepseek") return Boolean(settings.engines.deepseek?.apiKey);
   return Boolean(settings.engines[provider]?.apiKey);
 }
 

@@ -13,7 +13,6 @@ import { execFileSync } from "node:child_process";
 export type DeepcodingEnv = Record<string, string | undefined> & {
   MODEL?: string;
   BASE_URL?: string;
-  API_KEY?: string;
   TEMPERATURE?: string;
   THINKING_ENABLED?: string;
   REASONING_EFFORT?: string;
@@ -85,7 +84,6 @@ export type DeepcodingSettings = {
 
 export type ResolvedDeepcodingSettings = {
   env: Record<string, string>;
-  apiKey?: string;
   baseURL: string;
   model: string;
   temperature?: number;
@@ -487,7 +485,6 @@ export function resolveSettingsSources(
 
   return {
     env,
-    apiKey: trimString(env.API_KEY) || undefined,
     baseURL: trimString(env.BASE_URL) || defaults.baseURL,
     model,
     temperature,
@@ -762,6 +759,84 @@ function migratePlaintextEngineKeys(settings: DeepcodingSettings | null, setting
   return changed;
 }
 
+/**
+ * Migrate legacy `env.API_KEY` into the engines namespace.
+ *
+ * Before v1.0.9 the global `env.API_KEY` served as a fallback for all providers.
+ * This is now removed — every API key must live in `engines.<provider>.apiKey`.
+ *
+ * On first load after upgrade, we read the raw file, move the plaintext key
+ * into the appropriate engine (encrypted), and remove the `env.API_KEY` field.
+ */
+function migrateLegacyApiKey(settings: DeepcodingSettings | null, settingsPath: string): boolean {
+  if (!settings?.env?.API_KEY) return false;
+  if (!fs.existsSync(settingsPath)) return false;
+
+  // Read raw JSON so we preserve all fields and can mutate `env` directly.
+  let raw: DeepcodingSettings & { env?: Record<string, string | undefined> };
+  try {
+    raw = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+  } catch {
+    return false;
+  }
+  if (!raw?.env?.API_KEY) return false;
+
+  const apiKey = trimString(raw.env.API_KEY);
+  if (!apiKey) return false;
+
+  // Determine target engine from the model field.
+  // Must stay in sync with OPENAI_MODEL_PREFIXES in llm-provider-registry.ts.
+  const model = (raw.model ?? "").toLowerCase();
+  let engine = "deepseek";
+  if (
+    model.startsWith("gpt-") ||
+    model.startsWith("o1") ||
+    model.startsWith("o3") ||
+    model.startsWith("o4") ||
+    model.startsWith("openai-")
+  ) {
+    engine = "openai";
+  } else if (model.startsWith("claude-")) {
+    engine = "anthropic";
+  } else if (model.startsWith("gemini-")) {
+    engine = "gemini";
+  }
+
+  // If the target engine already has an API key configured, don't overwrite it.
+  // Just remove the legacy env.API_KEY — the existing engine key takes precedence.
+  if (raw.engines?.[engine]?.apiKey) {
+    delete raw.env.API_KEY;
+    if (Object.keys(raw.env).length === 0) {
+      delete raw.env;
+    }
+    atomicWriteJsonFileSync(settingsPath, raw);
+    return true;
+  }
+
+  // Encrypt and store in engines.
+  const engines = { ...(raw.engines ?? {}) };
+  try {
+    engines[engine] = {
+      ...(engines[engine] ?? {}),
+      apiKey: encryptCredential(apiKey, engine),
+      apiKeyEncrypted: true,
+    };
+  } catch {
+    // Keyfile creation may fail on read-only home directories.
+    // Leave the legacy env.API_KEY in place and let the user fix the issue.
+    return false;
+  }
+
+  // Remove the legacy field.
+  delete raw.env.API_KEY;
+  if (Object.keys(raw.env).length === 0) {
+    delete raw.env; // clean empty env object
+  }
+
+  atomicWriteJsonFileSync(settingsPath, { ...raw, engines });
+  return true;
+}
+
 function encryptApiKeys(settings: DeepcodingSettings): DeepcodingSettings {
   if (!settings.engines) return settings;
   const engines = { ...settings.engines };
@@ -857,7 +932,12 @@ export function resolveCurrentSettings(projectRoot: string = process.cwd()): Res
   // settings file until the plaintext keys are gone.
   const userChanged = migratePlaintextEngineKeys(userSettings, userSettingsPath);
   const projectChanged = migratePlaintextEngineKeys(projectSettings, projectSettingsPath);
-  if (userChanged || projectChanged) {
+
+  // Migrate legacy `env.API_KEY` into engines namespace (v1.0.9+).
+  const userApiKeyMigrated = migrateLegacyApiKey(userSettings, userSettingsPath);
+  const projectApiKeyMigrated = migrateLegacyApiKey(projectSettings, projectSettingsPath);
+
+  if (userChanged || projectChanged || userApiKeyMigrated || projectApiKeyMigrated) {
     return resolveCurrentSettings(projectRoot);
   }
 
