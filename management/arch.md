@@ -101,6 +101,21 @@ main branch                             master branch
     └─ Releases via CI ── (future) ────►  Releases (binaries only)
 ```
 
+### When the public repo receives updates
+
+The sync is **automatic and one-way** (private → public) via GitHub Actions:
+
+| Trigger | What syncs |
+|---|---|
+| Push to `main` that changes `README.md` | README.md (transformed) |
+| Push to `main` that changes `docs/i18n/*.md` | All i18n READMEs (links fixed) |
+| Push to `main` that changes `scripts/sync-public-readme.sh` | Script + READMEs |
+| Manual `workflow_dispatch` | Everything |
+
+> ⚠️ **Prerequisite**: The `PUBLIC_REPO_PAT` secret must be configured in the private repo's Actions secrets (fine-grained PAT with Contents: Read and write on `dscode-public`). Without this, the workflow runs but fails to push.
+
+The public repo (`dscode-public`) is **never edited directly** — all content originates from the private repo and is transformed during sync.
+
 ### Transformation rules
 
 The `sync-public-readme.sh` script applies these transformations when copying from private to public:
