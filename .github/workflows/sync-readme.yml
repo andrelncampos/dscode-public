@@ -1,0 +1,25 @@
+name: Sync README to Public Repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+      - "docs/i18n/README.*.md"
+      - "scripts/sync-public-readme.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+
+      - name: Sync READMEs to public repo
+        env:
+          PUBLIC_REPO_PAT: ${{ secrets.PUBLIC_REPO_PAT }}
+        run: bash scripts/sync-public-readme.sh
