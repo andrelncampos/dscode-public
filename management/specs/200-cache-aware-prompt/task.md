@@ -100,10 +100,10 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 2. Add `import { createHash } from "node:crypto"` at top.
 3. Add `StablePrefixArgs` type (see Design → Data Structures).
 4. Add `getStablePrefixContent(args: StablePrefixArgs): string` function:
-   - In strict mode, use `SYSTEM_PROMPT_BASE` directly (no model name line).
-   - In aware/off mode, use the full system prompt with model name.
+   - Start with `SYSTEM_PROMPT_BASE` (model name was never part of `getSystemPrompt()` — it's in `getRuntimeContext()`).
    - Append tool docs, skill prompt, agent instructions.
    - Join with `"\n\n"`.
+   - Both aware and strict modes produce identical output — the difference is the hash verification guarantee.
 5. Add `getStablePrefixHash(content: string): string` function:
    - `return createHash("sha256").update(content, "utf8").digest("hex")`
 6. Export both functions.

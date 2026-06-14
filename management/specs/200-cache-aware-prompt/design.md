@@ -259,10 +259,10 @@ private async createSession(sessionId: string, userPrompt: UserPrompt, signal: A
   const settings = this.getResolvedSettings();
   const effectiveCacheMode = getEffectiveCacheMode(settings.cacheMode, settings.providerName);
 
-  // Stable prefix assembly
+  // System prompt assembly (cache mode doesn't affect getSystemPrompt output)
   let systemPrompt = SessionManager.systemPromptCache.get(cacheKey);
   if (!systemPrompt) {
-    systemPrompt = getSystemPrompt(this.projectRoot, promptToolOptions, effectiveCacheMode);
+    systemPrompt = getSystemPrompt(this.projectRoot, promptToolOptions);
     SessionManager.systemPromptCache.set(cacheKey, systemPrompt);
   }
 
@@ -302,7 +302,7 @@ private async createSession(sessionId: string, userPrompt: UserPrompt, signal: A
 
 **Internal Logic:**
 1. Resolve `effectiveCacheMode` via Component 6.
-2. Build system prompt with `getSystemPrompt()` — the model name line is excluded in strict mode.
+2. Build system prompt with `getSystemPrompt()` — model name was never part of `getSystemPrompt()` output (it lives in `getRuntimeContext()`). No change needed for strict mode.
 3. Append messages in fixed order: system prompt → skill prompt → runtime context → agent instructions → memory context.
 4. If cacheMode is not `"off"`, compute stable prefix hash and log it.
 5. Rest of `createSession()` unchanged.
@@ -430,7 +430,7 @@ createSession()
   → getEffectiveCacheMode("off", "deepseek") → "off"
   → getSystemPrompt(projectRoot, {model: "deepseek-v4-pro", ...})
     → readToolDocs() → ["AskUserQuestion.md", "bash.md", ... ] → join("\n\n")
-    → return SYSTEM_PROMPT_BASE + modelNameLine + toolDocs
+    → return SYSTEM_PROMPT_BASE + toolDocs
   → buildSystemMessage(systemPrompt) → append
   → getDefaultSkillPrompt() → buildSkillDocumentsPrompt(skills) → append
   → getRuntimeContext(projectRoot, "deepseek-v4-pro") → append
@@ -547,8 +547,8 @@ type StablePrefixArgs = {
 | File | Action | Purpose |
 |------|--------|---------|
 | `src/settings.ts` | **Modify** | Add `cacheMode` to `DeepcodingSettings` and `ResolvedDeepcodingSettings`. Add `resolveCacheMode()` and `getEffectiveCacheMode()`. |
-| `src/prompt.ts` | **Modify** | Annotate `.sort()` in `readToolDocs()`. Add sort to `buildSkillDocumentsPrompt()`. Add `getStablePrefixContent()` and `getStablePrefixHash()`. Modify `getSystemPrompt()` to accept cacheMode for strict mode model-line suppression. |
-| `src/session.ts` | **Modify** | Modify `createSession()` to call `getEffectiveCacheMode()`, assemble system messages per cache mode, log prefix hash. Modify `reloadAgentInstructions()` to also log hash when cacheMode active. Modify `getPromptToolOptions()` to suppress model name in strict mode. |
+| `src/prompt.ts` | **Modify** | Annotate `.sort()` in `readToolDocs()`. Add sort to `buildSkillDocumentsPrompt()`. Add `getStablePrefixContent()` and `getStablePrefixHash()`. Add `cacheMode` to `PromptToolOptions` type. |
+| `src/session.ts` | **Modify** | Modify `createSession()` to call `getEffectiveCacheMode()`, assemble system messages per cache mode, log prefix hash. Modify `reloadAgentInstructions()` to also log hash when cacheMode active. Modify `getPromptToolOptions()` to return `cacheMode` field. |
 | `src/common/budget-tracker.ts` | **Modify** | Extend `buildBudgetMarkdown()` to 3 columns. Extend `parseBudgetFile()` to parse cache columns. |
 | `src/tests/cache-aware-prompt.test.ts` | **Create** | Unit tests for all components (see Testing Strategy). |
 | `src/tests/budget-tracker.test.ts` | **Modify** | Add tests for cache column persistence and backward compatibility. |
