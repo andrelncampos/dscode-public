@@ -472,6 +472,33 @@ export class SessionManager {
     return this.mcpManager.getStatus();
   }
 
+  getMcpManager(): McpManager {
+    return this.mcpManager;
+  }
+
+  async disableMcpServer(name: string): Promise<void> {
+    const scope = this.mcpManager.getServerScope(name);
+    if (scope && (scope.kind === "session" || scope.kind === "skill")) {
+      throw new Error("Cannot disable session-scoped servers");
+    }
+    let filePath: string;
+    if (scope?.kind === "global") {
+      filePath = `${require("node:os").homedir()}/.dscode/mcp.json`;
+    } else if (scope?.kind === "project") {
+      filePath = `${this.projectRoot}/.dscode/mcp.json`;
+    } else {
+      // legacy — skip for now, settings.json modification is complex
+      return;
+    }
+    const raw = require("node:fs").readFileSync(filePath, "utf8");
+    const config = JSON.parse(raw);
+    if (!config.servers) config.servers = {};
+    if (!config.servers[name]) config.servers[name] = {};
+    config.servers[name].disabled = true;
+    require("node:fs").writeFileSync(filePath, JSON.stringify(config, null, 2) + "\n", "utf8");
+    this.mcpManager.disconnectServer(name, true);
+  }
+
   async reconnectMcpServer(name: string, config?: McpServerConfig): Promise<void> {
     await this.mcpManager.reconnect(name, config);
     this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();

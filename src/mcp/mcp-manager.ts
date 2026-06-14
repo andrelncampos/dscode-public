@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { McpClient, type McpToolDefinition, type McpPromptDefinition, type McpResourceDefinition } from "./mcp-client";
 import { McpHttpClient } from "./mcp-http-client";
 import type { McpPolicy } from "./mcp-policy";
@@ -35,7 +37,33 @@ export type McpServerStatus = {
   resourceCount: number;
   resources: string[];
   reconnectAttempt?: number;
+  scope?: { kind: string; label: string };
+  policyStats?: { allowed: number; total: number };
+  disabled?: boolean;
 };
+
+export type McpServerScopeKind = "global" | "project" | "session" | "skill" | "spec" | "legacy";
+
+export interface McpServerScope {
+  kind: McpServerScopeKind;
+  label: string; // e.g. "~/.dscode/mcp.json", "skill: postgres-dba", "spec: 160"
+}
+
+export interface McpExecutionRecord {
+  timestamp: number; // Date.now() at call time
+  toolName: string; // namespaced name (mcp__server__tool)
+  originalName: string; // original tool name
+  serverName: string; // server name
+  ok: boolean; // call result
+  error?: string; // error message if !ok
+  outputSnippet: string; // first 200 chars of output
+  durationMs: number; // call duration
+}
+
+export interface McpErrorRecord {
+  timestamp: number; // Date.now() when error occurred
+  message: string; // error message
+}
 
 function buildMcpNamespacedName(
   serverName: string,
@@ -97,6 +125,9 @@ export class McpManager {
   private reconnectAttempts: Map<string, number> = new Map();
   private policy?: McpPolicy;
   private specMcpFilter: Set<string> | null = null;
+  private executionHistory = new Map<string, McpExecutionRecord[]>();
+  private errorLog = new Map<string, McpErrorRecord[]>();
+  private serverScopes = new Map<string, McpServerScope>();
 
   setPolicy(policy: McpPolicy): void {
     this.policy = policy;
@@ -117,6 +148,9 @@ export class McpManager {
     if (this.disposed) return;
     Object.assign(this.serverConfigs, servers);
     this.prepare(servers);
+    for (const name of Object.keys(servers)) {
+      this.setServerScope(name, { kind: "skill", label: `skill: ${skillName}` });
+    }
 
     const promises = Object.entries(servers).map(async ([name, config]) => {
       // Skip if server already connected globally (no skillName)
@@ -187,13 +221,14 @@ export class McpManager {
       }));
   }
 
-  prepare(servers?: Record<string, McpServerConfig>): void {
+  prepare(servers?: Record<string, McpServerConfig>, scope?: McpServerScope): void {
     if (!servers || Object.keys(servers).length === 0) return;
     this.disposed = false;
     for (const name of Object.keys(servers)) {
       if (!this.configuredServerNames.includes(name)) {
         this.configuredServerNames.push(name);
       }
+      if (scope) this.setServerScope(name, scope);
       if (this.serverStatuses.some((status) => status.name === name)) {
         continue;
       }
@@ -211,12 +246,12 @@ export class McpManager {
     }
   }
 
-  async initialize(servers?: Record<string, McpServerConfig>): Promise<void> {
+  async initialize(servers?: Record<string, McpServerConfig>, scope?: McpServerScope): Promise<void> {
     if (this.initialized || this.disposed) return;
     this.initialized = true;
     if (!servers || Object.keys(servers).length === 0) return;
     this.serverConfigs = servers;
-    this.prepare(servers);
+    this.prepare(servers, scope);
     for (const [name, config] of Object.entries(servers)) {
       if (this.disposed) break;
       await this.connectServer(name, config);
@@ -359,6 +394,7 @@ export class McpManager {
     } catch (err) {
       client?.disconnect();
       const message = err instanceof Error ? err.message : String(err);
+      this.recordError(name, message);
       this.setStatus({
         name,
         status: "failed",
@@ -384,6 +420,7 @@ export class McpManager {
 
     const attempt = this.reconnectAttempts.get(name) ?? 0;
     if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+      this.recordError(name, reason);
       this.setStatus({
         name,
         status: "failed",
@@ -451,6 +488,10 @@ export class McpManager {
           resources: [],
         });
       }
+    }
+    for (const status of result) {
+      status.scope = this.getServerScope(status.name);
+      status.policyStats = this.getServerPolicyStats(status.name);
     }
     return result;
   }
@@ -564,6 +605,15 @@ export class McpManager {
         .map((c) => c.text)
         .join("\n");
       const r = { ok: !result.isError, name, output: text || JSON.stringify(result.content) };
+      this.recordExecution({
+        timestamp: auditStartMs || Date.now(),
+        toolName: name,
+        originalName: tool.originalName,
+        serverName: tool.serverName,
+        ok: !result.isError,
+        outputSnippet: (text || JSON.stringify(result.content) || "").slice(0, 200),
+        durationMs: Date.now() - (auditStartMs || Date.now()),
+      });
       if (auditContext) {
         const durationMs = Date.now() - auditStartMs;
         console.log(`[MCP-AUDIT spec=${auditContext.specNumber}] tool=${name} result=ok duration=${durationMs}ms`);
@@ -571,6 +621,16 @@ export class McpManager {
       return r;
     } catch (err) {
       const r = { ok: false, name, error: err instanceof Error ? err.message : String(err) };
+      this.recordExecution({
+        timestamp: auditStartMs || Date.now(),
+        toolName: name,
+        originalName: tool.originalName,
+        serverName: tool.serverName,
+        ok: false,
+        error: r.error,
+        outputSnippet: "",
+        durationMs: Date.now() - (auditStartMs || Date.now()),
+      });
       if (auditContext) {
         const durationMs = Date.now() - auditStartMs;
         console.log(`[MCP-AUDIT spec=${auditContext.specNumber}] tool=${name} result=error duration=${durationMs}ms`);
@@ -629,6 +689,185 @@ export class McpManager {
     this.configuredServerNames = [];
     this.serverConfigs = {};
     this.initialized = false;
+    this.executionHistory.clear();
+    this.errorLog.clear();
+    this.serverScopes.clear();
+  }
+
+  // ── Execution History ──────────────────────────────────────────────────
+
+  recordExecution(record: McpExecutionRecord): void {
+    const arr = this.executionHistory.get(record.serverName) ?? [];
+    arr.push(record);
+    if (arr.length > 100) arr.splice(0, arr.length - 100);
+    this.executionHistory.set(record.serverName, arr);
+  }
+
+  getExecutionHistory(serverName: string): McpExecutionRecord[] {
+    return (this.executionHistory.get(serverName) ?? []).slice().reverse();
+  }
+
+  getAllExecutionHistory(): Map<string, McpExecutionRecord[]> {
+    return new Map(this.executionHistory);
+  }
+
+  // ── Error Log ──────────────────────────────────────────────────────────
+
+  recordError(serverName: string, message: string): void {
+    const arr = this.errorLog.get(serverName) ?? [];
+    arr.push({ timestamp: Date.now(), message });
+    if (arr.length > 50) arr.splice(0, arr.length - 50);
+    this.errorLog.set(serverName, arr);
+  }
+
+  getErrorLog(serverName: string): McpErrorRecord[] {
+    return (this.errorLog.get(serverName) ?? []).slice().reverse();
+  }
+
+  getAllErrorLogs(): Map<string, McpErrorRecord[]> {
+    return new Map(this.errorLog);
+  }
+
+  // ── Scope Tracking ─────────────────────────────────────────────────────
+
+  setServerScope(name: string, scope: McpServerScope): void {
+    this.serverScopes.set(name, scope);
+  }
+
+  getServerScope(name: string): McpServerScope | undefined {
+    return this.serverScopes.get(name);
+  }
+
+  // ── Policy Stats ───────────────────────────────────────────────────────
+
+  getServerPolicyStats(serverName: string): { allowed: number; total: number } {
+    const serverTools = this.tools.filter((t) => t.serverName === serverName);
+    const total = serverTools.length;
+    const allowed = serverTools.filter((t) => this.policy?.evaluate(t.namespacedName) === "allow").length;
+    return { allowed, total };
+  }
+
+  // ── Disconnect Single Server ───────────────────────────────────────────
+
+  disconnectServer(name: string, keepDisabledStatus = false): void {
+    this.tools = this.tools.filter((t) => t.serverName !== name);
+    this.prompts = this.prompts.filter((p) => p.serverName !== name);
+    this.resources = this.resources.filter((r) => r.serverName !== name);
+    this.clients = this.clients.filter((c) => {
+      const stillUsed =
+        this.tools.some((t) => t.client === c) ||
+        this.prompts.some((p) => p.client === c) ||
+        this.resources.some((r) => r.client === c);
+      if (!stillUsed) c.disconnect();
+      return stillUsed;
+    });
+    delete this.serverConfigs[name];
+    if (!keepDisabledStatus) {
+      this.configuredServerNames = this.configuredServerNames.filter((n) => n !== name);
+      this.serverStatuses = this.serverStatuses.filter((s) => s.name !== name);
+    } else {
+      const existing = this.serverStatuses.find((s) => s.name === name);
+      if (existing) {
+        existing.connected = false;
+        existing.disabled = true;
+        existing.toolCount = 0;
+        existing.tools = [];
+        existing.promptCount = 0;
+        existing.prompts = [];
+        existing.resourceCount = 0;
+        existing.resources = [];
+      }
+    }
+    this.serverScopes.delete(name);
+    this.executionHistory.delete(name);
+    this.errorLog.delete(name);
+    const timer = this.reconnectTimers.get(name);
+    if (timer) {
+      clearTimeout(timer);
+      this.reconnectTimers.delete(name);
+    }
+    this.onToolsListChanged?.();
+    this.onStatusChanged?.();
+  }
+
+  // ── Steering Rule Management ───────────────────────────────────────────
+
+  addSteeringRule(projectRoot: string, action: "allow" | "deny", toolName: string): void {
+    if (!toolName.startsWith("mcp__")) return;
+    const agentsPath = path.join(projectRoot, "AGENTS.md");
+    let content: string;
+    try {
+      content = fs.readFileSync(agentsPath, "utf8");
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        fs.writeFileSync(agentsPath, `## Steering\n\n- MCP: ${action} ${toolName}\n`, "utf8");
+        this.policy?.reload([`- MCP: ${action} ${toolName}`]);
+        return;
+      }
+      throw err;
+    }
+
+    const steeringIdx = content.indexOf("\n## Steering\n");
+    const newLine = `- MCP: ${action} ${toolName}`;
+
+    if (steeringIdx === -1) {
+      // No Steering section — append at end
+      fs.writeFileSync(agentsPath, `${content}\n## Steering\n\n${newLine}\n`, "utf8");
+      this.policy?.reload([newLine]);
+      return;
+    }
+
+    // Find end of Steering section
+    const sectionStart = steeringIdx + 1;
+    const nextHeadingIdx = content.indexOf("\n## ", sectionStart + 1);
+    const before = content.slice(0, sectionStart);
+    const section = content.slice(sectionStart, nextHeadingIdx === -1 ? undefined : nextHeadingIdx);
+    const after = nextHeadingIdx === -1 ? "" : content.slice(nextHeadingIdx);
+
+    // Check for duplicates
+    if (section.includes(newLine)) return;
+
+    // Append the new rule
+    const newSection = section.endsWith("\n") ? `${section}${newLine}\n` : `${section}\n${newLine}\n`;
+    fs.writeFileSync(agentsPath, `${before}${newSection}${after}`, "utf8");
+    this.policy?.reload(this.extractSteeringLines(section + newLine + "\n"));
+  }
+
+  removeSteeringRule(projectRoot: string, toolName: string): void {
+    const agentsPath = path.join(projectRoot, "AGENTS.md");
+    let content: string;
+    try {
+      content = fs.readFileSync(agentsPath, "utf8");
+    } catch {
+      return;
+    }
+
+    const steeringIdx = content.indexOf("\n## Steering\n");
+    if (steeringIdx === -1) return;
+
+    const sectionStart = steeringIdx + 1;
+    const nextHeadingIdx = content.indexOf("\n## ", sectionStart + 1);
+    const before = content.slice(0, sectionStart);
+    const section = content.slice(sectionStart, nextHeadingIdx === -1 ? undefined : nextHeadingIdx);
+    const after = nextHeadingIdx === -1 ? "" : content.slice(nextHeadingIdx);
+
+    // Remove exact-match lines
+    const newSection = section
+      .split("\n")
+      .filter((line) => !line.startsWith(`- MCP: allow ${toolName}`) && !line.startsWith(`- MCP: deny ${toolName}`))
+      .join("\n");
+
+    if (newSection !== section.replace(/\n$/, "")) {
+      fs.writeFileSync(agentsPath, `${before}${newSection}\n${after}`, "utf8");
+      this.policy?.reload(this.extractSteeringLines(newSection));
+    }
+  }
+
+  private extractSteeringLines(text: string): string[] {
+    return text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("- MCP:"));
   }
 
   private async refreshServerTools(serverName: string, client: McpClient | McpHttpClient): Promise<void> {

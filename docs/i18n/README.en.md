@@ -74,6 +74,16 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ## Installation
 
+### Via npm (recommended)
+
+```bash
+npm install -g @andrelncampos/dscode
+```
+
+Requires [Node.js 24+](https://nodejs.org). After installing, run `dscode` in your terminal.
+
+### Standalone binaries
+
 Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode/releases)**.  
 **No prerequisites** — the binary is self-contained, no Node.js or other dependencies required.
 
@@ -86,6 +96,18 @@ Download the binary for your operating system from the **[releases page](https:/
 
 Each release includes a `checksums.txt` with **SHA256** hashes to verify download integrity.
 After downloading, extract the archive and run `./dscode` in your terminal.
+
+## Updates
+
+DsCode automatically checks for new versions on startup. If an update is available, you'll be notified and can install it with one keystroke.
+
+To check manually:
+
+```bash
+dscode --update
+```
+
+If a newer version is available, DsCode will ask if you want to install it. Otherwise, it will display "DsCode is up to date."
 
 ---
 
@@ -406,6 +428,42 @@ Imagine you want to add **OpenAI support** to DsCode. The real flow:
 ```
 
 > 💡 **Tip**: `spec-verify` and `spec-audit` are your allies. Run them until they say "0 issues found". Each pass improves quality with zero regression risk.
+
+---
+
+## MCP — Model Context Protocol
+
+DsCode integrates the **Model Context Protocol (MCP)**, allowing the AI to connect to external tools such as databases, browsers, APIs, and local servers. Support covers the full lifecycle: skills, SDD, and TUI.
+
+### Skills with MCP
+
+Skills can include an `mcp.json` file that declares MCP servers. When the skill is activated (via keyword match or `#skill-name`), the servers start automatically. When the conversation moves to another topic, they are suspended — no global tool catalog pollution.
+
+Example: a `postgres-dba` skill brings tools like `query`, `list_tables`, and `describe`, plus safety rules (`MCP: deny drop_table`). All in one installable package.
+
+### SDD + MCP
+
+The SDD cycle integrates with MCP at three levels:
+- **Specs declare MCP dependencies** in YAML frontmatter, defining servers and tools relevant to that spec.
+- **Assisted creation**: during `/spec-new`, the AI queries real data sources (GitHub issues, databases, documentation) to produce requirements grounded in real data.
+- **Scoped access**: each spec defines a temporary tool allowlist, keeping the AI focused on what matters.
+
+### TUI Inspection & Actions
+
+The `/mcp` command opens a full management panel:
+- **Server list** with status, scope (`[global]`, `[project]`, `[skill: ...]`, `[spec: N]`), and policy summary.
+- **Details** with policy badges (`auto-allow`, `ask`, `deny`) for each tool.
+- **Execution history** and **error log** for diagnostics.
+- **Keyboard shortcuts**: `A` approve, `D` deny, `R` reset policy, `X` disable server, `Ctrl+R` reconnect.
+
+### Where to configure MCP servers
+
+| Level | Location | Scope |
+|---|---|---|
+| Global | `~/.dscode/settings.json` → `mcpServers` | All sessions |
+| Project | `.dscode/mcp.json` | Sessions in that directory |
+| Skill | `<skill>/mcp.json` | When the skill is active |
+| Spec | Spec YAML frontmatter | During `/spec-implement` |
 
 ---
 
@@ -803,9 +861,7 @@ If you encounter a problem, open an [issue on GitHub](https://github.com/andreln
 
 When reporting, include:
 
-- **DsCode version**: `dscode --version`
-- **Operating system**: Windows 11, Ubuntu 24.04, macOS 15, etc.
-- **Node.js**: `node --version`
+- **DsCode version**: `dscode --version` (shows version + node + platform)
 - **Model used**: `deepseek-v4-pro`, `deepseek-v4-flash`, etc.
 - **Command executed** and the full error
 - **Sanitized logs**, if relevant (remove keys, tokens, and private data)
@@ -845,7 +901,7 @@ See [SECURITY.md](../../SECURITY.md) for the full policy.
 
 ## License and origin
 
-DsCode is licensed under the **MIT License**.
+**DsCode is free to use, but the source code is not public.** The product is made available at no cost for individual and professional use. Redistribution is allowed only of the official binaries.
 
 This project is derived from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originally MIT licensed. The original copyright notice is preserved in [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE).
 

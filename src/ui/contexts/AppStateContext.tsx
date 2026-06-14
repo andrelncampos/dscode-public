@@ -8,6 +8,7 @@ import { createOpenAIClient } from "../../common/openai-client";
 import { createLlmProvider } from "../../common/llm-provider-registry";
 import type { OpenAIMessageConverterOptions } from "../../common/openai-message-converter";
 import { SessionManager } from "../../session";
+import type { McpExecutionRecord, McpErrorRecord } from "../../mcp/mcp-manager";
 import type {
   LlmStreamProgress,
   MessageMeta,
@@ -81,6 +82,8 @@ export interface AppStore {
   welcomeOverlayDismissed: boolean;
   resolvedSettings: ResolvedDeepcodingSettings;
   mcpStatuses: ReturnType<SessionManager["getMcpStatus"]>;
+  executionHistory: Map<string, McpExecutionRecord[]>;
+  errorLog: Map<string, McpErrorRecord[]>;
   showProcessStdout: boolean;
   helpVisible: boolean;
 
@@ -237,6 +240,8 @@ export function AppStateProvider({
   const [welcomeOverlayDismissed, setWelcomeOverlayDismissed] = useState(false);
   const [resolvedSettings, setResolvedSettings] = useState(() => resolveCurrentSettings(projectRoot));
   const [mcpStatuses, setMcpStatuses] = useState<ReturnType<SessionManager["getMcpStatus"]>>([]);
+  const [executionHistory, setExecutionHistory] = useState<Map<string, McpExecutionRecord[]>>(new Map());
+  const [errorLog, setErrorLog] = useState<Map<string, McpErrorRecord[]>>(new Map());
   const [showProcessStdout, setShowProcessStdout] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
 
@@ -351,7 +356,11 @@ export function AppStateProvider({
         }
       };
     })(),
-    onMcpStatusChanged: () => setMcpStatuses(sessionManager.getMcpStatus()),
+    onMcpStatusChanged: () => {
+      setMcpStatuses(sessionManager.getMcpStatus());
+      setExecutionHistory(sessionManager.getMcpManager().getAllExecutionHistory());
+      setErrorLog(sessionManager.getMcpManager().getAllErrorLogs());
+    },
     onProcessStdout: (pid, chunk) => {
       const buf = processStdoutRef.current;
       const current = buf.get(pid) ?? "";
@@ -717,6 +726,8 @@ export function AppStateProvider({
     welcomeOverlayDismissed,
     resolvedSettings,
     mcpStatuses,
+    executionHistory,
+    errorLog,
     showProcessStdout,
     helpVisible,
     screenWidth,

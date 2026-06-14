@@ -71,22 +71,22 @@ export async function promptForPendingUpdate(packageInfo: PackageInfo): Promise<
   return { installed: false };
 }
 
-export async function checkForNpmUpdate(packageInfo: PackageInfo): Promise<void> {
+export async function checkForNpmUpdate(packageInfo: PackageInfo): Promise<boolean> {
   if (!packageInfo.name || !packageInfo.version) {
-    return;
+    return false;
   }
 
   try {
     const latestVersion = await fetchLatestNpmVersion(packageInfo.name);
     if (!latestVersion || compareVersions(latestVersion, packageInfo.version) <= 0) {
       clearPendingUpdate();
-      return;
+      return false;
     }
 
     const state = readUpdateState();
     if (state.ignoredVersions?.includes(latestVersion)) {
       clearPendingUpdate(state);
-      return;
+      return false;
     }
 
     writeUpdateState({
@@ -98,8 +98,10 @@ export async function checkForNpmUpdate(packageInfo: PackageInfo): Promise<void>
         checkedAt: new Date().toISOString(),
       },
     });
+    return true;
   } catch {
     // Update checks must never affect CLI startup or normal operation.
+    return false;
   }
 }
 
@@ -158,6 +160,7 @@ async function promptUpdateChoice({
 }
 
 async function runNpmInstallGlobal(installSpec: string): Promise<boolean> {
+  process.stdout.write(`\n⬇  Running npm install -g ${installSpec}...\n\n`);
   const { promise, resolve } = Promise.withResolvers<boolean>();
   const child = spawnNpm(["install", "-g", installSpec], {
     stdio: "inherit",

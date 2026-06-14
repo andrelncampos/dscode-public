@@ -516,6 +516,8 @@ rl.on("line", (line) => {
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 0 },
     },
   ]);
 
@@ -532,6 +534,8 @@ rl.on("line", (line) => {
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 2 },
     },
   ]);
   const mcpManager = (manager as any).mcpManager;
@@ -751,6 +755,8 @@ test("SessionManager reports configured MCP servers as starting before initializ
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 0 },
     },
   ]);
 });

@@ -1,35 +1,83 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { Box, Text, useInput, useWindowSize } from "ink";
-import type { McpServerStatus } from "../../mcp/mcp-manager";
+import type { McpServerStatus, McpExecutionRecord, McpErrorRecord } from "../../mcp/mcp-manager";
+import type { McpPolicy } from "../../mcp/mcp-policy";
+import {
+  formatScopeLabel,
+  getScopeColor,
+  formatPolicyStats,
+  getPolicyStatsColor,
+  formatRelativeTime,
+  truncateToolDescription,
+} from "../core/mcp-tui-utils";
+
+type McpViewMode = "server-list" | "server-detail" | "execution-history" | "error-log";
+
+type DetailItem = {
+  type: string;
+  name: string;
+  namespacedName: string;
+  description?: string;
+  policyAction?: "allow" | "ask" | "deny";
+  denyReason?: string;
+};
 
 type Props = {
   statuses: McpServerStatus[];
   onCancel: () => void;
   onReconnect: (name: string) => void;
+  onReconnectFromList: (name: string) => void;
+  onDisableServer: (name: string) => void;
+  onApproveTool: (serverName: string, toolName: string) => void;
+  onDenyTool: (serverName: string, toolName: string) => void;
+  onResetToolPolicy: (serverName: string, toolName: string) => void;
+  executionHistory: Map<string, McpExecutionRecord[]>;
+  errorLog: Map<string, McpErrorRecord[]>;
+  policy?: McpPolicy;
+  projectRoot: string;
 };
 
-export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React.ReactElement {
+export function McpStatusList({
+  statuses,
+  onCancel,
+  onReconnect,
+  onReconnectFromList,
+  onDisableServer,
+  onApproveTool,
+  onDenyTool,
+  onResetToolPolicy,
+  executionHistory,
+  errorLog,
+  policy,
+  projectRoot: _projectRoot,
+}: Props): React.ReactElement {
   const { columns, rows } = useWindowSize();
-
-  // View mode: server-list or server-detail
-  const [viewMode, setViewMode] = useState<"server-list" | "server-detail">("server-list");
-  // Selected server index
+  const [viewMode, setViewMode] = useState<McpViewMode>("server-list");
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
+  const [activeServerName, setActiveServerName] = useState("");
 
-  // Return to server list
   const goBack = useCallback(() => {
     setViewMode("server-list");
   }, []);
 
-  // Enter server detail (allows ready, failed, reconnecting states)
   const enterDetail = useCallback(() => {
     const server = statuses[selectedServerIndex];
     if (server && (server.status === "ready" || server.status === "failed" || server.status === "reconnecting")) {
+      setActiveServerName(server.name);
       setViewMode("server-detail");
     }
   }, [statuses, selectedServerIndex]);
 
-  // When no servers, listen for Esc key to exit
+  const showHistory = useCallback((name: string) => {
+    setActiveServerName(name);
+    setViewMode("execution-history");
+  }, []);
+
+  const showErrors = useCallback((name: string) => {
+    setActiveServerName(name);
+    setViewMode("error-log");
+  }, []);
+
   useInput((input, key) => {
     if (statuses.length === 0 && (key.escape || (key.ctrl && (input === "c" || input === "C")))) {
       onCancel();
@@ -54,6 +102,30 @@ export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React
     );
   }
 
+  if (viewMode === "execution-history") {
+    return (
+      <ExecutionHistoryView
+        serverName={activeServerName}
+        records={executionHistory.get(activeServerName) ?? []}
+        onBack={goBack}
+        rows={rows}
+        columns={columns}
+      />
+    );
+  }
+
+  if (viewMode === "error-log") {
+    return (
+      <ErrorLogView
+        serverName={activeServerName}
+        errors={errorLog.get(activeServerName) ?? []}
+        onBack={goBack}
+        rows={rows}
+        columns={columns}
+      />
+    );
+  }
+
   if (viewMode === "server-detail") {
     return (
       <ServerDetailView
@@ -61,6 +133,12 @@ export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React
         onBack={goBack}
         onCancel={onCancel}
         onReconnect={onReconnect}
+        onShowHistory={showHistory}
+        onShowErrors={showErrors}
+        onApproveTool={onApproveTool}
+        onDenyTool={onDenyTool}
+        onResetToolPolicy={onResetToolPolicy}
+        policy={policy}
         rows={rows}
         columns={columns}
       />
@@ -74,19 +152,24 @@ export function McpStatusList({ statuses, onCancel, onReconnect }: Props): React
       onSelect={setSelectedServerIndex}
       onEnter={enterDetail}
       onCancel={onCancel}
+      onReconnectFromList={onReconnectFromList}
+      onDisableServer={onDisableServer}
       rows={rows}
       columns={columns}
     />
   );
 }
 
-// ==================== Server List View ====================
+// ── Server List View ─────────────────────────────────────────────────────
+
 function ServerListView({
   statuses,
   selectedIndex,
   onSelect,
   onEnter,
   onCancel,
+  onReconnectFromList,
+  onDisableServer,
   rows,
   columns,
 }: {
@@ -95,25 +178,27 @@ function ServerListView({
   onSelect: (index: number) => void;
   onEnter: () => void;
   onCancel: () => void;
+  onReconnectFromList: (name: string) => void;
+  onDisableServer: (name: string) => void;
   rows: number;
   columns: number;
 }): React.ReactElement {
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [pendingDisable, setPendingDisable] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
   const serverCount = statuses.length;
 
   const maxVisible = useMemo(() => {
-    const reservedLines = 8; // header + footer + borders
+    const reservedLines = 8;
     const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
-    // Each server occupies 1 row (title) + 1 row (error or stats) + 1 row (spacing)
     return Math.max(1, Math.floor(availableLines / 3));
   }, [rows]);
 
-  // Calculate label column width: find the longest server name, plus prefix and icon
   const labelColumnWidth = useMemo(() => {
     if (serverCount === 0) return 0;
-    const longestName = Math.max(...statuses.map((s) => s.name.length));
-    const contentWidth = longestName + 5; // +2 for prefix "> " or "  ", +3 for icon "✓ "
-    const maxAllowed = Math.max(15, Math.floor((columns - 6) * 0.4)); // 40% of container width, at least 15 cols
+    const longestName = Math.max(...statuses.map((s) => s.name.length + 15)); // +15 for scope label
+    const contentWidth = longestName + 5;
+    const maxAllowed = Math.max(20, Math.floor((columns - 6) * 0.45));
     return Math.min(contentWidth, maxAllowed);
   }, [statuses, serverCount, columns]);
 
@@ -122,7 +207,6 @@ function ServerListView({
     return Math.max(0, Math.min(selectedIndex, serverCount - 1));
   }, [selectedIndex, serverCount]);
 
-  // Auto-scroll to keep selected item visible
   React.useEffect(() => {
     if (safeIndex < scrollOffset) {
       setScrollOffset(safeIndex);
@@ -135,14 +219,26 @@ function ServerListView({
     return statuses.slice(scrollOffset, scrollOffset + maxVisible);
   }, [statuses, scrollOffset, maxVisible]);
 
+  // Clear pendingDisable on navigation
+  React.useEffect(() => {
+    setPendingDisable(null);
+    setStatusMessage("");
+  }, [selectedIndex]);
+
+  // Auto-dismiss status message
+  React.useEffect(() => {
+    if (!statusMessage) return;
+    const timer = setTimeout(() => setStatusMessage(""), 3000);
+    return () => clearTimeout(timer);
+  }, [statusMessage]);
+
   useInput((input, key) => {
     if (key.escape || (key.ctrl && (input === "c" || input === "C"))) {
       onCancel();
       return;
     }
-    if (serverCount === 0) {
-      return;
-    }
+    if (serverCount === 0) return;
+
     if (key.upArrow) {
       onSelect(Math.max(0, selectedIndex - 1));
       return;
@@ -165,18 +261,52 @@ function ServerListView({
     }
     if (key.end) {
       onSelect(serverCount - 1);
+      return;
     }
-    // Enter key to open detail
     if (key.return) {
       onEnter();
       return;
     }
+    // r key: reconnect from list view (only on failed servers)
+    if (input === "r" && safeIndex >= 0) {
+      const server = statuses[safeIndex];
+      if (server && server.status === "failed") {
+        onReconnectFromList(server.name);
+      }
+      return;
+    }
+    // d key: disable server with confirmation
+    if (input === "d" && safeIndex >= 0) {
+      const server = statuses[safeIndex];
+      if (!server) return;
+      if (server.disabled) {
+        setStatusMessage("Server is already disabled.");
+        setPendingDisable(null);
+        return;
+      }
+      const scope = server.scope?.kind;
+      if (scope === "session" || scope === "skill") {
+        setStatusMessage("Session-scoped servers cannot be disabled from TUI.");
+        setPendingDisable(null);
+        return;
+      }
+      if (pendingDisable === server.name) {
+        onDisableServer(server.name);
+        setPendingDisable(null);
+        setStatusMessage("");
+        return;
+      }
+      setPendingDisable(server.name);
+      setStatusMessage(`Press d again to disable '${server.name}'`);
+      return;
+    }
   });
 
-  const readyCount = statuses.filter((s) => s.status === "ready").length;
+  const readyCount = statuses.filter((s) => s.status === "ready" && !s.disabled).length;
   const startingCount = statuses.filter((s) => s.status === "starting").length;
   const reconnectingCount = statuses.filter((s) => s.status === "reconnecting").length;
-  const failedCount = statuses.filter((s) => s.status === "failed").length;
+  const failedCount = statuses.filter((s) => s.status === "failed" && !s.disabled).length;
+  const disabledCount = statuses.filter((s) => s.disabled).length;
 
   return (
     <Box
@@ -188,7 +318,6 @@ function ServerListView({
       marginTop={1}
     >
       <Box flexDirection="column" borderStyle="round" borderDimColor flexGrow={1} overflow="hidden">
-        {/* Header row */}
         <Box paddingX={1} gap={1}>
           <Text bold color="#229ac3">
             Manage MCP servers
@@ -199,10 +328,10 @@ function ServerListView({
             <Text color="yellow">{startingCount} starting,</Text>
             {reconnectingCount > 0 && <Text color="#ff9900">{reconnectingCount} reconnecting,</Text>}
             <Text color="red">{failedCount} failed</Text>
+            {disabledCount > 0 && <Text dimColor>, {disabledCount} disabled</Text>}
             <Text dimColor>)</Text>
           </Box>
         </Box>
-        {/* Items list */}
         <Box
           borderTop={true}
           borderBottom={true}
@@ -218,7 +347,6 @@ function ServerListView({
           {visibleServers.map((status, i) => {
             const actualIndex = scrollOffset + i;
             const isSelected = actualIndex === safeIndex;
-
             return (
               <ServerRow
                 key={`server-${status.name}`}
@@ -237,9 +365,13 @@ function ServerListView({
             </Box>
           ) : null}
         </Box>
-        {/* Footer */}
+        {statusMessage ? (
+          <Box paddingX={1}>
+            <Text dimColor>{statusMessage}</Text>
+          </Box>
+        ) : null}
         <Box paddingX={1}>
-          <Text dimColor>↑/↓ navigate · Enter view details · Esc close</Text>
+          <Text dimColor>↑/↓ navigate · Enter details · r reconnect · d disable · Esc close</Text>
         </Box>
       </Box>
     </Box>
@@ -266,14 +398,12 @@ function ServerRow({
           ? "#ff9900"
           : "yellow";
 
-  // Flash animation: when a server just became ready, blink green ↔ gold for 5 s.
   const [flashFrame, setFlashFrame] = React.useState(-1);
   React.useEffect(() => {
     if (status.status !== "ready") {
       setFlashFrame(-1);
       return;
     }
-    // Only start flashing when transitioning into ready (flashFrame === -1).
     if (flashFrame !== -1) return;
     setFlashFrame(0);
     const start = Date.now();
@@ -289,10 +419,9 @@ function ServerRow({
     return () => clearInterval(interval);
   }, [status.status, flashFrame]);
 
-  const flashing = flashFrame >= 0 && flashFrame < 13; // ~5 s / 400 ms ≈ 12.5
+  const flashing = flashFrame >= 0 && flashFrame < 13;
   const color = flashing ? (flashFrame % 2 === 0 ? "green" : "#e6b800") : steadyColor;
 
-  // Loading animation: cycles through (empty) → . → .. → ... → (empty) → ...
   const [dots, setDots] = React.useState(0);
   React.useEffect(() => {
     if (status.status !== "starting" && status.status !== "reconnecting") return;
@@ -302,32 +431,45 @@ function ServerRow({
     return () => clearInterval(interval);
   }, [status.status]);
 
-  const detail =
-    status.status === "ready"
+  const scopeLabel = formatScopeLabel(status.scope);
+  const scopeColor = status.scope ? getScopeColor(status.scope.kind) : undefined;
+  const policyText = formatPolicyStats(status.policyStats);
+  const policyColor = getPolicyStatsColor(status.policyStats);
+
+  const detail = status.disabled
+    ? "Disabled"
+    : status.status === "ready"
       ? `Ready (${status.toolCount} tools, ${status.promptCount} prompts, ${status.resourceCount} resources)`
       : status.status === "failed"
-        ? `Failed`
+        ? "Failed"
         : status.status === "reconnecting"
           ? `Reconnecting${dots > 0 ? ".".repeat(dots) : "   "}`
           : "Starting" + (dots > 0 ? ".".repeat(dots) : "   ");
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      {/* Server row */}
       <Box gap={2}>
         <Box width={labelColumnWidth} flexShrink={0}>
-          <Text color={selected ? "#229ac3" : undefined}>
+          <Text color={selected ? "#229ac3" : undefined} dimColor={status.disabled}>
             {selected ? "> " : "  "}
             <Text color={color}>{icon} </Text>
             <Text bold>{status.name}</Text>
+            {scopeLabel ? <Text color={scopeColor}> {scopeLabel}</Text> : null}
           </Text>
         </Box>
         <Box flexGrow={1}>
-          <Text dimColor>{detail}</Text>
+          <Text dimColor>
+            {detail}
+            {policyText ? <Text color={policyColor}> {policyText}</Text> : null}
+          </Text>
         </Box>
+        {status.disabled ? (
+          <Box>
+            <Text dimColor>[disabled]</Text>
+          </Box>
+        ) : null}
       </Box>
 
-      {/* Error message for failed or reconnecting servers */}
       {(status.status === "failed" || status.status === "reconnecting") && status.error ? (
         <ErrorRow error={status.error} />
       ) : null}
@@ -335,12 +477,19 @@ function ServerRow({
   );
 }
 
-// ==================== Server Detail View ====================
+// ── Server Detail View ───────────────────────────────────────────────────
+
 function ServerDetailView({
   server,
   onBack,
   onCancel,
   onReconnect,
+  onShowHistory,
+  onShowErrors,
+  onApproveTool,
+  onDenyTool,
+  onResetToolPolicy,
+  policy,
   rows,
   columns,
 }: {
@@ -348,29 +497,52 @@ function ServerDetailView({
   onBack: () => void;
   onCancel: () => void;
   onReconnect: (name: string) => void;
+  onShowHistory: (name: string) => void;
+  onShowErrors: (name: string) => void;
+  onApproveTool: (serverName: string, toolName: string) => void;
+  onDenyTool: (serverName: string, toolName: string) => void;
+  onResetToolPolicy: (serverName: string, toolName: string) => void;
+  policy?: McpPolicy;
   rows: number;
   columns: number;
 }): React.ReactElement {
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [_showSchema, setShowSchema] = React.useState(false);
+  const [statusMessage, setStatusMessage] = React.useState("");
   const hasReconnect = server.status === "failed";
   const canScroll = server.status === "ready";
 
-  // Merge all items (tools, prompts, resources) + Reconnect option
-  const allItems = useMemo(() => {
-    const items: { type: string; name: string }[] = [];
+  const allItems: DetailItem[] = useMemo(() => {
+    const items: DetailItem[] = [];
     if (hasReconnect) {
-      items.push({ type: "action", name: "Reconnect" });
+      items.push({ type: "action", name: "Reconnect", namespacedName: "" });
     }
-    server.tools.forEach((tool) => items.push({ type: "tool", name: tool }));
-    server.prompts.forEach((prompt) => items.push({ type: "prompt", name: prompt }));
-    server.resources.forEach((resource) => items.push({ type: "resource", name: resource }));
+    for (const toolName of server.tools) {
+      const action = policy?.evaluate(toolName) ?? "ask";
+      const denyReason = action === "deny" ? (policy?.findDenyReason(toolName) ?? undefined) : undefined;
+      const desc = "No description"; // descriptions populated from McpManager data if available
+      items.push({
+        type: "tool",
+        name: toolName,
+        namespacedName: toolName,
+        description: desc,
+        policyAction: action,
+        denyReason,
+      });
+    }
+    for (const prompt of server.prompts) {
+      items.push({ type: "prompt", name: prompt, namespacedName: prompt, policyAction: "ask" });
+    }
+    for (const resource of server.resources) {
+      items.push({ type: "resource", name: resource, namespacedName: resource, policyAction: "ask" });
+    }
     return items;
-  }, [server, hasReconnect]);
+  }, [server, hasReconnect, policy]);
 
   const totalItems = allItems.length;
 
   const maxVisible = useMemo(() => {
-    const reservedLines = 12; // header + title + stats + error + footer + borders
+    const reservedLines = 14;
     const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
     return Math.max(1, availableLines);
   }, [rows]);
@@ -393,6 +565,13 @@ function ServerDetailView({
 
   const visibleItems = allItems.slice(visibleStart, visibleStart + maxVisible);
 
+  // Auto-dismiss status message
+  React.useEffect(() => {
+    if (!statusMessage) return;
+    const timer = setTimeout(() => setStatusMessage(""), 2000);
+    return () => clearTimeout(timer);
+  }, [statusMessage]);
+
   useInput((input, key) => {
     if (key.ctrl && (input === "c" || input === "C")) {
       onCancel();
@@ -400,6 +579,54 @@ function ServerDetailView({
     }
     if (key.escape) {
       onBack();
+      return;
+    }
+    // Tab: toggle schema
+    if (key.tab) {
+      setShowSchema((prev) => !prev);
+      return;
+    }
+    // h: show history
+    if (input === "h" && !key.tab) {
+      onShowHistory(server.name);
+      return;
+    }
+    // e: show errors
+    if (input === "e") {
+      onShowErrors(server.name);
+      return;
+    }
+    // a: approve tool
+    if (input === "a" && activeIndex >= 0 && activeIndex < allItems.length) {
+      const item = allItems[activeIndex];
+      if (item.type !== "tool") {
+        setStatusMessage("Policy rules only apply to tools.");
+        return;
+      }
+      onApproveTool(server.name, item.namespacedName);
+      setStatusMessage(`MCP policy updated: allow ${item.namespacedName}`);
+      return;
+    }
+    // d: deny tool
+    if (input === "d" && activeIndex >= 0 && activeIndex < allItems.length) {
+      const item = allItems[activeIndex];
+      if (item.type !== "tool") {
+        setStatusMessage("Policy rules only apply to tools.");
+        return;
+      }
+      onDenyTool(server.name, item.namespacedName);
+      setStatusMessage(`MCP policy updated: deny ${item.namespacedName}`);
+      return;
+    }
+    // Backspace: reset tool policy
+    if (key.backspace && activeIndex >= 0 && activeIndex < allItems.length) {
+      const item = allItems[activeIndex];
+      if (item.type !== "tool") {
+        setStatusMessage("Policy rules only apply to tools.");
+        return;
+      }
+      onResetToolPolicy(server.name, item.namespacedName);
+      setStatusMessage(`MCP policy reset: ${item.namespacedName}`);
       return;
     }
     if (key.return || input === " ") {
@@ -448,6 +675,9 @@ function ServerDetailView({
           ? "#ff9900"
           : "yellow";
 
+  const scopeLabel = server.scope ? `${server.scope.label}` : "";
+  const scopeKind = server.scope?.kind ?? "";
+
   return (
     <Box
       flexDirection="column"
@@ -458,7 +688,6 @@ function ServerDetailView({
       marginTop={1}
     >
       <Box flexDirection="column" borderStyle="round" borderDimColor flexGrow={1} overflow="hidden">
-        {/* Header row */}
         <Box paddingX={1} gap={1}>
           <Text color={statusColor}>{statusIcon} </Text>
           <Text bold color="#229ac3" wrap="truncate-end">
@@ -466,21 +695,21 @@ function ServerDetailView({
           </Text>
           <Text dimColor>— {server.status === "ready" ? "Details" : "Status"}</Text>
         </Box>
-        {/* Server info */}
-        <Box paddingX={1} marginLeft={3}>
+        <Box paddingX={1} marginLeft={3} flexDirection="column">
           <Text wrap="truncate-end">
             {server.status === "ready"
               ? `${server.toolCount} tools, ${server.promptCount} prompts, ${server.resourceCount} resources`
               : `Status: ${server.status}`}
           </Text>
+          {scopeLabel ? (
+            <Text dimColor>Source: {scopeKind === "skill" || scopeKind === "spec" ? scopeLabel : scopeLabel}</Text>
+          ) : null}
         </Box>
-        {/* Error for failed/reconnecting */}
         {server.error && (server.status === "failed" || server.status === "reconnecting") ? (
           <Box paddingX={1} marginLeft={3}>
             <ErrorRow error={server.error} />
           </Box>
         ) : null}
-        {/* Items list */}
         <Box
           borderTop={true}
           borderBottom={true}
@@ -523,14 +752,16 @@ function ServerDetailView({
             </Box>
           ) : null}
         </Box>
-        {/* Footer */}
+        {statusMessage ? (
+          <Box paddingX={1}>
+            <Text dimColor>{statusMessage}</Text>
+          </Box>
+        ) : null}
         <Box paddingX={1}>
           <Text dimColor>
             {hasReconnect
               ? "Enter to reconnect · Esc back · Ctrl+C close"
-              : canScroll
-                ? "↑/↓ scroll · Space/Enter back · Esc back · Ctrl+C close"
-                : "Space/Enter back · Esc back · Ctrl+C close"}
+              : `↑/↓ nav · Tab schema · a approve · d deny · Backspace reset · h history · e errors · Esc back`}
           </Text>
         </Box>
       </Box>
@@ -538,24 +769,251 @@ function ServerDetailView({
   );
 }
 
-function ItemRow({ item, selected }: { item: { type: string; name: string }; selected: boolean }): React.ReactElement {
+function ItemRow({ item, selected }: { item: DetailItem; selected: boolean }): React.ReactElement {
   const isAction = item.type === "action";
   const icon = isAction ? "↻" : item.type === "tool" ? "🔧" : item.type === "prompt" ? "📝" : "📦";
-  const color = isAction && selected ? "#ff9900" : selected ? "#229ac3" : undefined;
+  const highlightColor = isAction && selected ? "#ff9900" : selected ? "#229ac3" : undefined;
+
+  const policyColor = item.policyAction === "allow" ? "green" : item.policyAction === "deny" ? "red" : "yellow";
 
   return (
-    <Box height={1} flexDirection="row">
-      <Text color={selected ? "#229ac3" : undefined}>{selected ? "> " : "  "}</Text>
-      <Text dimColor>{icon} </Text>
-      <Text color={color} dimColor={!selected} bold={isAction} wrap="truncate-end">
-        {isAction ? `[${item.name}]` : item.name}
-      </Text>
+    <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Text color={highlightColor}>{selected ? "> " : "  "}</Text>
+        <Text dimColor>{icon} </Text>
+        <Box flexDirection="column" flexGrow={1}>
+          <Box flexDirection="row" gap={1}>
+            <Text color={highlightColor} dimColor={!selected} bold={isAction} wrap="truncate-end">
+              {isAction ? `[${item.name}]` : item.name}
+            </Text>
+            {item.policyAction && item.type !== "action" ? (
+              <Text color={policyColor}>[{item.policyAction}]</Text>
+            ) : null}
+          </Box>
+          {item.description && item.type !== "action" ? (
+            <Box marginLeft={1}>
+              <Text dimColor wrap="truncate-end">
+                {truncateToolDescription(item.description, 80)}
+              </Text>
+            </Box>
+          ) : null}
+        </Box>
+      </Box>
+      {item.policyAction === "deny" && item.denyReason ? (
+        <Box marginLeft={4}>
+          <Text color="red" dimColor>
+            denied by: {item.denyReason}
+          </Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }
 
+// ── Execution History View ───────────────────────────────────────────────
+
+function ExecutionHistoryView({
+  serverName,
+  records,
+  onBack,
+  rows,
+  columns,
+}: {
+  serverName: string;
+  records: McpExecutionRecord[];
+  onBack: () => void;
+  rows: number;
+  columns: number;
+}): React.ReactElement {
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const itemCount = records.length;
+
+  const maxVisible = useMemo(() => {
+    const reservedLines = 8;
+    const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
+    return Math.max(1, availableLines);
+  }, [rows]);
+
+  const visibleItems = records.slice(scrollOffset, scrollOffset + maxVisible);
+  const now = Date.now();
+
+  useInput((input, key) => {
+    if (key.escape || input === "h") {
+      onBack();
+      return;
+    }
+    if (key.upArrow) {
+      setScrollOffset((prev) => Math.max(0, prev - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setScrollOffset((prev) => Math.min(Math.max(0, itemCount - maxVisible), prev + 1));
+      return;
+    }
+    if (key.pageUp) {
+      setScrollOffset((prev) => Math.max(0, prev - maxVisible));
+      return;
+    }
+    if (key.pageDown) {
+      setScrollOffset((prev) => Math.min(Math.max(0, itemCount - maxVisible), prev + maxVisible));
+    }
+  });
+
+  return (
+    <Box
+      flexDirection="column"
+      width={Math.max(20, columns - 6)}
+      height={Math.max(5, Math.min(rows - 1, 30))}
+      overflow="hidden"
+      paddingX={1}
+      marginTop={1}
+    >
+      <Box flexDirection="column" borderStyle="round" borderDimColor flexGrow={1} overflow="hidden">
+        <Box paddingX={1} gap={1}>
+          <Text bold color="#229ac3" wrap="truncate-end">
+            {serverName}
+          </Text>
+          <Text dimColor>— Execution History</Text>
+        </Box>
+        <Box
+          borderTop={true}
+          borderBottom={true}
+          borderLeft={false}
+          borderRight={false}
+          borderStyle="round"
+          borderDimColor
+          flexDirection="column"
+          flexGrow={1}
+          paddingX={1}
+          overflow="hidden"
+        >
+          {visibleItems.length === 0 ? (
+            <Box paddingY={1}>
+              <Text dimColor>No execution history</Text>
+            </Box>
+          ) : (
+            visibleItems.map((rec, i) => (
+              <Box key={`${rec.timestamp}-${i}`} flexDirection="row" gap={1} height={1}>
+                <Text color={rec.ok ? "green" : "red"}>{rec.ok ? "✓" : "✗"} </Text>
+                <Text wrap="truncate-end">{rec.originalName}</Text>
+                <Text dimColor>{formatRelativeTime(rec.timestamp, now)}</Text>
+                <Text dimColor>{rec.durationMs}ms</Text>
+                <Text dimColor wrap="truncate-end">
+                  {rec.ok ? rec.outputSnippet || "(empty)" : rec.error || "error"}
+                </Text>
+              </Box>
+            ))
+          )}
+        </Box>
+        <Box paddingX={1}>
+          <Text dimColor>↑/↓ scroll · h/Esc back</Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// ── Error Log View ───────────────────────────────────────────────────────
+
+function ErrorLogView({
+  serverName,
+  errors,
+  onBack,
+  rows,
+  columns,
+}: {
+  serverName: string;
+  errors: McpErrorRecord[];
+  onBack: () => void;
+  rows: number;
+  columns: number;
+}): React.ReactElement {
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const itemCount = errors.length;
+
+  const maxVisible = useMemo(() => {
+    const reservedLines = 8;
+    const availableLines = Math.max(0, Math.min(rows, 30) - reservedLines);
+    return Math.max(1, availableLines);
+  }, [rows]);
+
+  const visibleItems = errors.slice(scrollOffset, scrollOffset + maxVisible);
+  const now = Date.now();
+
+  useInput((input, key) => {
+    if (key.escape || input === "e") {
+      onBack();
+      return;
+    }
+    if (key.upArrow) {
+      setScrollOffset((prev) => Math.max(0, prev - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setScrollOffset((prev) => Math.min(Math.max(0, itemCount - maxVisible), prev + 1));
+      return;
+    }
+    if (key.pageUp) {
+      setScrollOffset((prev) => Math.max(0, prev - maxVisible));
+      return;
+    }
+    if (key.pageDown) {
+      setScrollOffset((prev) => Math.min(Math.max(0, itemCount - maxVisible), prev + maxVisible));
+    }
+  });
+
+  return (
+    <Box
+      flexDirection="column"
+      width={Math.max(20, columns - 6)}
+      height={Math.max(5, Math.min(rows - 1, 30))}
+      overflow="hidden"
+      paddingX={1}
+      marginTop={1}
+    >
+      <Box flexDirection="column" borderStyle="round" borderDimColor flexGrow={1} overflow="hidden">
+        <Box paddingX={1} gap={1}>
+          <Text bold color="#229ac3" wrap="truncate-end">
+            {serverName}
+          </Text>
+          <Text dimColor>— Error Log</Text>
+        </Box>
+        <Box
+          borderTop={true}
+          borderBottom={true}
+          borderLeft={false}
+          borderRight={false}
+          borderStyle="round"
+          borderDimColor
+          flexDirection="column"
+          flexGrow={1}
+          paddingX={1}
+          overflow="hidden"
+        >
+          {visibleItems.length === 0 ? (
+            <Box paddingY={1}>
+              <Text dimColor>No errors recorded</Text>
+            </Box>
+          ) : (
+            visibleItems.map((rec, i) => (
+              <Box key={`${rec.timestamp}-${i}`} flexDirection="row" gap={2} height={1}>
+                <Text dimColor>{formatRelativeTime(rec.timestamp, now)}</Text>
+                <Text wrap="truncate-end">{rec.message}</Text>
+              </Box>
+            ))
+          )}
+        </Box>
+        <Box paddingX={1}>
+          <Text dimColor>↑/↓ scroll · e/Esc back</Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// ── Error Row ────────────────────────────────────────────────────────────
+
 function ErrorRow({ error }: { error: string }): React.ReactElement {
-  // Split the error message by newline, display each line separately
   const lines = error.split("\n").filter((line) => line.trim().length > 0);
 
   return (

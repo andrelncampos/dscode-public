@@ -74,6 +74,8 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
     mcpStatuses,
     showProcessStdout,
     helpVisible,
+    executionHistory,
+    errorLog,
     screenWidth,
     screenHeight,
   } = state;
@@ -360,6 +362,28 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
               const latest = resolveCurrentSettings(projectRoot);
               void sessionManager.reconnectMcpServer(name, latest.mcpServers?.[name]);
             }}
+            onReconnectFromList={(name) => {
+              const latest = resolveCurrentSettings(projectRoot);
+              void sessionManager.reconnectMcpServer(name, latest.mcpServers?.[name]);
+            }}
+            onDisableServer={(name) => {
+              void sessionManager.disableMcpServer(name);
+            }}
+            onApproveTool={(serverName, toolName) => {
+              sessionManager.getMcpManager().addSteeringRule(projectRoot, "allow", toolName);
+              actions.setMcpStatuses(sessionManager.getMcpStatus());
+            }}
+            onDenyTool={(serverName, toolName) => {
+              sessionManager.getMcpManager().addSteeringRule(projectRoot, "deny", toolName);
+              actions.setMcpStatuses(sessionManager.getMcpStatus());
+            }}
+            onResetToolPolicy={(serverName, toolName) => {
+              sessionManager.getMcpManager().removeSteeringRule(projectRoot, toolName);
+              actions.setMcpStatuses(sessionManager.getMcpStatus());
+            }}
+            executionHistory={executionHistory}
+            errorLog={errorLog}
+            projectRoot={projectRoot}
           />
         );
       default:
