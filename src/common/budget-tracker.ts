@@ -4,12 +4,16 @@ import type { ModelUsage } from "../session";
 import { computeUsageCost, formatCost, DEFAULT_MODEL_PRICING, type ModelPricing } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
+import { computeCacheHitRate, computeCacheSavings } from "./cache-metrics";
 
 const BUDGET_FILE = "budget.md";
 
 type DailyCost = {
   date: string; // YYYY-MM-DD
   cost: number;
+  cacheSaved: number;
+  cacheHitTokens: number;
+  cacheMissTokens: number;
 };
 
 function getBudgetPath(projectRoot: string): string {
@@ -41,7 +45,7 @@ function parseBudgetFile(content: string): DailyCost[] {
       const date = match[1];
       const cost = parseFloat(match[2]);
       if (date && Number.isFinite(cost)) {
-        costs.push({ date, cost });
+        costs.push({ date, cost, cacheSaved: 0, cacheHitTokens: 0, cacheMissTokens: 0 });
       }
     }
   }
@@ -148,8 +152,16 @@ export function recordBudgetCost(
     const existing = costs.find((entry) => entry.date === today);
     if (existing) {
       existing.cost += cost;
+      if (typeof usage.normalizedCacheHitTokens === "number") {
+        existing.cacheHitTokens += usage.normalizedCacheHitTokens;
+        existing.cacheMissTokens += usage.normalizedCacheMissTokens ?? 0;
+        existing.cacheSaved += computeCacheSavings(usage.normalizedCacheHitTokens, pricing);
+      }
     } else {
-      costs.push({ date: today, cost });
+      const cacheHit = typeof usage.normalizedCacheHitTokens === "number" ? usage.normalizedCacheHitTokens : 0;
+      const cacheMiss = typeof usage.normalizedCacheMissTokens === "number" ? usage.normalizedCacheMissTokens : 0;
+      const cacheSaved = cacheHit > 0 ? computeCacheSavings(cacheHit, pricing) : 0;
+      costs.push({ date: today, cost, cacheSaved, cacheHitTokens: cacheHit, cacheMissTokens: cacheMiss });
     }
 
     writeBudget(projectRoot, costs);

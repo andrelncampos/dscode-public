@@ -201,6 +201,10 @@ export class AnthropicProvider implements ILlmProvider {
               prompt_tokens: inputTokens,
               completion_tokens: outputTokens,
               total_tokens: inputTokens + outputTokens,
+              cache_read_input_tokens:
+                typeof event.usage.cache_read_input_tokens === "number"
+                  ? event.usage.cache_read_input_tokens
+                  : undefined,
             };
             yield { type: "usage", usage };
             break;

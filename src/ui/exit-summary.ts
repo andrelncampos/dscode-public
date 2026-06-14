@@ -1,8 +1,10 @@
 import chalk from "chalk";
 import gradientString from "gradient-string";
 import type { ModelUsage, SessionEntry } from "../session";
-import { computeSessionCost, formatCost } from "../common/model-capabilities";
+import { computeSessionCost, formatCost, DEFAULT_MODEL_PRICING } from "../common/model-capabilities";
+import type { ModelPricing } from "../common/model-capabilities";
 import { getBudgetCosts } from "../common/budget-tracker";
+import { computeCacheHitRate, computeCacheSavings, formatCacheMetrics } from "../common/cache-metrics";
 import type { I18nTFunction } from "../i18n/translate";
 
 type ExitSummaryInput = {
@@ -137,6 +139,13 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
     rows.push("");
   }
 
+  // ── Cache efficiency ─────────────────────────────────────────────
+  const cacheText = buildCacheEfficiencyLine(session?.usagePerModel ?? null);
+  if (cacheText && hasUsage) {
+    rows.push(cacheText);
+    rows.push("");
+  }
+
   // ── Cost summary ─────────────────────────────────────────────────
   const sessionCost = computeSessionCost(session?.usagePerModel ?? null);
   const showSessionCost = sessionCost !== null && sessionCost > 0;
@@ -166,4 +175,29 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
   const body = rows.map((row) => line(row)).join("\n");
 
   return [top, body, bottom].join("\n");
+}
+
+function buildCacheEfficiencyLine(usagePerModel: Record<string, ModelUsage> | null): string | null {
+  if (!usagePerModel) return null;
+  let totalHit = 0;
+  let totalMiss = 0;
+  const totalCached = 0;
+  let hasAny = false;
+
+  for (const [model, usage] of Object.entries(usagePerModel)) {
+    if (typeof usage.normalizedCacheHitTokens === "number") {
+      totalHit += usage.normalizedCacheHitTokens;
+      totalMiss += usage.normalizedCacheMissTokens ?? 0;
+      hasAny = true;
+    }
+  }
+
+  if (!hasAny || totalHit === 0) return null;
+
+  const hitRate = computeCacheHitRate(totalHit, totalMiss);
+  if (hitRate === null) return null;
+
+  const pricing: ModelPricing | undefined = DEFAULT_MODEL_PRICING[Object.keys(usagePerModel)[0]];
+  const savings = computeCacheSavings(totalHit, pricing ?? { inputPrice: 0, outputPrice: 0, cacheReadPrice: 0 });
+  return `Cache (session): ${formatCacheMetrics(hitRate, savings)?.replace("Cache: ", "") ?? ""}`;
 }

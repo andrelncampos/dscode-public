@@ -61,6 +61,7 @@ import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
 import { recordBudgetCost } from "./common/budget-tracker";
+import { normalizeCacheTokens } from "./common/cache-metrics";
 import type { ModelPricing } from "./common/model-capabilities";
 import { runWithExecCtx } from "./common/execution-context";
 import { TerminalTitleManager } from "./common/terminal-title";
@@ -211,6 +212,12 @@ export type ModelUsage = {
   prompt_tokens_details?: Record<string, unknown>;
   prompt_cache_hit_tokens?: number;
   prompt_cache_miss_tokens?: number;
+  /** Anthropic-specific: input tokens read from prompt cache. */
+  cache_read_input_tokens?: number;
+  /** Normalized cached input tokens across providers. Set by SessionManager after each API call. */
+  normalizedCacheHitTokens?: number;
+  /** Normalized non-cached input tokens across providers. Set by SessionManager after each API call. */
+  normalizedCacheMissTokens?: number;
   total_reqs?: number;
 };
 
@@ -1537,6 +1544,11 @@ export class SessionManager {
               }
             : null);
         if (responseUsage) {
+          const cache = normalizeCacheTokens(responseUsage);
+          if (cache !== null) {
+            responseUsage.normalizedCacheHitTokens = cache.hit;
+            responseUsage.normalizedCacheMissTokens = cache.miss;
+          }
           const budgetWarning = recordBudgetCost(
             this.projectRoot,
             model,
