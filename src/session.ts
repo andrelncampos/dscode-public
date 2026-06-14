@@ -1281,6 +1281,21 @@ export class SessionManager {
         }
       }
     }
+    // ── Budget command dispatch ──────────────────────────────
+    if (userPrompt.text && userPrompt.text.trim() === "/budget") {
+      const budgetPath = path.join(this.projectRoot, ".dscode", "budget.md");
+      let message: string;
+      if (fs.existsSync(budgetPath)) {
+        message = fs.readFileSync(budgetPath, "utf-8");
+      } else {
+        message =
+          "Nenhum dado de budget ainda. O arquivo `.dscode/budget.md` será criado após a primeira chamada de API com custo registrado.";
+      }
+      const sysMsg = this.buildSystemMessage(sessionId, message);
+      this.appendSessionMessage(sessionId, sysMsg);
+      this.onAssistantMessage(sysMsg, true);
+      return;
+    }
     this.activeSessionId = sessionId;
     await this.activateSession(sessionId, controller);
     if (this.isSteeringAddPrompt(userPrompt.text)) {
