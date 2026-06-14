@@ -19,6 +19,7 @@ import {
 } from "../core/ask-user-question";
 import { PermissionPrompt, type PermissionPromptResult } from "./PermissionPrompt";
 import { computeSessionCost } from "../../common/model-capabilities";
+import { computeCacheLine } from "../../common/cache-metrics";
 import { getModelCapabilities } from "../../common/model-catalog";
 import { getBudgetCosts } from "../../common/budget-tracker";
 import { RawMode, useRawModeContext } from "../contexts";
@@ -181,6 +182,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
       sessionCost = computeSessionCost(usagePerModel, resolvedSettings.modelPricing);
     }
   }
+  const cacheLine = computeCacheLine(usagePerModel, resolvedSettings.modelPricing);
   if (activeSession) {
     sessionActiveTokens = activeSession.activeTokens;
   }
@@ -444,6 +446,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         sessionContextWindow={getModelCapabilities(resolvedSettings.model)?.contextWindow}
         dailyCost={budgetCosts.todayCost}
         projectCost={budgetCosts.projectTotal}
+        cacheLine={cacheLine}
         onSubmit={handleSubmit}
         onModelConfigChange={handleModelConfigChange}
         onRawModeChange={actions.handleRawModeChange}

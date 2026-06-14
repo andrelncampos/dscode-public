@@ -1,5 +1,6 @@
 import type { ModelUsage } from "../session";
 import type { ModelPricing } from "./model-capabilities";
+import { DEFAULT_MODEL_PRICING } from "./model-capabilities";
 
 export type NormalizedCacheTokens = {
   /** Number of input tokens served from KV/prompt cache. */
@@ -96,4 +97,40 @@ export function formatCacheMetrics(hitRate: number | null, savings: number): str
   const rateStr = hitRate === 100 || hitRate === 0 ? `${Math.round(hitRate)}` : hitRate.toFixed(1);
   const savingsStr = savings < 0.01 && savings > 0 ? "<$0.01" : `$${savings.toFixed(2)}`;
   return `Cache: ${rateStr}% hit | saved ${savingsStr}`;
+}
+
+/**
+ * Compute a compact cache display line from per-model usage and pricing.
+ * Returns null when no cache data is present or hit rate === 0.
+ */
+export function computeCacheLine(
+  usagePerModel: Record<string, ModelUsage> | null,
+  modelPricing?: Record<string, ModelPricing>
+): string | null {
+  if (!usagePerModel) return null;
+  let totalHit = 0;
+  let totalMiss = 0;
+  let hasAny = false;
+
+  for (const usage of Object.values(usagePerModel)) {
+    if (typeof usage.normalizedCacheHitTokens === "number") {
+      totalHit += usage.normalizedCacheHitTokens;
+      totalMiss += usage.normalizedCacheMissTokens ?? 0;
+      hasAny = true;
+    }
+  }
+
+  if (!hasAny || totalHit === 0) return null;
+
+  const hitRate = computeCacheHitRate(totalHit, totalMiss);
+  if (hitRate === null) return null;
+
+  let pricing = modelPricing?.[Object.keys(usagePerModel)[0]];
+  if (!pricing) {
+    pricing = DEFAULT_MODEL_PRICING[Object.keys(usagePerModel)[0]];
+  }
+  if (!pricing) return null;
+
+  const savings = computeCacheSavings(totalHit, pricing);
+  return formatCacheMetrics(hitRate, savings);
 }

@@ -3,8 +3,7 @@ import { Text, Box } from "ink";
 import { computeSessionCost, formatCost, formatTokenCount } from "../../common/model-capabilities";
 import type { ModelPricing } from "../../common/model-capabilities";
 import type { ModelUsage } from "../../session";
-import { computeCacheHitRate, computeCacheSavings, formatCacheMetrics } from "../../common/cache-metrics";
-import { DEFAULT_MODEL_PRICING } from "../../common/model-capabilities";
+import { computeCacheLine } from "../../common/cache-metrics";
 
 type SessionStatsHeaderProps = {
   /** Per-model usage accumulated in the active session. */
@@ -44,39 +43,6 @@ export function SessionStatsHeader({
       {cacheLine && <Text dimColor>{cacheLine}</Text>}
     </Box>
   );
-}
-
-function computeCacheLine(
-  usagePerModel: Record<string, ModelUsage> | null,
-  modelPricing?: Record<string, ModelPricing>
-): string | null {
-  if (!usagePerModel) return null;
-  let totalHit = 0;
-  let totalMiss = 0;
-  let hasAny = false;
-
-  for (const usage of Object.values(usagePerModel)) {
-    if (typeof usage.normalizedCacheHitTokens === "number") {
-      totalHit += usage.normalizedCacheHitTokens;
-      totalMiss += usage.normalizedCacheMissTokens ?? 0;
-      hasAny = true;
-    }
-  }
-
-  if (!hasAny || totalHit === 0) return null;
-
-  const hitRate = computeCacheHitRate(totalHit, totalMiss);
-  if (hitRate === null) return null;
-
-  // Use the first model's pricing for savings estimate (or default)
-  let pricing = modelPricing?.[Object.keys(usagePerModel)[0]];
-  if (!pricing) {
-    pricing = DEFAULT_MODEL_PRICING[Object.keys(usagePerModel)[0]];
-  }
-  if (!pricing) return null;
-
-  const savings = computeCacheSavings(totalHit, pricing);
-  return formatCacheMetrics(hitRate, savings);
 }
 
 function computeTotalTokens(usagePerModel: Record<string, ModelUsage> | null): number | null {

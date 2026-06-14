@@ -94,6 +94,8 @@ type Props = PromptStreamState &
     dailyCost?: number;
     /** Project lifetime total cost in USD. */
     projectCost?: number;
+    /** Cache efficiency display line, or null when no cache data. */
+    cacheLine?: string | null;
     /** Set of provider names that have configured API keys. */
     providerKeys?: Set<string>;
   };
@@ -149,6 +151,7 @@ export const PromptInput = React.memo(function PromptInput({
   sessionContextWindow,
   dailyCost = 0,
   projectCost = 0,
+  cacheLine = null,
   providerKeys,
 }: Props): React.ReactElement {
   const { exit } = useApp();
@@ -234,6 +237,7 @@ export const PromptInput = React.memo(function PromptInput({
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     stats += ` · 📅 ${formatCost(dailyCost)}`;
     stats += ` · 📦 ${formatCost(projectCost)}`;
+    if (cacheLine) stats += ` · ${cacheLine}`;
     return `${newlineHint} · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
   })();
   const showFooterText = useMemo(

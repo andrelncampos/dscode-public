@@ -33,7 +33,7 @@
 | 160 | sdd-mcp | audited | V20, V18, ADR-009, ADR-010 |
 | 170 | mcp-tui | audited | V18, V1, L7, ADR-011, ADR-012, ADR-013 |
 | 180 | cache-metrics-display | audited | V21, V11, ADR-005 |
-| 190 | tool-call-repair | planned | V23, ADR-002 |
+| 190 | tool-call-repair | created | V23, ADR-002 |
 | 200 | cache-aware-prompt | planned | V22, V6, ADR-001, ADR-002 |
 | 210 | cache-aware-compaction | planned | V22, V8, ADR-005 |
 | 220 | pro-first-modes | planned | V25, V13 |
