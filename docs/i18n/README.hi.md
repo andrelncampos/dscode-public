@@ -82,10 +82,10 @@ DsCode इनके लिए उपयोगी है:
 
 **16 models. 4 providers. Zero vendor lock-in.**
 
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
 |---|---|---|---|---|---|
 | **Works in terminal** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ❌ IDE only |
-| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon only |
+| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon Bedrock only |
 | **Thinking mode per provider** | ✅ max/high/medium/low native | ❌ | ❌ | ⚠️ Claude only | ❌ |
 | **Full MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Partial | ⚠️ Partial | ❌ |
 | **Spec-Driven Development** | ✅ Full built-in cycle | ❌ | ❌ | ❌ | ❌ |

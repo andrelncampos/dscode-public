@@ -85,17 +85,18 @@ O DsCode funciona em **sessões**. Cada sessão é uma conversa contínua. A IA 
 
 **16 modelos. 4 provedores. Zero dependência de vendor.**
 
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
 |---|---|---|---|---|---|
-| **Roda no terminal** | ✅ TUI nativa | ❌ Só IDE | ❌ Só IDE | ✅ CLI | ❌ Só IDE |
-| **Liberdade de provedor** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + qualquer compatível | ❌ Só GitHub | ⚠️ Limitado | ⚠️ Só Anthropic | ⚠️ Só Amazon |
-| **Thinking mode por provedor** | ✅ max/high/medium/low nativo | ❌ | ❌ | ⚠️ Claude only | ❌ |
-| **MCP completo** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Parcial | ⚠️ Parcial | ❌ |
-| **Spec-Driven Development** | ✅ Ciclo completo built-in | ❌ | ❌ | ❌ | ❌ |
-| **Skills & subagentes** | ✅ Markdown, modo agente, MCP por skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ⚠️ Agents |
-| **Steering system** | ✅ Regras persistentes por projeto | ❌ | ❌ | ❌ | ❌ |
-| **Colar imagens (Ctrl+V)** | ✅ Clipboard | ❌ | ✅ | ❌ | ❌ |
-| **Grátis para uso** | ✅ | ⚠️ Plano grátis limitado | ⚠️ Plano grátis limitado | ⚠️ Créditos | ⚠️ Plano grátis limitado |
+| **Roda no terminal** | ✅ TUI nativa | ❌ Só IDE | ❌ Só IDE | ✅ CLI | ⚠️ IDE + CLI |
+| **Liberdade de provedor** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + qualquer compatível | ❌ Só GitHub | ⚠️ Limitado | ⚠️ Só Anthropic | ⚠️ Só Amazon Bedrock |
+| **Thinking mode por provedor** | ✅ max/high/medium/low nativo | ❌ | ❌ | ⚠️ Claude only | ⚠️ Via Bedrock |
+| **MCP completo** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Parcial | ⚠️ Parcial | ✅ IDE-based |
+| **Spec-Driven Development** | ✅ Ciclo built-in + auto-correção | ❌ | ❌ | ❌ | ✅ IDE-based |
+| **Skills/Powers** | ✅ Markdown, modo agente, MCP por skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ✅ Powers |
+| **Steering** | ✅ Regras persistentes por projeto | ❌ | ❌ | ❌ | ✅ Arquivos Markdown |
+| **Grátis para uso** | ✅ Sem custo | ⚠️ Plano grátis limitado | ⚠️ Plano grátis limitado | ⚠️ Créditos | ⚠️ Custo do Bedrock |
+
+> O **Amazon Kiro** é o concorrente mais próximo do DsCode — ambos têm Spec-Driven Development, Steering, MCP e Skills/Powers. A diferença fundamental: o DsCode é **terminal-nativo, multi-provedor e totalmente gratuito**; o Kiro é **IDE-first, preso ao Amazon Bedrock e cobra pelo uso dos modelos**.
 
 ---
 

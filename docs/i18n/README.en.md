@@ -76,17 +76,18 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 **16 models. 4 providers. Zero vendor lock-in.**
 
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
 |---|---|---|---|---|---|
-| **Works in terminal** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ❌ IDE only |
-| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon only |
-| **Thinking mode per provider** | ✅ max/high/medium/low native | ❌ | ❌ | ⚠️ Claude only | ❌ |
-| **Full MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Partial | ⚠️ Partial | ❌ |
-| **Spec-Driven Development** | ✅ Full built-in cycle | ❌ | ❌ | ❌ | ❌ |
-| **Skills & subagents** | ✅ Markdown, agent mode, MCP per skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ⚠️ Agents |
-| **Steering system** | ✅ Persistent per-project rules | ❌ | ❌ | ❌ | ❌ |
-| **Paste images (Ctrl+V)** | ✅ Clipboard | ❌ | ✅ | ❌ | ❌ |
-| **Free to use** | ✅ | ⚠️ Limited free plan | ⚠️ Limited free plan | ⚠️ Credits | ⚠️ Limited free plan |
+| **Works in terminal** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ⚠️ IDE + CLI |
+| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon Bedrock only |
+| **Thinking mode per provider** | ✅ max/high/medium/low native | ❌ | ❌ | ⚠️ Claude only | ⚠️ Via Bedrock |
+| **Full MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Partial | ⚠️ Partial | ✅ IDE-based |
+| **Spec-Driven Development** | ✅ Built-in cycle + auto-fix | ❌ | ❌ | ❌ | ✅ IDE-based |
+| **Skills/Powers** | ✅ Markdown, agent mode, MCP per skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ✅ Powers |
+| **Steering** | ✅ Persistent per-project rules | ❌ | ❌ | ❌ | ✅ Markdown files |
+| **Free to use** | ✅ No cost | ⚠️ Limited free plan | ⚠️ Limited free plan | ⚠️ Credits | ⚠️ Bedrock costs |
+
+> **Amazon Kiro** is DsCode's closest competitor — both have Spec-Driven Development, Steering, MCP, and Skills/Powers. The key difference: DsCode is **terminal-native, multi-provider, and completely free**; Kiro is **IDE-first, locked to Amazon Bedrock, and charges for model usage**.
 
 ---
 

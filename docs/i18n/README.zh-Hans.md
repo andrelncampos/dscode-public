@@ -82,10 +82,10 @@ DsCode 对以下人群有用：
 
 **16 个模型。4 个提供商。零厂商锁定。**
 
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
 |---|---|---|---|---|---|
 | **在终端中运行** | ✅ 原生 TUI | ❌ 仅 IDE | ❌ 仅 IDE | ✅ CLI | ❌ 仅 IDE |
-| **提供商自由** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + 任何兼容 | ❌ 仅 GitHub | ⚠️ 有限 | ⚠️ 仅 Anthropic | ⚠️ 仅 Amazon |
+| **提供商自由** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + 任何兼容 | ❌ 仅 GitHub | ⚠️ 有限 | ⚠️ 仅 Anthropic | ⚠️ 仅 Amazon Bedrock |
 | **每个提供商的 Thinking mode** | ✅ max/high/medium/low 原生 | ❌ | ❌ | ⚠️ 仅 Claude | ❌ |
 | **完整 MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ 部分 | ⚠️ 部分 | ❌ |
 | **Spec-Driven Development** | ✅ 完整内置周期 | ❌ | ❌ | ❌ | ❌ |
