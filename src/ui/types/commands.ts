@@ -40,6 +40,7 @@ export const COMMAND_KINDS = [
   "model-default",
   "model-params",
   "model-thinking",
+  "budget",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];
@@ -72,6 +73,7 @@ export const PROMPT_COMMAND_KINDS = [
   "model-default",
   "model-params",
   "model-thinking",
+  "budget",
 ] as const;
 
 export type PromptCommand = (typeof PROMPT_COMMAND_KINDS)[number];

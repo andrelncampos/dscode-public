@@ -33,6 +33,7 @@ const esDictionary = {
   "cmd.model-default": "Establecer el modelo predeterminado",
   "cmd.model-params": "Configurar par\u00e1metros de generaci\u00f3n (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar presupuesto de thinking para modelos de pensamiento extendido",
+  "cmd.budget": "Mostrar el resumen de costos acumulados del proyecto (budget.md)",
   "cmd.no-description": "(sin descripci\u00f3n)",
 
   // Welcome screen

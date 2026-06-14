@@ -110,6 +110,7 @@ const BUFFER_TEXT_COMMANDS: Set<SlashCommandKind> = new Set([
   "model-default",
   "model-params",
   "model-thinking",
+  "budget",
 ]);
 
 const FIXED_TEXT_COMMANDS: Partial<Record<SlashCommandKind, string>> = {

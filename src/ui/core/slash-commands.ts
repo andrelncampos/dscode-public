@@ -212,6 +212,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     args: ["<model-id>"],
     description: "cmd.model-thinking",
   },
+  {
+    kind: "budget",
+    name: "budget",
+    label: "/budget",
+    description: "cmd.budget",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

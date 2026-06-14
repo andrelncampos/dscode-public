@@ -33,6 +33,7 @@ const ptDictionary = {
   "cmd.model-default": "Definir o modelo padr\u00e3o",
   "cmd.model-params": "Configurar par\u00e2metros de gera\u00e7\u00e3o (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar or\u00e7amento de thinking para modelos de pensamento estendido",
+  "cmd.budget": "Exibir o resumo de custos acumulados do projeto (budget.md)",
   "cmd.no-description": "(sem descri\u00e7\u00e3o)",
 
   // Welcome screen

@@ -31,6 +31,7 @@ const enDictionary = {
   "cmd.model-default": "Set the default model",
   "cmd.model-params": "Configure generation parameters (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configure thinking budget for extended-thinking models",
+  "cmd.budget": "Display accumulated project cost summary (budget.md)",
   "cmd.no-description": "(no description)",
 
   // Welcome screen (11 keys)
