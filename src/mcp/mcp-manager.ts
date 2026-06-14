@@ -188,6 +188,11 @@ export class McpManager {
     return this.tools.filter((t) => t.skillName === skillName).map((t) => t.namespacedName);
   }
 
+  /** Get all namespaced MCP tool names across all servers, sorted alphabetically. */
+  getAllToolNames(): string[] {
+    return [...new Set(this.tools.map((t) => t.namespacedName))].sort();
+  }
+
   /** Get full tool definitions for a skill (for subagent injection). */
   getMcpToolDefinitionsForSkill(skillName: string): Array<{
     type: "function";

@@ -31,7 +31,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - File exists at `src/tools/tool-call-repair.ts`.
 - All types are exported and importable from the module.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -68,7 +68,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `npx tsc --noEmit` passes.
 - Manual test: `tryParseWithRecovery('{"path":"C:\\git\\dscode"}')` returns `{ ok: true, args: { path: "C:\\git\\dscode" } }`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -112,7 +112,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `npx tsc --noEmit` passes.
 - `repairToolCall({ id: "1", type: "function", function: { name: "Bash", arguments: '{"command":"ls","sideEffects":["read-in-cwd"]}' } }, mockRegistry, metrics)` returns repaired ToolCall with `function.name === "bash"`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -143,7 +143,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - All test cases pass (expected ~37 pass).
 - `npx tsx --test src/tests/tool-call-repair.test.ts` exits with code 0.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -214,7 +214,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - Existing test `src/tests/tool-executor.test.ts` passes: `npx tsx --test src/tests/tool-executor.test.ts`.
 - The test "ToolExecutor accepts title-case built-in tool aliases" still passes (case-insensitive match via `toolRegistry.resolve`).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -251,7 +251,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `npx tsc --noEmit` passes.
 - Method returns a string array of all MCP tool names.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -283,7 +283,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `toolRegistry.resolve("mcp__GITHUB__create_issue")` (case-different from actual) returns corrected case.
 - `toolRegistry.resolve("MCP__SERVER__TOOL")` (uppercase) → matches correctly if MCP server registers `mcp__server__tool`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 

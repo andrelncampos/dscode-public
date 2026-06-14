@@ -12,6 +12,10 @@ import { handleWebSearchTool } from "./web-search-handler";
 import { handleWriteTool } from "./write-handler";
 import type { McpManager } from "../mcp/mcp-manager";
 import type { McpPolicy } from "../mcp/mcp-policy";
+import { repairToolCall, createRepairMetrics } from "./tool-call-repair";
+import type { ToolCallRepairMetrics, ToolRegistry } from "./tool-call-repair";
+import { getBuiltInToolDefinitions } from "../prompt";
+import type { ToolDefinition } from "../prompt";
 
 export type CreateOpenAIClient = () => {
   client: OpenAI | null;
@@ -111,13 +115,6 @@ export type ToolHandler = (
   context: ToolExecutionContext
 ) => Promise<ToolExecutionResult>;
 
-const BUILT_IN_TOOL_NAME_ALIASES = new Map<string, string>([
-  ["Bash", "bash"],
-  ["Read", "read"],
-  ["Write", "write"],
-  ["Edit", "edit"],
-]);
-
 function normalizeToolArguments(value: unknown): string {
   if (typeof value === "string") {
     return value;
@@ -145,6 +142,8 @@ export class ToolExecutor {
   private readonly mcpPolicy?: McpPolicy;
   private readonly toolHandlers = new Map<string, ToolHandler>();
   private mcpAuditContext?: { specNumber: number };
+  private repairMetrics: ToolCallRepairMetrics;
+  private readonly toolRegistry: ToolRegistry;
 
   constructor(
     projectRoot: string,
@@ -157,11 +156,55 @@ export class ToolExecutor {
     this.mcpManager = mcpManager;
     this.mcpPolicy = mcpPolicy;
     this.registerToolHandlers();
+    this.repairMetrics = createRepairMetrics();
+    this.toolRegistry = this.buildToolRegistry();
   }
 
   /** Set audit context for MCP tool calls during spec commands. */
   setMcpAuditContext(ctx: { specNumber: number } | undefined): void {
     this.mcpAuditContext = ctx;
+  }
+
+  private buildToolRegistry(): ToolRegistry {
+    const builtInDefs = getBuiltInToolDefinitions();
+    const builtInNames = new Map<string, ToolDefinition>();
+    for (const def of builtInDefs) {
+      builtInNames.set(def.function.name, def);
+    }
+
+    return {
+      resolve: (name: string) => {
+        const trimmed = name.trim();
+        // 1. Exact match (case-sensitive) in built-in tools
+        if (builtInNames.has(trimmed)) {
+          return { canonicalName: trimmed, definition: builtInNames.get(trimmed) };
+        }
+        // 2. Case-insensitive match in built-in tools
+        const lower = trimmed.toLowerCase();
+        for (const [canonical, def] of builtInNames) {
+          if (canonical.toLowerCase() === lower) {
+            return { canonicalName: canonical, definition: def };
+          }
+        }
+        // 3. MCP tools — exact match
+        if (this.mcpManager?.isMcpTool(trimmed)) {
+          return { canonicalName: trimmed, definition: undefined };
+        }
+        // 4. Case-insensitive MCP match
+        const mcpNames = this.mcpManager?.getAllToolNames?.() ?? [];
+        const lowerName = trimmed.toLowerCase();
+        const match = mcpNames.find((n) => n.toLowerCase() === lowerName);
+        if (match) {
+          return { canonicalName: match, definition: undefined };
+        }
+        return undefined;
+      },
+      getAllNames: () => {
+        const builtIn = [...builtInNames.keys()];
+        const mcp = this.mcpManager?.getAllToolNames?.() ?? [];
+        return [...builtIn, ...mcp].sort();
+      },
+    };
   }
 
   async executeToolCalls(
@@ -245,8 +288,20 @@ export class ToolExecutor {
     toolCall: ToolCall,
     hooks?: ToolExecutionHooks
   ): Promise<ToolExecutionResult> {
-    const toolName = toolCall.function.name;
-    const handlerName = BUILT_IN_TOOL_NAME_ALIASES.get(toolName) ?? toolName;
+    // --- REPAIR PIPELINE (NEW) ---
+    const repairResult = repairToolCall(toolCall, this.toolRegistry, this.repairMetrics);
+    if ("error" in repairResult) {
+      return {
+        ok: false,
+        name: toolCall.function.name,
+        error: repairResult.error,
+      };
+    }
+    const { toolCall: repaired, args } = repairResult;
+    // --- END REPAIR PIPELINE ---
+
+    const toolName = repaired.function.name;
+    const handlerName = toolName;
     const handler = this.toolHandlers.get(handlerName);
     if (!handler) {
       // Try MCP tools
@@ -262,14 +317,10 @@ export class ToolExecutor {
           };
         }
         if (policyAction === "allow") {
-          // Execute directly — bypass permission prompt
-          const parsedArgs = this.parseToolArguments(toolCall.function.arguments);
-          const args = parsedArgs.ok ? parsedArgs.args : {};
+          // Execute directly — bypass permission prompt (args already repaired)
           return this.mcpManager.executeMcpTool(toolName, args, undefined, this.mcpAuditContext);
         }
-        // "ask" → fall through to existing permission flow
-        const parsedArgs = this.parseToolArguments(toolCall.function.arguments);
-        const args = parsedArgs.ok ? parsedArgs.args : {};
+        // "ask" → fall through to existing permission flow (args already repaired)
         return this.mcpManager.executeMcpTool(toolName, args, undefined, this.mcpAuditContext);
       }
       return {
@@ -279,20 +330,12 @@ export class ToolExecutor {
       };
     }
 
-    const parsedArgs = this.parseToolArguments(toolCall.function.arguments);
-    if (!parsedArgs.ok) {
-      return {
-        ok: false,
-        name: toolName,
-        error: parsedArgs.error,
-      };
-    }
-
+    // Execute handler with repaired args
     try {
-      return await handler(parsedArgs.args, {
+      return await handler(args, {
         sessionId,
         projectRoot: this.projectRoot,
-        toolCall,
+        toolCall: repaired,
         createOpenAIClient: this.createOpenAIClient,
         onProcessStart: hooks?.onProcessStart,
         onProcessExit: hooks?.onProcessExit,
@@ -312,28 +355,12 @@ export class ToolExecutor {
     }
   }
 
-  private parseToolArguments(
-    rawArguments: string
-  ): { ok: true; args: Record<string, unknown> } | { ok: false; error: string } {
-    if (!rawArguments) {
-      return { ok: true, args: {} };
-    }
+  getRepairMetrics(): ToolCallRepairMetrics {
+    return this.repairMetrics;
+  }
 
-    try {
-      const parsed = JSON.parse(rawArguments);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return { ok: false, error: "InputParseError: Tool arguments must be a JSON object." };
-      }
-      return { ok: true, args: parsed as Record<string, unknown> };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return {
-        ok: false,
-        error:
-          `InputParseError: Failed to parse tool arguments: ${message}. ` +
-          "Ensure the tool call arguments are valid JSON. Prefer Edit over Write for large existing-file changes.",
-      };
-    }
+  resetRepairMetrics(): void {
+    this.repairMetrics = createRepairMetrics();
   }
 
   private formatToolResult(result: ToolExecutionResult): string {
