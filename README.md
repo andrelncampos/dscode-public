@@ -330,7 +330,7 @@ mkdir -p .dscode
 echo '{"env":{"MODEL":"deepseek-v4-pro","API_KEY":"sk-sua-chave"}}' > .dscode/settings.json
 ```
 
-Obtenha uma chave gratuita em [platform.deepseek.com](https://platform.deepseek.com).
+Crie uma conta em [platform.deepseek.com](https://platform.deepseek.com) e recarregue créditos (mínimo $2)(https://platform.deepseek.com).
 
 > 🔐 Sua chave será **criptografada automaticamente** (AES-256-GCM) na primeira execução. Você nunca mais verá o texto plano.
 
