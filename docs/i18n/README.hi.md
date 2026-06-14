@@ -27,7 +27,7 @@ DsCode [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## How DsCode works
 
@@ -248,7 +248,7 @@ DsCode टोकन उपयोग के आधार पर सत्र ल�
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## Files and structure
 
@@ -339,7 +339,7 @@ AI कोड की जांच करेगा और सुधार सु�
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## All slash commands
 
@@ -415,7 +415,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## Steering system
 
@@ -444,7 +444,7 @@ flowchart LR
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## SDD — Spec-Driven Development
 
@@ -499,7 +499,7 @@ Imagine you want to add **OpenAI support** to DsCode. The real flow:
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## MCP — Model Context Protocol
 
@@ -537,7 +537,7 @@ The `/mcp` command opens a full management panel:
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## Skills
 
@@ -695,7 +695,7 @@ DsCode DeepSeek V4 मॉडल के लिए अनुकूलित है
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## Using with OpenAI
 
@@ -826,7 +826,7 @@ DsCode में `AnthropicProvider` के माध्यम से **ने�
 
 ---
 
-<!-- TODO: translate to Hindi -->
+
 
 ## Using with Google Gemini
 
