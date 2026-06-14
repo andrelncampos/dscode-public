@@ -74,18 +74,8 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 
 ## Instalación
 
-### Vía npm (recomendado)
-
-```bash
-npm install -g @andrelncampos/dscode
-```
-
-Requiere [Node.js 24+](https://nodejs.org). Después de instalar, ejecuta `dscode` en la terminal.
-
-### Binarios standalone
-
 Descarga el binario para tu sistema operativo desde la **[página de releases](https://github.com/andrelncampos/dscode/releases)**.  
-**Sin prerrequisitos** — el binario es autocontenido, no requiere Node.js ni otras dependencias.
+Requiere **[Node.js 24+](https://nodejs.org)**.
 
 | Sistema operativo | Archivo |
 |---|---|
@@ -156,6 +146,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | `notify` | string | Script ejecutado al final de cada tarea | *(ninguno)* |
 | `engines` | object | Configuración por proveedor (ej: `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Precios personalizados por modelo | *(precios por defecto DeepSeek V4)* |
+| `cacheMode` | string | Estrategia de caché: `"off"` (defecto), `"aware"` (optimiza prefijo para KV Cache), `"strict"` (aware + verificación hash). Solo DeepSeek | `"off"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Visibilidad del repositorio. `"public"` añade `/management/` y `/.agents/` a `.gitignore` automáticamente | `"private"` |
 
 ### Precios de modelo (`modelPricing`)
@@ -231,7 +222,7 @@ mi-proyecto/
 
 ### Paso 1: Instala
 
-Descarga el binario desde la [página de releases](https://github.com/andrelncampos/dscode/releases), extráelo y ejecuta `./dscode`. **Sin prerrequisitos.**
+Descarga el binario desde la [página de releases](https://github.com/andrelncampos/dscode/releases), extráelo y ejecuta `./dscode`. **Requiere Node.js 24+.**
 
 ### Paso 2: Configura tu clave
 
@@ -594,7 +585,7 @@ DsCode funciona de forma **conversacional**: escribes lo que necesitas, la IA re
 | **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 modelos disponibles entre 4 proveedores. | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
 | **Thinking mode** | La IA "piensa" (razona) antes de responder, generando tokens internos que puedes ver o no. | Actívalo para tareas complejas (debug, arquitectura). Desactívalo para agilidad. |
 | **Reasoning effort** | Controla la profundidad del razonamiento: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` o `"none"` (varía por proveedor). | Usa máximo para problemas difíciles y medio/bajo para el día a día. |
-| **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). | Sucede automáticamente. Mantén los prompts estables para ahorrar. |
+| **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). Configura `cacheMode` para optimizar. | Sucede automáticamente. Mantén los prompts estables para ahorrar. Al salir, DsCode muestra la eficiencia del caché (tasa de acierto y USD ahorrado). |
 | **Logs** | Archivos de depuración en `~/.dscode/logs/` que registran las llamadas de API. | Activa `debugLogEnabled` solo para diagnosticar problemas. |
 | **Permisos** | Control de lo que la IA puede hacer: leer archivos, escribir, acceder a la red, ejecutar comandos. | Configura permisos restrictivos si quieres revisar cada acción antes de ejecutarla. |
 | **Workspace** | La carpeta raíz donde DsCode se está ejecutando. La IA solo ve archivos en esta carpeta (a menos que autorices acceso externo). | Abre DsCode en la raíz del proyecto en el que quieres trabajar. |
