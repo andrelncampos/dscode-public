@@ -99,7 +99,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 **Actions:**
 1. Find the component that renders the status line with `⚡ tokens 💰 cost` (likely in `src/ui/views/App.tsx` or a status bar component).
 2. Import `computeCacheHitRate`, `computeCacheSavings`, `formatCacheMetrics` from `../../common/cache-metrics`.
-3. Import `getModelCapabilities` or access `modelPricing` from AppStateContext to get `cacheReadPrice`.
+3. Get pricing from `DEFAULT_MODEL_PRICING[currentModelId]` where `currentModelId` is the active session's model. Import `DEFAULT_MODEL_PRICING` from `../../common/model-capabilities`.
 4. Read `usage` from the current session state (already available via context).
 5. If `usage?.normalizedCacheHitTokens` is defined, compute and render `<Text dimColor>{formatCacheMetrics(...)}</Text>` below the cost line.
 6. When `normalizedCacheHitTokens` is `undefined`, render nothing (no empty line).
