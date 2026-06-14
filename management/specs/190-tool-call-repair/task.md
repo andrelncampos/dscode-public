@@ -307,4 +307,4 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `npx tsc --noEmit` exits with code 0.
 - `npx eslint` reports 0 errors, 0 warnings on new/modified files.
 
-**Status:** [ ] pending
+**Status:** [x] done
