@@ -163,18 +163,16 @@ test("recordBudgetCost with prompt_cache_hit_tokens fallback computes correct co
 });
 
 // ---------------------------------------------------------------------------
-// Cache column format tests (Spec 200)
+// Budget format tests (Spec 200 + sessions/tokens extension)
 // ---------------------------------------------------------------------------
 
-test("buildBudgetMarkdown produces 3-column format with cache data", () => {
-  // We verify via a budget file written by recordBudgetCost with cache tokens
+test("buildBudgetMarkdown produces 5-column format", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
-  const pricing = DEFAULT_MODEL_PRICING["deepseek-v4-pro"];
 
-  // Usage with cache hit tokens
   const usage = makeUsage({
     prompt_tokens: 10_000_000,
     completion_tokens: 1_000_000,
+    total_tokens: 11_000_000,
     normalizedCacheHitTokens: 8_000_000,
     normalizedCacheMissTokens: 2_000_000,
   });
@@ -184,18 +182,33 @@ test("buildBudgetMarkdown produces 3-column format with cache data", () => {
   const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
   const content = fs.readFileSync(budgetPath, "utf8");
 
-  // Should have 3-column headers
-  assert.match(content, /Cache Saved \(USD\)/);
-  assert.match(content, /Cache Hit %/);
+  assert.match(content, /Sessões/);
+  assert.match(content, /Tokens/);
+  assert.match(content, /Economia/);
 
-  // Should have a daily row with cache data
   const today = new Date().toISOString().slice(0, 10);
-  assert.match(content, new RegExp(`\\\\| ${today} \\\\|`));
-  assert.match(content, /\\\\| \\\\$\\d+\\.\\d{2} \\\\| \\\\$\\d+\\.\\d{2} \\\\| \\d+\\.\\d% \\\\|/);
+  // Session count should be 1
+  const rowRegex = new RegExp("\\\\| " + today + " \\\\| 1 \\\\|");
+  assert.match(content, rowRegex);
 
-  // Should have a Total row with cache data
-  assert.match(content, /\\\\| \\\\*\\\\*Total\\\\*\\\\* \\\\|/);
-  assert.match(content, /Cache Saved \(USD\)/);
+  // Should have 11.0M tokens
+  assert.match(content, /11.0M/);
+});
+
+test("recordBudgetCost increments session count per call", () => {
+  const projectRoot = createTempDir("deepcode-budget-test-");
+  const usage = makeUsage({ prompt_tokens: 1_000_000, completion_tokens: 500_000, total_tokens: 1_500_000 });
+
+  recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
+  recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
+  recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
+
+  const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
+  const content = fs.readFileSync(budgetPath, "utf8");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const rowRegex = new RegExp("\\\\| " + today + " \\\\| 3 \\\\|");
+  assert.match(content, rowRegex);
 });
 
 test("parseBudgetFile handles legacy 2-column format", () => {
@@ -203,55 +216,38 @@ test("parseBudgetFile handles legacy 2-column format", () => {
   const dscodeDir = path.join(projectRoot, ".dscode");
   fs.mkdirSync(dscodeDir, { recursive: true });
 
-  // Legacy format: no cache columns
-  const legacyContent =
-    [
-      "# Budget — Custo acumulado do projeto",
-      "",
-      "| Data | Custo (USD) |",
-      "|------|-------------|",
-      "| 2026-06-14 | $1.23 |",
-      "| **Total** | **$1.23** |",
-    ].join("\n") + "\n";
-
-  fs.writeFileSync(path.join(dscodeDir, "budget.md"), legacyContent);
+  fs.writeFileSync(
+    path.join(dscodeDir, "budget.md"),
+    "# Budget — Custo acumulado do projeto\n\n| Data | Custo (USD) |\n|------|-------------|\n| 2026-06-14 | $1.23 |\n| **Total** | **$1.23** |\n"
+  );
 
   const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
   assert.equal(todayCost, 1.23);
   assert.equal(projectTotal, 1.23);
 });
 
-test("parseBudgetFile handles new 3-column format", () => {
+test("parseBudgetFile handles old 4-column (Spec 200) format", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const dscodeDir = path.join(projectRoot, ".dscode");
   fs.mkdirSync(dscodeDir, { recursive: true });
 
-  const newContent =
-    [
-      "# Budget — Custo acumulado do projeto",
-      "",
-      "| Data | Custo (USD) | Cache Saved (USD) | Cache Hit % |",
-      "|------|-------------|-------------------|-------------|",
-      "| 2026-06-14 | $1.23 | $0.45 | 87.3% |",
-      "| **Total** | **$1.23** | **$0.45** | **87.3%** |",
-    ].join("\n") + "\n";
-
-  fs.writeFileSync(path.join(dscodeDir, "budget.md"), newContent);
+  fs.writeFileSync(
+    path.join(dscodeDir, "budget.md"),
+    "# Budget — Custo acumulado do projeto\n\n| Data | Custo (USD) | Cache Saved (USD) | Cache Hit % |\n|------|-------------|-------------------|-------------|\n| 2026-06-14 | $1.23 | $0.45 | 87.3% |\n| **Total** | **$1.23** | **$0.45** | **87.3%** |\n"
+  );
 
   const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
-  // getBudgetCosts returns only cost figures (not cacheSaved)
   assert.equal(todayCost, 1.23);
   assert.equal(projectTotal, 1.23);
 });
 
-test("budget round-trip preserves cacheSaved value", () => {
+test("budget round-trip preserves cost and session count", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
-  const pricing = DEFAULT_MODEL_PRICING["deepseek-v4-pro"];
 
-  // Record cost with cache hits
   const usage = makeUsage({
     prompt_tokens: 10_000_000,
     completion_tokens: 1_000_000,
+    total_tokens: 11_000_000,
     normalizedCacheHitTokens: 8_000_000,
     normalizedCacheMissTokens: 2_000_000,
   });
@@ -262,12 +258,9 @@ test("budget round-trip preserves cacheSaved value", () => {
   assert.ok(fs.existsSync(budgetPath));
 
   const content = fs.readFileSync(budgetPath, "utf8");
+  assert.match(content, /Sessões/);
+  assert.match(content, /Economia/);
 
-  // Should have 3 columns
-  assert.match(content, /Cache Saved \(USD\)/);
-  assert.match(content, /Cache Hit %/);
-
-  // Read back and verify costs are still correct
   const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
   assert.ok(todayCost > 0);
   assert.equal(projectTotal, todayCost);

@@ -1,7 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ModelUsage } from "../session";
-import { computeUsageCost, formatCost, DEFAULT_MODEL_PRICING, type ModelPricing } from "./model-capabilities";
+import {
+  computeUsageCost,
+  formatCost,
+  formatTokenCount,
+  DEFAULT_MODEL_PRICING,
+  type ModelPricing,
+} from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
 import { computeCacheSavings } from "./cache-metrics";
@@ -14,6 +20,8 @@ type DailyCost = {
   cacheSaved: number;
   cacheHitTokens: number;
   cacheMissTokens: number;
+  sessionCount: number;
+  totalTokens: number;
 };
 
 function getBudgetPath(projectRoot: string): string {
@@ -39,21 +47,47 @@ function parseBudgetFile(content: string): DailyCost[] {
   const lines = content.split(/\r?\n/);
 
   for (const line of lines) {
-    // Match 3-column format: | 2026-06-08 | $0.42 | $0.10 | 91.2% |
-    const match3 = line.match(
-      /^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*(\d+(?:\.\d+)?)%\s*\|/
+    // Match 5-column format: | 2026-06-08 | 47 | 1.2M | $0.42 | $0.10 |
+    const match5 = line.match(
+      /^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\d+)\s*\|\s*(\d[\d.]*[KM]?)\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|/
     );
-    if (match3) {
-      const date = match3[1];
-      const cost = parseFloat(match3[2]);
-      const cacheSaved = parseFloat(match3[3]);
+    if (match5) {
+      const date = match5[1];
+      const sessions = parseInt(match5[2], 10);
+      const tokens = parseTokenCount(match5[3]);
+      const cost = parseFloat(match5[4]);
+      const cacheSaved = parseFloat(match5[5]);
       if (date && Number.isFinite(cost)) {
         costs.push({
           date,
           cost,
           cacheSaved: Number.isFinite(cacheSaved) ? cacheSaved : 0,
-          cacheHitTokens: 0, // Not recoverable from hit rate alone
-          cacheMissTokens: 0, // Not recoverable from hit rate alone
+          cacheHitTokens: 0,
+          cacheMissTokens: 0,
+          sessionCount: Number.isFinite(sessions) ? sessions : 0,
+          totalTokens: Number.isFinite(tokens) ? tokens : 0,
+        });
+      }
+      continue;
+    }
+
+    // Match 4-column (old Spec 200) format: | 2026-06-08 | $0.42 | $0.10 | 91.2% |
+    const match4 = line.match(
+      /^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*(\d+(?:\.\d+)?)%\s*\|/
+    );
+    if (match4) {
+      const date = match4[1];
+      const cost = parseFloat(match4[2]);
+      const cacheSaved = parseFloat(match4[3]);
+      if (date && Number.isFinite(cost)) {
+        costs.push({
+          date,
+          cost,
+          cacheSaved: Number.isFinite(cacheSaved) ? cacheSaved : 0,
+          cacheHitTokens: 0,
+          cacheMissTokens: 0,
+          sessionCount: 0,
+          totalTokens: 0,
         });
       }
       continue;
@@ -65,7 +99,15 @@ function parseBudgetFile(content: string): DailyCost[] {
       const date = match2[1];
       const cost = parseFloat(match2[2]);
       if (date && Number.isFinite(cost)) {
-        costs.push({ date, cost, cacheSaved: 0, cacheHitTokens: 0, cacheMissTokens: 0 });
+        costs.push({
+          date,
+          cost,
+          cacheSaved: 0,
+          cacheHitTokens: 0,
+          cacheMissTokens: 0,
+          sessionCount: 0,
+          totalTokens: 0,
+        });
       }
     }
   }
@@ -73,32 +115,35 @@ function parseBudgetFile(content: string): DailyCost[] {
   return costs;
 }
 
+function parseTokenCount(raw: string): number {
+  const num = parseFloat(raw);
+  if (raw.endsWith("M")) return Math.round(num * 1_000_000);
+  if (raw.endsWith("K")) return Math.round(num * 1_000);
+  return Math.round(num);
+}
+
 function buildBudgetMarkdown(costs: DailyCost[]): string {
   const sorted = [...costs].sort((a, b) => b.date.localeCompare(a.date));
   const totalCost = sorted.reduce((sum, e) => sum + e.cost, 0);
   const totalCacheSaved = sorted.reduce((sum, e) => sum + e.cacheSaved, 0);
-  const totalCacheHit = sorted.reduce((sum, e) => sum + e.cacheHitTokens, 0);
-  const totalCacheMiss = sorted.reduce((sum, e) => sum + e.cacheMissTokens, 0);
-  const totalCacheTotal = totalCacheHit + totalCacheMiss;
-  const totalHitRate = totalCacheTotal > 0 ? (totalCacheHit / totalCacheTotal) * 100 : 0;
+  const totalSessions = sorted.reduce((sum, e) => sum + e.sessionCount, 0);
+  const totalTokens = sorted.reduce((sum, e) => sum + e.totalTokens, 0);
 
   const lines: string[] = [
     "# Budget — Custo acumulado do projeto",
     "",
-    "| Data | Custo (USD) | Cache Saved (USD) | Cache Hit % |",
-    "|------|-------------|-------------------|-------------|",
+    "| Data | Sessões | Tokens | Custo (USD) | Economia (USD) |",
+    "|------|---------|--------|-------------|----------------|",
   ];
 
   for (const entry of sorted) {
-    const cacheTotal = entry.cacheHitTokens + entry.cacheMissTokens;
-    const hitRate = cacheTotal > 0 ? (entry.cacheHitTokens / cacheTotal) * 100 : 0;
     lines.push(
-      `| ${entry.date} | ${formatCost(entry.cost)} | ${formatCost(entry.cacheSaved)} | ${hitRate.toFixed(1)}% |`
+      `| ${entry.date} | ${entry.sessionCount} | ${formatTokenCount(entry.totalTokens)} | ${formatCost(entry.cost)} | ${formatCost(entry.cacheSaved)} |`
     );
   }
 
   lines.push(
-    `| **Total** | **${formatCost(totalCost)}** | **${formatCost(totalCacheSaved)}** | **${totalHitRate.toFixed(1)}%** |`
+    `| **Total** | **${totalSessions}** | **${formatTokenCount(totalTokens)}** | **${formatCost(totalCost)}** | **${formatCost(totalCacheSaved)}** |`
   );
 
   return lines.join("\n") + "\n";
@@ -183,6 +228,8 @@ export function recordBudgetCost(
     const existing = costs.find((entry) => entry.date === today);
     if (existing) {
       existing.cost += cost;
+      existing.sessionCount += 1;
+      existing.totalTokens += usage.total_tokens ?? 0;
       if (typeof usage.normalizedCacheHitTokens === "number") {
         existing.cacheHitTokens += usage.normalizedCacheHitTokens;
         existing.cacheMissTokens += usage.normalizedCacheMissTokens ?? 0;
@@ -192,7 +239,15 @@ export function recordBudgetCost(
       const cacheHit = typeof usage.normalizedCacheHitTokens === "number" ? usage.normalizedCacheHitTokens : 0;
       const cacheMiss = typeof usage.normalizedCacheMissTokens === "number" ? usage.normalizedCacheMissTokens : 0;
       const cacheSaved = cacheHit > 0 ? computeCacheSavings(cacheHit, pricing) : 0;
-      costs.push({ date: today, cost, cacheSaved, cacheHitTokens: cacheHit, cacheMissTokens: cacheMiss });
+      costs.push({
+        date: today,
+        cost,
+        cacheSaved,
+        cacheHitTokens: cacheHit,
+        cacheMissTokens: cacheMiss,
+        sessionCount: 1,
+        totalTokens: usage.total_tokens ?? 0,
+      });
     }
 
     writeBudget(projectRoot, costs);
