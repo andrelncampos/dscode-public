@@ -80,6 +80,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 1. In `src/session.ts`, in `replySession()`, find the code near line 1530 where `responseUsage` is assembled from `streamUsage` and `finalUsage`.
 2. Import `normalizeCacheTokens` from `../common/cache-metrics`.
 3. After `responseUsage = ...`, add: `const cache = normalizeCacheTokens(responseUsage)`. If `cache !== null`, set `responseUsage.normalizedCacheHitTokens = cache.hit` and `responseUsage.normalizedCacheMissTokens = cache.miss`.
+4. In `src/providers/anthropic-provider.ts`, in the `case "message_delta"` block (line 200-204), add `cache_read_input_tokens: typeof event.usage.cache_read_input_tokens === "number" ? event.usage.cache_read_input_tokens : undefined` to the `ModelUsage` object literal. This ensures Anthropic's cache read tokens reach the normalizer.
 
 **Validation:** Add assertion to an existing session test that a complete `replySession()` flow populates `normalizedCacheHitTokens` when mock usage includes cache fields. TypeScript compile passes.
 

@@ -183,13 +183,22 @@ function accumulateUsage(current: ModelUsage | null, next: unknown | null | unde
 
 **Purpose:** Call `normalizeCacheTokens()` after each usage event in the chat completion stream, and store results in `ModelUsage`.
 
-**Location:** `src/session.ts` — inside `replySession()` where `streamUsage` is accumulated (around line 1530)
+**Location:** `src/session.ts` — inside `replySession()` where `streamUsage` is accumulated (around line 1530). Also `src/providers/anthropic-provider.ts` — usage construction (line 200).
 
 **Internal Logic:**
 1. After `responseUsage = ...` is computed from `streamUsage` and `finalUsage`.
 2. Call `const cache = normalizeCacheTokens(responseUsage)`.
 3. If `cache !== null`, set `responseUsage.normalizedCacheHitTokens = cache.hit` and `responseUsage.normalizedCacheMissTokens = cache.miss`.
 4. This enriched `responseUsage` flows downstream to `accumulateUsage`, `accumulateUsagePerModel`, and the UI.
+
+**Anthropic provider modification:**
+- In `src/providers/anthropic-provider.ts` line 200-204, the `ModelUsage` construction must include `cache_read_input_tokens` from the Anthropic API response (`event.usage.cache_read_input_tokens`).
+- Add `cache_read_input_tokens: typeof event.usage.cache_read_input_tokens === "number" ? event.usage.cache_read_input_tokens : undefined` to the ModelUsage object.
+- No other Anthropic provider changes needed.
+
+**DeepSeek/OpenAI providers:** No changes needed. They already pass through `prompt_cache_hit_tokens`, `prompt_cache_miss_tokens`, and `prompt_tokens_details.cached_tokens` via the generic OpenAI SDK response.
+
+**Gemini provider:** No changes needed. Returns undefined for cache fields (no prompt caching API).
 
 ### Component 9: TUI Cache Line Display
 
@@ -199,9 +208,12 @@ function accumulateUsage(current: ModelUsage | null, next: unknown | null | unde
 
 **Internal Logic:**
 1. Read latest `usage` from session state (already available via `AppStateContext`).
-2. If `usage.normalizedCacheHitTokens` is `undefined`: render nothing.
-3. Else: compute `hitRate = computeCacheHitRate(...)`, `savings = computeCacheSavings(...)`, `text = formatCacheMetrics(...)`.
-4. Render `<Text dimColor>{text}</Text>` below the cost line.
+2. If `usage.normalizedCacheHitTokens` is `undefined` or `0`: render nothing.
+3. Else: get pricing from `DEFAULT_MODEL_PRICING[currentModelId]` where `currentModelId` is the current session's model.
+4. Compute `hitRate = computeCacheHitRate(usage.normalizedCacheHitTokens, usage.normalizedCacheMissTokens ?? 0)`.
+5. Compute `savings = computeCacheSavings(usage.normalizedCacheHitTokens, pricing)`.
+6. Compute `text = formatCacheMetrics(hitRate, savings)`.
+7. If `text !== null`: render `<Text dimColor>{text}</Text>` below the cost line.
 
 **Dependencies:** `AppStateContext` (existing), `cache-metrics.ts` (new).
 
