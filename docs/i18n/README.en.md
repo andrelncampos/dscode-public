@@ -964,17 +964,6 @@ For security vulnerabilities, follow the instructions in [SECURITY.md](../SECURI
 
 ---
 
-## Contributing
-
-Contributions are welcome! See the full guide in [CONTRIBUTING.md](../CHANGELOG.md).
-
-Quick summary:
-
-1. **Issues** are welcome for bugs, features, and questions.
-2. **Pull requests** pass mandatory CI (typecheck + lint + format + tests + build).
-3. **Security PRs** or changes to sensitive areas undergo stricter review.
-4. Contributors declare they have the right to contribute the submitted code.
-
 ---
 
 ## Security

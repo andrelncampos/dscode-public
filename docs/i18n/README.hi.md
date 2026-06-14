@@ -959,17 +959,6 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ---
 
-## योगदान
-
-योगदान का स्वागत है! [CONTRIBUTING.md](../CHANGELOG.md) में पूरी गाइड देखें।
-
-त्वरित सारांश:
-
-1. **Issues** बग, सुविधाओं और प्रश्नों के लिए स्वागत हैं।
-2. **Pull requests** अनिवार्य CI (typecheck + lint + format + tests + build) से गुजरते हैं।
-3. **सुरक्षा PR** या संवेदनशील क्षेत्रों में बदलाव की अधिक कठोर समीक्षा होती है।
-4. योगदानकर्ता घोषित करते हैं कि उनके पास सबमिट किए गए कोड का योगदान करने का अधिकार है।
-
 ---
 
 ## सुरक्षा

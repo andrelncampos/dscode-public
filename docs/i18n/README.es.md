@@ -145,10 +145,6 @@ Requiere [Node.js 24+](https://nodejs.org). Después de instalar, ejecuta `dscod
 
 ## Actualización
 
-DsCode verifica automáticamente nuevas versiones al iniciar.
-
-## Actualización
-
 DsCode verifica automáticamente nuevas versiones al iniciar. Si hay una actualización disponible, serás notificado y podrás instalarla con un comando.
 
 Para verificar manualmente:
@@ -928,17 +924,6 @@ Al reportar un problema, incluye:
 Para vulnerabilidades de seguridad, sigue las instrucciones en [SECURITY.md](../SECURITY.md). **No abras issues públicas para fallos de seguridad.**
 
 ---
-
-## Contribución
-
-¡Las contribuciones son bienvenidas! Consulta la guía completa en [CONTRIBUTING.md](../CHANGELOG.md).
-
-Resumen rápido:
-
-1. **Issues** son bienvenidas para bugs, features y dudas.
-2. **Pull requests** pasan por CI obligatorio (typecheck + lint + format + tests + build).
-3. **PRs de seguridad** o cambios en áreas sensibles pasan por revisión más rigurosa.
-4. Los contribuidores declaran tener el derecho de contribuir el código enviado.
 
 ---
 
