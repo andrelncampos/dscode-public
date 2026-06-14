@@ -105,7 +105,7 @@ export function createSessionManager(projectRoot: string): SessionManager {
       thinkingEnabled: false,
       telemetryEnabled: true,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });
@@ -148,7 +148,7 @@ export function createNotifyingSessionManager(
         TITLE: "stale-title",
       },
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });
@@ -175,7 +175,7 @@ export function createMockedClientSessionManager(projectRoot: string, responses:
       baseURL: "https://api.deepseek.com",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });
@@ -211,7 +211,7 @@ export function createPermissionSessionManager(
       baseURL: "https://api.deepseek.com",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model", permissions }),
+    getResolvedSettings: () => ({ model: "test-model", permissions, cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });
@@ -226,7 +226,7 @@ export function createMockedClientSessionManagerWithClient(projectRoot: string, 
       baseURL: "https://api.deepseek.com",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });

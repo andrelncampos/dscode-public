@@ -15,6 +15,8 @@ import {
   getDefaultSkillPrompt,
   getExtensionRoot,
   getRuntimeContext,
+  getStablePrefixContent,
+  getStablePrefixHash,
   getSystemPrompt,
   getTools,
   type ToolDefinition,
@@ -38,7 +40,7 @@ import { McpScopeResolver } from "./mcp/mcp-scopes";
 import { parseSpecMcp } from "./common/spec-mcp";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
-import { clearSettingsCache } from "./settings";
+import { clearSettingsCache, getEffectiveCacheMode } from "./settings";
 import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
@@ -334,6 +336,8 @@ type SessionManagerOptions = {
     modelPricing?: Record<string, ModelPricing>;
     memory?: MemorySettings;
     budget?: BudgetSettings;
+    cacheMode: "off" | "aware" | "strict";
+    providerName: string;
   };
   renderMarkdown: (text: string) => string;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
@@ -371,6 +375,8 @@ export class SessionManager {
     modelPricing?: Record<string, ModelPricing>;
     memory?: MemorySettings;
     budget?: BudgetSettings;
+    cacheMode: "off" | "aware" | "strict";
+    providerName: string;
   };
   private readonly onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   private readonly onSessionEntryUpdated?: (entry: SessionEntry) => void;
@@ -1051,6 +1057,8 @@ export class SessionManager {
     }
 
     const promptToolOptions = this.getPromptToolOptions();
+    const settings = this.getResolvedSettings();
+    const effectiveCacheMode = getEffectiveCacheMode(settings.cacheMode, settings.providerName);
     const cacheKey = `${promptToolOptions.model}`;
     let systemPrompt = SessionManager.systemPromptCache.get(cacheKey);
     if (!systemPrompt) {
@@ -1084,6 +1092,19 @@ export class SessionManager {
     const memoryContext = await this.buildMemoryContextMessage();
     if (memoryContext) {
       this.appendSessionMessage(sessionId, memoryContext);
+    }
+
+    // Compute and log stable prefix hash for cache-aware modes
+    if (effectiveCacheMode !== "off") {
+      const stablePrefix = getStablePrefixContent({
+        extensionRoot: getExtensionRoot(),
+        promptToolOptions,
+        agentInstructions,
+        skillPrompt: defaultSkillPrompt,
+        cacheMode: effectiveCacheMode,
+      });
+      const hash = getStablePrefixHash(stablePrefix);
+      process.stderr.write(`[cache-aware] Stable prefix hash: ${hash} (mode: ${effectiveCacheMode})\n`);
     }
 
     this.recordUserPromptCheckpoint(sessionId);
@@ -2067,10 +2088,16 @@ export class SessionManager {
     }
   }
 
-  private getPromptToolOptions(): { model: string; webSearchEnabled: boolean } {
+  private getPromptToolOptions(): {
+    model: string;
+    webSearchEnabled: boolean;
+    cacheMode: "off" | "aware" | "strict";
+  } {
+    const settings = this.getResolvedSettings();
     return {
-      model: this.getResolvedSettings().model,
+      model: settings.model,
       webSearchEnabled: true,
+      cacheMode: settings.cacheMode,
     };
   }
 
@@ -2760,6 +2787,23 @@ export class SessionManager {
     this.lastInjectedAgentInstructionsHash = hash;
     const message = this.buildSystemMessage(sessionId, agentInstructions);
     this.appendSessionMessage(sessionId, message);
+
+    // Compute and log stable prefix hash for cache-aware modes
+    const settings = this.getResolvedSettings();
+    const effectiveCacheMode = getEffectiveCacheMode(settings.cacheMode, settings.providerName);
+    if (effectiveCacheMode !== "off") {
+      const promptToolOptions = this.getPromptToolOptions();
+      const defaultSkillPrompt = getDefaultSkillPrompt();
+      const stablePrefix = getStablePrefixContent({
+        extensionRoot: getExtensionRoot(),
+        promptToolOptions,
+        agentInstructions,
+        skillPrompt: defaultSkillPrompt,
+        cacheMode: effectiveCacheMode,
+      });
+      const prefixHash = getStablePrefixHash(stablePrefix);
+      process.stderr.write(`[cache-aware] Stable prefix hash: ${prefixHash} (mode: ${effectiveCacheMode})\n`);
+    }
 
     // Reload MCP policy from updated steering
     this.reloadMcpPolicyFromSteering(agentInstructions);

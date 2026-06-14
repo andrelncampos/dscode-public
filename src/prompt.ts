@@ -1,4 +1,5 @@
 import { execFileSync, execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -100,6 +101,7 @@ When you need to explore the codebase (finding files, searching for patterns, un
 type PromptToolOptions = {
   model?: string;
   webSearchEnabled?: boolean;
+  cacheMode?: "off" | "aware" | "strict";
 };
 
 const DEFAULT_SKILL_TEMPLATES = ["karpathy-guidelines.md"];
@@ -159,7 +161,9 @@ export function getDefaultSkillPrompt(): string {
 }
 
 export function buildSkillDocumentsPrompt(skills: SkillPromptDocument[]): string {
-  const blocks = skills.map((skill) => renderSkillDocumentBlock(skill));
+  // Deterministic sort — preserves DeepSeek KV cache prefix across turns
+  const sorted = [...skills].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  const blocks = sorted.map((skill) => renderSkillDocumentBlock(skill));
   return `Use the skill documents below to assist the user:\n${blocks.join("\n\n")}`;
 }
 
@@ -257,6 +261,7 @@ function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): s
   const entries = fs.readdirSync(toolsDir);
   const docs = entries
     .filter((entry) => entry.endsWith(".md") || entry.endsWith(".md.ejs"))
+    // Deterministic sort — preserves DeepSeek KV cache prefix across turns. Must not be removed.
     .sort()
     .map((entry) => {
       const fullPath = path.join(toolsDir, entry);
@@ -860,4 +865,37 @@ export function getTools(
   }
 
   return tools;
+}
+
+// ---------------------------------------------------------------------------
+// Stable Prefix (cache-aware prompt construction)
+// ---------------------------------------------------------------------------
+
+type StablePrefixArgs = {
+  extensionRoot: string;
+  promptToolOptions: PromptToolOptions;
+  agentInstructions: string | null;
+  skillPrompt: string;
+  cacheMode: "off" | "aware" | "strict";
+};
+
+export function getStablePrefixContent(args: StablePrefixArgs): string {
+  // Note: getSystemPrompt() already returns only SYSTEM_PROMPT_BASE + tool docs.
+  // Model name line lives in getRuntimeContext() (dynamic tail), not in getSystemPrompt().
+  // Both aware and strict modes produce the same stable prefix content —
+  // the difference is that strict mode guarantees this via hash verification.
+  const systemBase = SYSTEM_PROMPT_BASE;
+
+  const toolDocs = readToolDocs(args.extensionRoot, args.promptToolOptions);
+
+  const parts: string[] = [systemBase];
+  if (toolDocs) parts.push(toolDocs);
+  if (args.skillPrompt) parts.push(args.skillPrompt);
+  if (args.agentInstructions) parts.push(args.agentInstructions);
+
+  return parts.join("\n\n");
+}
+
+export function getStablePrefixHash(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
 }

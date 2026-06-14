@@ -3,6 +3,7 @@ import { deepcodingSettingsSchema, formatZodErrors, type EngineEntry } from "./c
 import { getUserDscodeDir, getProjectDscodeDir } from "./common/dscode-paths";
 import { resolveMemorySettings } from "./memory/memory-settings";
 import type { MemorySettings } from "./memory/turn-transcript-types";
+import { resolveModelToProvider } from "./common/llm-provider-registry";
 import { atomicWriteJsonFileSync } from "./common/file-utils";
 import { isEncryptedCredential, decryptCredential, encryptCredential } from "./common/credential-vault";
 import * as fs from "node:fs";
@@ -91,6 +92,7 @@ export type DeepcodingSettings = {
   repositoryVisibility?: "public" | "private";
   locale?: "en" | "pt" | "es";
   thinkingBudgets?: Record<string, number>;
+  cacheMode?: "off" | "aware" | "strict";
 };
 
 export type ResolvedDeepcodingSettings = {
@@ -115,6 +117,8 @@ export type ResolvedDeepcodingSettings = {
   repositoryVisibility: "public" | "private";
   locale?: "en" | "pt" | "es";
   thinkingBudgets: Record<string, number>;
+  cacheMode: "off" | "aware" | "strict";
+  providerName: string;
 };
 
 export type ModelConfigSelection = {
@@ -137,6 +141,30 @@ function resolveReasoningEffort(value: unknown): ThinkingEffort | undefined {
   if (typeof value !== "string") return undefined;
   const valid = new Set<string>(["none", "low", "medium", "high", "max", "xhigh"]);
   return valid.has(value) ? (value as ThinkingEffort) : undefined;
+}
+
+function resolveCacheMode(raw: unknown): "off" | "aware" | "strict" {
+  if (typeof raw !== "string") return "off";
+  const valid = new Set(["off", "aware", "strict"]);
+  if (!valid.has(raw)) {
+    process.stderr.write(`[cache-aware] Invalid cacheMode ${JSON.stringify(raw)} — defaulting to 'off'\n`);
+    return "off";
+  }
+  return raw as "off" | "aware" | "strict";
+}
+
+export function getEffectiveCacheMode(
+  cacheMode: "off" | "aware" | "strict",
+  providerName: string
+): "off" | "aware" | "strict" {
+  if (cacheMode === "off") return "off";
+  if (providerName !== "deepseek") {
+    process.stderr.write(
+      `[cache-aware] cacheMode ${JSON.stringify(cacheMode)} suppressed — provider ${JSON.stringify(providerName)} is not DeepSeek\n`
+    );
+    return "off";
+  }
+  return cacheMode;
 }
 
 function parseBoolean(value: unknown): boolean | undefined {
@@ -494,6 +522,10 @@ export function resolveSettingsSources(
       ? (trimString(systemEnv.REPOSITORY_VISIBILITY) as "public" | "private")
       : (projectSettings?.repositoryVisibility ?? userSettings?.repositoryVisibility ?? "private");
 
+  const cacheMode = resolveCacheMode(projectSettings?.cacheMode ?? userSettings?.cacheMode);
+
+  const providerName = resolveModelToProvider(model);
+
   return {
     env,
     baseURL: trimString(env.BASE_URL) || defaults.baseURL,
@@ -516,6 +548,8 @@ export function resolveSettingsSources(
     repositoryVisibility,
     locale,
     thinkingBudgets,
+    cacheMode,
+    providerName,
   };
 }
 

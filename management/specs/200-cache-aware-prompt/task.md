@@ -27,7 +27,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `tsc --noEmit` passes with zero errors.
 - No changes to existing settings resolution behavior (all existing tests pass).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -51,7 +51,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `getResolvedSettings()` returns `providerName: "deepseek"` for model `"deepseek-v4-pro"`.
 - Quick test: `console.log(getResolvedSettings().providerName)` outputs `"deepseek"`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -83,7 +83,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `tsc --noEmit` passes.
 - Existing tests pass (no behavior change for single-skill or already-sorted inputs).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -114,7 +114,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `getStablePrefixHash("hello") === getStablePrefixHash("hello")` (idempotent).
 - `getStablePrefixHash("hello") !== getStablePrefixHash("world")` (different inputs → different hashes).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -140,7 +140,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `getEffectiveCacheMode("strict", "openai") === "off"`.
 - `getEffectiveCacheMode("off", "deepseek") === "off"`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -179,7 +179,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - All existing tests still pass.
 - `getPromptToolOptions().cacheMode` returns the resolved cache mode value.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -227,7 +227,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `tsc --noEmit` passes.
 - All existing session tests pass with zero modifications.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -256,7 +256,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - Existing budget tracker tests pass (they use `getBudgetCosts()` which reads via `parseBudgetFile()`).
 - A budget round-trip test (write with cache → read → values match) added in Task 9.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -289,7 +289,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - All new tests pass: `npx tsx --test src/tests/cache-aware-prompt.test.ts`
 - All new budget tests pass: `npx tsx --test src/tests/budget-tracker.test.ts`
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -319,4 +319,4 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - Zero regressions. All existing functionality preserved.
 - New cache-aware behavior activates only when `cacheMode !== "off"`.
 
-**Status:** [ ] pending
+**Status:** [x] done

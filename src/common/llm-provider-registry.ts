@@ -28,6 +28,13 @@ function isGeminiModel(model: string): boolean {
   return model.toLowerCase().startsWith("gemini-");
 }
 
+export function resolveModelToProvider(model: string): string {
+  if (isOpenAIModel(model)) return "openai";
+  if (isAnthropicModel(model)) return "anthropic";
+  if (isGeminiModel(model)) return "gemini";
+  return "deepseek";
+}
+
 export function createLlmProvider(
   projectRoot: string = process.cwd(),
   converterOptions?: OpenAIMessageConverterOptions
@@ -36,13 +43,7 @@ export function createLlmProvider(
 
   // Determine engine name from model prefix for API key / base URL resolution.
   // DeepSeek and OpenAI share createOpenAIClient; Anthropic uses its own client.
-  const engineName = isOpenAIModel(settings.model)
-    ? "openai"
-    : isAnthropicModel(settings.model)
-      ? "anthropic"
-      : isGeminiModel(settings.model)
-        ? "gemini"
-        : "deepseek";
+  const engineName = resolveModelToProvider(settings.model);
   const createClient: CreateOpenAIClient = () => createOpenAIClient(projectRoot, engineName);
 
   // OpenAI routing

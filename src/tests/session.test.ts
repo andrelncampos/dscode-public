@@ -52,7 +52,7 @@ test("SessionManager preserves structured system content when building OpenAI me
       model: "test-model",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -107,7 +107,7 @@ test("SessionManager appends failed background log tail as XML", () => {
       model: "test-model",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: (message) => {
       systemMessage = message;
@@ -144,7 +144,7 @@ test("SessionManager preserves image content for multimodal models (e.g., DeepSe
       model: "deepseek-v4-flash",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "deepseek-v4-flash" }),
+    getResolvedSettings: () => ({ model: "deepseek-v4-flash", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -190,7 +190,7 @@ test("SessionManager preserves empty reasoning content on assistant tool calls",
       model: "test-model",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -234,7 +234,7 @@ test("SessionManager repairs legacy thinking tool calls missing reasoning conten
       model: "test-model",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -281,7 +281,7 @@ test("SessionManager replays normal assistant messages with reasoning content in
       model: "test-model",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -736,6 +736,8 @@ test("SessionManager reports configured MCP servers as starting before initializ
     }),
     getResolvedSettings: () => ({
       model: "test-model",
+      cacheMode: "off" as const,
+      providerName: "deepseek" as const,
       mcpServers: {
         playwright: { command: "npx", args: ["@playwright/mcp@latest"] },
       },
@@ -2138,7 +2140,7 @@ test("SessionManager stores usage per model across model changes", async () => {
       baseURL: "https://api.deepseek.com",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: currentModel }),
+    getResolvedSettings: () => ({ model: currentModel, cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
   });
@@ -2252,7 +2254,7 @@ test("SessionManager streams chat completions and counts reasoning progress", as
       temperature: 0.25,
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
     onLlmStreamProgress: (progress) => {
@@ -2341,7 +2343,7 @@ test("SessionManager treats OpenAI APIUserAbortError as interrupted", async () =
       baseURL: "https://api.deepseek.com",
       thinkingEnabled: false,
     }),
-    getResolvedSettings: () => ({ model: "test-model" }),
+    getResolvedSettings: () => ({ model: "test-model", cacheMode: "off", providerName: "deepseek" }),
     renderMarkdown: (text) => text,
     onAssistantMessage: () => {},
     onSessionEntryUpdated: (entry) => {

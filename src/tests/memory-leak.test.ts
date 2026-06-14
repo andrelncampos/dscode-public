@@ -37,7 +37,7 @@ function createSessionManager(projectRoot: string): SessionManager {
       debugLogEnabled: false,
       env: {},
     }),
-    getResolvedSettings: () => ({ model: "test" }),
+    getResolvedSettings: () => ({ model: "test", cacheMode: "off" as const, providerName: "deepseek" as const }),
     renderMarkdown: (text: string) => text,
     onAssistantMessage: () => {},
   });

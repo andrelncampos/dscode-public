@@ -39,11 +39,31 @@ function parseBudgetFile(content: string): DailyCost[] {
   const lines = content.split(/\r?\n/);
 
   for (const line of lines) {
-    // Match table rows: | 2026-06-08 | $0.42 |
-    const match = line.match(/^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|/);
-    if (match) {
-      const date = match[1];
-      const cost = parseFloat(match[2]);
+    // Match 3-column format: | 2026-06-08 | $0.42 | $0.10 | 91.2% |
+    const match3 = line.match(
+      /^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|\s*(\d+(?:\.\d+)?)%\s*\|/
+    );
+    if (match3) {
+      const date = match3[1];
+      const cost = parseFloat(match3[2]);
+      const cacheSaved = parseFloat(match3[3]);
+      if (date && Number.isFinite(cost)) {
+        costs.push({
+          date,
+          cost,
+          cacheSaved: Number.isFinite(cacheSaved) ? cacheSaved : 0,
+          cacheHitTokens: 0, // Not recoverable from hit rate alone
+          cacheMissTokens: 0, // Not recoverable from hit rate alone
+        });
+      }
+      continue;
+    }
+
+    // Match 2-column legacy format: | 2026-06-08 | $0.42 |
+    const match2 = line.match(/^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\$?(\d+(?:\.\d+)?)\s*\|/);
+    if (match2) {
+      const date = match2[1];
+      const cost = parseFloat(match2[2]);
       if (date && Number.isFinite(cost)) {
         costs.push({ date, cost, cacheSaved: 0, cacheHitTokens: 0, cacheMissTokens: 0 });
       }
@@ -55,20 +75,31 @@ function parseBudgetFile(content: string): DailyCost[] {
 
 function buildBudgetMarkdown(costs: DailyCost[]): string {
   const sorted = [...costs].sort((a, b) => b.date.localeCompare(a.date));
-  const total = sorted.reduce((sum, entry) => sum + entry.cost, 0);
+  const totalCost = sorted.reduce((sum, e) => sum + e.cost, 0);
+  const totalCacheSaved = sorted.reduce((sum, e) => sum + e.cacheSaved, 0);
+  const totalCacheHit = sorted.reduce((sum, e) => sum + e.cacheHitTokens, 0);
+  const totalCacheMiss = sorted.reduce((sum, e) => sum + e.cacheMissTokens, 0);
+  const totalCacheTotal = totalCacheHit + totalCacheMiss;
+  const totalHitRate = totalCacheTotal > 0 ? (totalCacheHit / totalCacheTotal) * 100 : 0;
 
   const lines: string[] = [
     "# Budget — Custo acumulado do projeto",
     "",
-    "| Data | Custo (USD) |",
-    "|------|-------------|",
+    "| Data | Custo (USD) | Cache Saved (USD) | Cache Hit % |",
+    "|------|-------------|-------------------|-------------|",
   ];
 
   for (const entry of sorted) {
-    lines.push(`| ${entry.date} | ${formatCost(entry.cost)} |`);
+    const cacheTotal = entry.cacheHitTokens + entry.cacheMissTokens;
+    const hitRate = cacheTotal > 0 ? (entry.cacheHitTokens / cacheTotal) * 100 : 0;
+    lines.push(
+      `| ${entry.date} | ${formatCost(entry.cost)} | ${formatCost(entry.cacheSaved)} | ${hitRate.toFixed(1)}% |`
+    );
   }
 
-  lines.push(`| **Total** | **${formatCost(total)}** |`);
+  lines.push(
+    `| **Total** | **${formatCost(totalCost)}** | **${formatCost(totalCacheSaved)}** | **${totalHitRate.toFixed(1)}%** |`
+  );
 
   return lines.join("\n") + "\n";
 }
