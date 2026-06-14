@@ -99,6 +99,50 @@ O DsCode funciona em **sessões**. Cada sessão é uma conversa contínua. A IA 
 
 ---
 
+## A tríade DsCode: Spec + SDD + Agent
+
+O DsCode é o **único** assistente de IA que combina três capacidades em um ciclo integrado:
+
+```mermaid
+flowchart TB
+    subgraph SPEC["📋 Spec-Driven Development"]
+        S1["/spec-new"] --> S2["requirements.md<br/>design.md<br/>task.md"]
+        S2 --> S3["/spec-verify 🔄"]
+        S3 -->|"auto-corrige"| S2
+        S3 -->|"OK"| S4["/spec-implement"]
+    end
+
+    subgraph AGENT["🤖 Agents & Skills"]
+        A1["Skills com MCP"]
+        A2["Subagentes isolados"]
+        A3["Steering rules"]
+        A1 --> A4["🧠 Cada agente com<br/>seu modelo, tools<br/>e thinking próprios"]
+        A2 --> A4
+        A3 --> A4
+    end
+
+    subgraph MCP["🔌 MCP — Model Context Protocol"]
+        M1["Bancos de dados"]
+        M2["Navegadores"]
+        M3["APIs externas"]
+        M4["Servidores locais"]
+    end
+
+    SPEC -->|"agentes executam<br/>as tarefas do spec"| AGENT
+    AGENT -->|"agentes usam<br/>ferramentas MCP"| MCP
+    MCP -->|"dados reais alimentam<br/>a criação de specs"| SPEC
+```
+
+| Peça | O que faz | Por que é único |
+|---|---|---|
+| **Spec** | Define o que construir, com requisitos, design e tarefas em documentos versionados | Ciclo completo com auto-correção em 2 checkpoints (verify + audit) |
+| **Agent** | Skills executam como subagentes isolados com modelo, tools e thinking independentes | Agentes usam MCP, seguem steering rules, e não poluem o contexto principal |
+| **MCP** | Conecta a IA a bancos de dados, APIs, navegadores e servidores locais | Integrado nas 3 camadas: skills carregam MCP, specs declaram MCP, TUI inspeciona MCP |
+
+O resultado: você define **o que** quer (spec), a IA decide **como** fazer (agent) usando **ferramentas reais** (MCP), com qualidade garantida por checkpoints automáticos. **Nenhum outro produto entrega esse ciclo.**
+
+---
+
 ## Instalação
 
 ### Via npm (recomendado)

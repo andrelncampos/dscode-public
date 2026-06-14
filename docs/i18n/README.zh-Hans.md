@@ -94,6 +94,49 @@ DsCode 对以下人群有用：
 | **粘贴图像 (Ctrl+V)** | ✅ 剪贴板 | ❌ | ✅ | ❌ | ❌ |
 | **免费使用** | ✅ | ⚠️ 有限免费计划 | ⚠️ 有限免费计划 | ⚠️ 积分 | ⚠️ 有限免费计划 |
 
+
+## DsCode 的三位一体：Spec + SDD + Agent
+
+DsCode 是**唯一**将三种能力整合到一个循环中的 AI 助手：
+
+```mermaid
+flowchart TB
+    subgraph SPEC["📋 Spec-Driven Development"]
+        S1["/spec-new"] --> S2["requirements.md<br/>design.md<br/>task.md"]
+        S2 --> S3["/spec-verify 🔄"]
+        S3 -->|"自动修复"| S2
+        S3 -->|"OK"| S4["/spec-implement"]
+    end
+
+    subgraph AGENT["🤖 Agents & Skills"]
+        A1["带有 MCP 的 Skills"]
+        A2["隔离的 subagents"]
+        A3["Steering 规则"]
+        A1 --> A4["🧠 每个 agent 都有<br/>独立的模型、tools<br/>和 thinking"]
+        A2 --> A4
+        A3 --> A4
+    end
+
+    subgraph MCP["🔌 MCP — Model Context Protocol"]
+        M1["数据库"]
+        M2["浏览器"]
+        M3["外部 API"]
+        M4["本地服务器"]
+    end
+
+    SPEC -->|"agents 执行<br/>spec 任务"| AGENT
+    AGENT -->|"agents 使用<br/>MCP 工具"| MCP
+    MCP -->|"真实数据驱动<br/>spec 创建"| SPEC
+```
+
+| 部分 | 做什么 | 为什么独特 |
+|---|---|---|
+| **Spec** | 定义要构建什么：版本化文档中的需求、设计和任务 | 完整周期，2 个自动修复检查点（verify + audit） |
+| **Agent** | Skills 作为隔离的 subagents 运行，具有独立的模型、tools 和 thinking | Agents 使用 MCP，遵循 steering 规则，不污染主上下文 |
+| **MCP** | 将 AI 连接到数据库、API、浏览器和本地服务器 | 集成在 3 个层面：skills 携带 MCP，specs 声明 MCP，TUI 检查 MCP |
+
+结果：你定义**想要什么**（spec），AI 决定**如何实现**（agent），使用**真实工具**（MCP），质量由自动检查点保障。**没有其他产品提供这个循环。**
+
 ---
 
 ## 安装
