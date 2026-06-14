@@ -181,10 +181,9 @@ function buildCacheEfficiencyLine(usagePerModel: Record<string, ModelUsage> | nu
   if (!usagePerModel) return null;
   let totalHit = 0;
   let totalMiss = 0;
-  const totalCached = 0;
   let hasAny = false;
 
-  for (const [model, usage] of Object.entries(usagePerModel)) {
+  for (const usage of Object.values(usagePerModel)) {
     if (typeof usage.normalizedCacheHitTokens === "number") {
       totalHit += usage.normalizedCacheHitTokens;
       totalMiss += usage.normalizedCacheMissTokens ?? 0;

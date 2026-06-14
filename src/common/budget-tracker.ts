@@ -4,7 +4,7 @@ import type { ModelUsage } from "../session";
 import { computeUsageCost, formatCost, DEFAULT_MODEL_PRICING, type ModelPricing } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
-import { computeCacheHitRate, computeCacheSavings } from "./cache-metrics";
+import { computeCacheSavings } from "./cache-metrics";
 
 const BUDGET_FILE = "budget.md";
 
