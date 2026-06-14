@@ -149,21 +149,6 @@ npm install -g @andrelncampos/dscode
 
 需要 [Node.js 24+](https://nodejs.org)。安装后，在终端运行 `dscode`。
 
-### 独立二进制文件
-
-从 **[Releases 页面](https://github.com/andrelncampos/dscode-public/releases)** 下载适合你操作系统的二进制文件。  
-**无需任何前提条件** — 二进制文件独立运行，不需要 Node.js 或其他依赖。
-
-| 操作系统 | 文件 |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-每个 release 包含 `checksums.txt` 文件用于 **SHA256** 校验下载完整性。
-下载后解压并在终端运行 `./dscode`。
-
 ## 更新
 
 DsCode 在启动时自动检查新版本。如果有更新可用，您将收到通知并可以安装。
@@ -302,7 +287,9 @@ my-project/
 
 ### 第 1 步：安装
 
-从 [Releases 页面](https://github.com/andrelncampos/dscode-public/releases) 下载二进制文件，解压后运行 `./dscode`。**无需任何前提条件。**
+```bash
+npm install -g @andrelncampos/dscode
+```/dscode`。**无需任何前提条件。**
 
 ### 第 2 步：配置你的密钥
 
@@ -1009,7 +996,6 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | 渠道 | 链接 |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
 | **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ **仅**从上述官方渠道安装 DsCode。不要信任第三方网站或未经验证的链接上发布的版本。

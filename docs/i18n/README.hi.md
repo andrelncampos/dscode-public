@@ -149,21 +149,6 @@ npm install -g @andrelncampos/dscode
 
 [Node.js 24+](https://nodejs.org) आवश्यक है। इंस्टॉल करने के बाद, टर्मिनल में `dscode` चलाएं।
 
-### स्टैंडअलोन बाइनरी
-
-**[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public/releases)** से अपने ऑपरेटिंग सिस्टम के लिए बाइनरी डाउनलोड करें।  
-**कोई पूर्वापेक्षा नहीं** — बाइनरी स्वयं-निहित है, Node.js या अन्य निर्भरताओं की आवश्यकता नहीं।
-
-| ऑपरेटिंग सिस्टम | फ़ाइल |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-डाउनलोड की अखंडता सत्यापित करने के लिए प्रत्येक release में **SHA256** हैश के साथ `checksums.txt` शामिल है।
-डाउनलोड करने के बाद, संग्रह निकालें और टर्मिनल में `./dscode` चलाएं।
-
 ## अपडेट
 
 DsCode स्टार्टअप पर स्वचालित रूप से नए संस्करणों की जांच करता है। यदि कोई अपडेट उपलब्ध है, तो आपको सूचित किया जाएगा।
@@ -302,7 +287,9 @@ my-project/
 
 ### चरण 1: इंस्टॉल करें
 
-[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public/releases) से बाइनरी डाउनलोड करें, निकालें और `./dscode` चलाएं। **कोई पूर्वापेक्षा नहीं।**
+[```bash
+npm install -g @andrelncampos/dscode
+```/dscode` चलाएं। **कोई पूर्वापेक्षा नहीं।**
 
 ### चरण 2: अपनी की कॉन्फ़िगर करें
 
@@ -1010,7 +997,6 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | चैनल | लिंक |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
 | **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ DsCode को **केवल** ऊपर दिए गए आधिकारिक चैनलों से इंस्टॉल करें। तृतीय-पक्ष साइटों या असत्यापित लिंक पर प्रकाशित संस्करणों पर भरोसा न करें।

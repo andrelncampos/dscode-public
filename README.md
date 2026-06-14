@@ -154,21 +154,6 @@ npm install -g @andrelncampos/dscode
 
 Requer [Node.js 24+](https://nodejs.org). Após instalar, execute `dscode` no terminal.
 
-### Binários standalone
-
-Baixe o binário para o seu sistema operacional na **[página de releases](https://github.com/andrelncampos/dscode-public/releases)**.  
-**Nenhum pré-requisito** — o binário é autocontido, não requer Node.js nem nenhuma dependência.
-
-| Sistema | Arquivo |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
-
-Cada release inclui `checksums.txt` com hashes **SHA256** para verificar a integridade do download.
-Após baixar, extraia o arquivo e execute `./dscode` no terminal.
-
 ## Atualização
 
 O DsCode verifica automaticamente por novas versões ao iniciar. Se houver uma atualização disponível, você será notificado e poderá instalá-la com um comando.
@@ -1006,7 +991,6 @@ Dependências de terceiros mantêm suas próprias licenças.
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
 | **npm** | [npmjs.com/package/@andrelncampos/dscode](https://www.npmjs.com/package/@andrelncampos/dscode) |
-| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
 | **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões publicadas em sites de terceiros ou links não verificados.
