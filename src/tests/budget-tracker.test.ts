@@ -161,3 +161,114 @@ test("recordBudgetCost with prompt_cache_hit_tokens fallback computes correct co
   // Tolerate 0.01 for markdown round-trip rounding
   assert.ok(Math.abs(todayCost - expectedCost) < 0.01);
 });
+
+// ---------------------------------------------------------------------------
+// Cache column format tests (Spec 200)
+// ---------------------------------------------------------------------------
+
+test("buildBudgetMarkdown produces 3-column format with cache data", () => {
+  // We verify via a budget file written by recordBudgetCost with cache tokens
+  const projectRoot = createTempDir("deepcode-budget-test-");
+  const pricing = DEFAULT_MODEL_PRICING["deepseek-v4-pro"];
+
+  // Usage with cache hit tokens
+  const usage = makeUsage({
+    prompt_tokens: 10_000_000,
+    completion_tokens: 1_000_000,
+    normalizedCacheHitTokens: 8_000_000,
+    normalizedCacheMissTokens: 2_000_000,
+  });
+
+  recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
+
+  const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
+  const content = fs.readFileSync(budgetPath, "utf8");
+
+  // Should have 3-column headers
+  assert.match(content, /Cache Saved \(USD\)/);
+  assert.match(content, /Cache Hit %/);
+
+  // Should have a daily row with cache data
+  const today = new Date().toISOString().slice(0, 10);
+  assert.match(content, new RegExp(`\\\\| ${today} \\\\|`));
+  assert.match(content, /\\\\| \\\\$\\d+\\.\\d{2} \\\\| \\\\$\\d+\\.\\d{2} \\\\| \\d+\\.\\d% \\\\|/);
+
+  // Should have a Total row with cache data
+  assert.match(content, /\\\\| \\\\*\\\\*Total\\\\*\\\\* \\\\|/);
+  assert.match(content, /Cache Saved \(USD\)/);
+});
+
+test("parseBudgetFile handles legacy 2-column format", () => {
+  const projectRoot = createTempDir("deepcode-budget-test-");
+  const dscodeDir = path.join(projectRoot, ".dscode");
+  fs.mkdirSync(dscodeDir, { recursive: true });
+
+  // Legacy format: no cache columns
+  const legacyContent =
+    [
+      "# Budget — Custo acumulado do projeto",
+      "",
+      "| Data | Custo (USD) |",
+      "|------|-------------|",
+      "| 2026-06-14 | $1.23 |",
+      "| **Total** | **$1.23** |",
+    ].join("\n") + "\n";
+
+  fs.writeFileSync(path.join(dscodeDir, "budget.md"), legacyContent);
+
+  const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
+  assert.equal(todayCost, 1.23);
+  assert.equal(projectTotal, 1.23);
+});
+
+test("parseBudgetFile handles new 3-column format", () => {
+  const projectRoot = createTempDir("deepcode-budget-test-");
+  const dscodeDir = path.join(projectRoot, ".dscode");
+  fs.mkdirSync(dscodeDir, { recursive: true });
+
+  const newContent =
+    [
+      "# Budget — Custo acumulado do projeto",
+      "",
+      "| Data | Custo (USD) | Cache Saved (USD) | Cache Hit % |",
+      "|------|-------------|-------------------|-------------|",
+      "| 2026-06-14 | $1.23 | $0.45 | 87.3% |",
+      "| **Total** | **$1.23** | **$0.45** | **87.3%** |",
+    ].join("\n") + "\n";
+
+  fs.writeFileSync(path.join(dscodeDir, "budget.md"), newContent);
+
+  const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
+  // getBudgetCosts returns only cost figures (not cacheSaved)
+  assert.equal(todayCost, 1.23);
+  assert.equal(projectTotal, 1.23);
+});
+
+test("budget round-trip preserves cacheSaved value", () => {
+  const projectRoot = createTempDir("deepcode-budget-test-");
+  const pricing = DEFAULT_MODEL_PRICING["deepseek-v4-pro"];
+
+  // Record cost with cache hits
+  const usage = makeUsage({
+    prompt_tokens: 10_000_000,
+    completion_tokens: 1_000_000,
+    normalizedCacheHitTokens: 8_000_000,
+    normalizedCacheMissTokens: 2_000_000,
+  });
+
+  recordBudgetCost(projectRoot, "deepseek-v4-pro", usage);
+
+  const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
+  assert.ok(fs.existsSync(budgetPath));
+
+  const content = fs.readFileSync(budgetPath, "utf8");
+
+  // Should have 3 columns
+  assert.match(content, /Cache Saved \(USD\)/);
+  assert.match(content, /Cache Hit %/);
+
+  // Read back and verify costs are still correct
+  const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
+  assert.ok(todayCost > 0);
+  assert.equal(projectTotal, todayCost);
+});
