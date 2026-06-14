@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="40" fill="#0d1117"/>
+  <text x="100" y="118" font-family="system-ui,monospace" font-size="90" font-weight="bold" fill="#4d6BFE" text-anchor="middle" dominant-baseline="middle">Ds</text>
+  <text x="100" y="170" font-family="system-ui,monospace" font-size="24" font-weight="600" fill="#8b949e" text-anchor="middle">code</text>
+</svg>
