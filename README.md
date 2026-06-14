@@ -185,21 +185,34 @@ Se houver uma versão mais recente, o DsCode perguntará se você deseja instal�
 
 ## Configuração inicial
 
-O DsCode lê configurações de `~/.dscode/settings.json` (usuário) e `.dscode/settings.json` (projeto). Variáveis de ambiente com prefixo `DEEPCODE_` também são reconhecidas.
+O DsCode lê configurações de dois locais (o projeto tem prioridade sobre o global):
+
+| Prioridade | Arquivo | Uso |
+|---|---|---|
+| **1º (recomendado)** | `.dscode/settings.json` no seu projeto | Chave, modelo e preferências específicos do projeto |
+| 2º (fallback) | `~/.dscode/settings.json` no seu home | Padrão global para todos os projetos |
+
+> 💡 **Prefira sempre o arquivo do projeto.** Assim cada projeto pode ter seu próprio provedor e chave — sem misturar custos ou contextos.
+
+Variáveis de ambiente com prefixo `DEEPCODE_` também são reconhecidas.
 
 ### Exemplo mínimo
+
+Crie `.dscode/settings.json` na raiz do seu projeto:
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "sua-chave-aqui"
+    "API_KEY": "sk-sua-chave-aqui"
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
 }
 ```
+
+> 🔐 **Sua chave é criptografada automaticamente** no primeiro uso com AES-256-GCM. O DsCode detecta que a chave está em texto plano, gera uma chave de criptografia em `~/.dscode/.credential-key` (permissões 0600), e sobrescreve a chave no `settings.json` com a versão criptografada. Você não precisa fazer nada — é transparente.
 
 ### Onde conseguir a chave de API
 
@@ -315,11 +328,7 @@ meu-projeto/
 npm install -g @andrelncampos/dscode
 ```
 
-### Passo 2: Configure sua chave
-
-Crie `~/.dscode/settings.json` com sua chave de API e modelo preferido (veja a seção de Configuração acima).
-
-### Passo 3: Abra uma pasta de projeto
+### Passo 2: Abra seu projeto
 
 ```bash
 cd /caminho/do/seu/projeto
@@ -327,15 +336,28 @@ cd /caminho/do/seu/projeto
 
 Pode ser qualquer projeto: um repositório Git, um projeto pessoal, até uma pasta vazia.
 
-### Passo 4: Inicie o DsCode
+### Passo 3: Adicione sua chave de API
+
+Cole sua chave no arquivo `.dscode/settings.json` na raiz do projeto:
+
+```bash
+mkdir -p .dscode
+echo '{"env":{"MODEL":"deepseek-v4-pro","API_KEY":"sk-sua-chave"}}' > .dscode/settings.json
+```
+
+Obtenha uma chave gratuita em [platform.deepseek.com](https://platform.deepseek.com).
+
+> 🔐 Sua chave será **criptografada automaticamente** (AES-256-GCM) na primeira execução. Você nunca mais verá o texto plano.
+
+### Passo 4: Inicie
 
 ```bash
 dscode
 ```
 
-Você verá uma tela de boas-vindas com um campo de texto. O assistente está pronto.
+Digite `Explique a estrutura deste projeto` e pressione Enter. Pronto.
 
-**Dica:** Digite `@` para buscar e mencionar arquivos do projeto — a IA pode ler e editar os arquivos que você referenciar.
+**Dica:** Digite `@` para mencionar arquivos, `/` para abrir o menu de comandos.
 
 ### Passo 5: Pergunte algo simples
 

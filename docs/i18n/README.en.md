@@ -147,7 +147,7 @@ Requires [Node.js 24+](https://nodejs.org). After installing, run `dscode` in yo
 
 ### Standalone binaries
 
-Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode-public/releases)**.  
 **No prerequisites** — the binary is self-contained, no Node.js or other dependencies required.
 
 | Operating System | File |
@@ -176,16 +176,36 @@ If a newer version is available, DsCode will ask if you want to install it. Othe
 
 ## Initial setup
 
-DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscode/settings.json` (project). Environment variables with the `DEEPCODE_` prefix are also recognized.
+DsCode reads configuration from two locations (project takes priority over global):
+
+| Priority | File | Usage |
+|---|---|---|
+| **1st (recommended)** | `.dscode/settings.json` in your project | Project-specific key, model, and preferences |
+| 2nd (fallback) | `~/.dscode/settings.json` in your home | Global default for all projects |
+
+> 💡 **Prefer the project file.** Each project can have its own provider and key — no mixing of costs or contexts.
+
+Environment variables with the `DEEPCODE_` prefix are also recognized.
 
 ### Minimum example
+
+Create `.dscode/settings.json` in your project root:
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "your-key-here"
+    "API_KEY": "sk-your-key-here"
+  },
+  "thinkingEnabled": true,
+  "reasoningEffort": "max"
+}
+```
+
+> 🔐 **Your key is encrypted automatically** on first use with AES-256-GCM. DsCode detects plaintext, generates an encryption key at `~/.dscode/.credential-key` (0600 permissions), and rewrites the key in `settings.json` as encrypted. Fully transparent — you do nothing.
+
+### Where to get your API key
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
@@ -294,16 +314,36 @@ my-project/
 
 ### Step 1: Install
 
-Download the binary from the [releases page](https://github.com/andrelncampos/dscode-public-public/releases), extract it, and run `./dscode`. **No prerequisites.**
+```bash
+npm install -g @andrelncampos/dscode
+```
 
-### Step 2: Configure your key
-
-Create `~/.dscode/settings.json` with your API key and preferred model (see the Configuration section above).
-
-### Step 3: Open a project folder
+### Step 2: Open your project
 
 ```bash
 cd /path/to/your/project
+```
+
+Any project works: a Git repo, a personal project, even an empty folder.
+
+### Step 3: Add your API key
+
+Paste your key into `.dscode/settings.json` in the project root:
+
+```bash
+mkdir -p .dscode
+echo '{"env":{"MODEL":"deepseek-v4-pro","API_KEY":"sk-your-key"}}' > .dscode/settings.json
+```
+
+Get a free key at [platform.deepseek.com](https://platform.deepseek.com).
+
+> 🔐 Your key will be **encrypted automatically** (AES-256-GCM) on first run. You'll never see the plaintext again.
+
+### Step 4: Start
+
+```bash
+dscode
+```
 ```
 
 It can be any project: a Git repo, a personal project, even an empty folder.
@@ -920,7 +960,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## How to get help
 
-If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
+If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public/issues).
 
 When reporting, include:
 
@@ -977,8 +1017,8 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../NOTICE) fo
 | Channel | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ Install DsCode **only** from the official channels above. Do not trust versions published on third-party sites or unverified links.
 
@@ -986,5 +1026,5 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../NOTICE) fo
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
