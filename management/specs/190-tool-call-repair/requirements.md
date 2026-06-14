@@ -46,7 +46,7 @@
 **Why:** LLM streaming can produce truncated tool calls when token limits are hit mid-generation. Current behavior returns `InputParseError: Failed to parse tool arguments: ...` — the LLM sees only a generic error and must retry blindly.
 
 **Acceptance Criteria:**
-- [ ] `'{"command":"ls","sideEffects"'` (truncated after key, missing colon+value+brace) → repair attempts structural completion by appending `:false}` with reasonable defaults.
+- [ ] `'{"command":"ls","sideEffects"'` (truncated after key, missing colon+value+brace) → repair attempts structural completion by appending `:null}` (null placeholder for unknown value).
 - [ ] `'{"command":"ls","sideEffects":["read'` (truncated mid-array-string) → repair attempts to close the array and object.
 - [ ] `'{"file_path":"/tmp/test.txt"}'` (valid, complete) → zero modification.
 - [ ] `'{"file_path":'` (truncated mid-value) → returns unrecoverable error with specific message indicating truncation point.
@@ -95,7 +95,7 @@
 - [ ] `"run_in_background": "true"` where schema expects `boolean` → repair coerces to `true` (string "true" → boolean).
 - [ ] `"command": 123` where schema expects `string` → repair coerces to `"123"` (number → string via String()).
 - [ ] `"sideEffects": true` where schema expects `array` → cannot repair, validation error with type mismatch detail.
-- [ ] Boolean coercion: only `"true"` → `true`; `"false"` → `false`; any other string → error.
+- [ ] Boolean coercion: `"true"` → `true`; `"false"` → `false`; `1` (number) → `true`; `0` (number) → `false`. Any other value type or string → left unchanged (not coerced — handler may reject).
 
 ### FR-006: Default Value Injection for Missing Optional Arguments
 
@@ -130,7 +130,7 @@
 **Why:** Operators and developers need visibility into repair effectiveness. Are 90% of DeepSeek tool calls being repaired? Is repair latency acceptable?
 
 **Acceptance Criteria:**
-- [ ] Metrics include: `totalCalls`, `repairedCalls`, `failedRepairs`, `stageSuccesses: { parse, validate, repair }`, `totalRepairLatencyMs`, `perStageLatencyMs: { parse, validate, repair }`.
+- [ ] Metrics include: `totalCalls`, `repairedCalls`, `failedRepairs`, `stageSuccesses: { parse, validate, repair }`, `stageFailures: { parse, validate, repair }`, `totalRepairLatencyMs`, `recentCalls` (array of per-call metrics, max 100 entries).
 - [ ] Metrics are accumulated per session (not per call). Each `ToolExecutor` instance tracks its own metrics.
 - [ ] Metrics can be retrieved via `toolExecutor.getRepairMetrics(): ToolCallRepairMetrics`.
 - [ ] Metrics can be reset via `toolExecutor.resetRepairMetrics()`.

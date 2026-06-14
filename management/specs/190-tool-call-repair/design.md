@@ -28,12 +28,12 @@
 
 ### ADR-190-002: ToolRegistry as Minimal Interface
 
-**Decision:** The repair pipeline receives a `ToolRegistry` object with a single method `resolve(name: string)`. It does NOT receive the full `McpManager` or tool handler map.
+**Decision:** The repair pipeline receives a `ToolRegistry` object with two methods: `resolve(name: string)` and `getAllNames(): string[]`. It does NOT receive the full `McpManager` or tool handler map.
 
 **Rationale:**
 - The repair pipeline does not execute tools — it only needs `ToolDefinition` for validation.
 - `ToolRegistry` abstracts both built-in tools (from `BUILTIN_TOOL_DEFINITIONS`) and MCP tools (from `McpManager.getMcpServerTools()`).
-- This interface is a 1-line function — trivial to mock in tests.
+- The two methods are trivial to mock in tests — one function and one array.
 
 ### ADR-190-003: Metrics Accumulator as Mutable Object Passed By Reference
 
@@ -67,6 +67,12 @@ export type ToolRegistry = {
    * 3. No match → return undefined.
    */
   resolve(name: string): { canonicalName: string; definition: ToolDefinition | undefined } | undefined;
+
+  /**
+   * Return all registered tool names (built-in + MCP) sorted alphabetically.
+   * Used for error messages ("Available tools: bash, read, write, ...").
+   */
+  getAllNames(): string[];
 };
 ```
 
@@ -310,7 +316,7 @@ function validateAgainstRegistry(
 function validateAgainstRegistry(toolName, args, registry):
   entry = registry.resolve(toolName)
   if entry is undefined:
-    return { ok: false, error: "Unknown tool: ${toolName}. Available tools: ${listAllNames(registry)}" }
+    return { ok: false, error: "Unknown tool: ${toolName}. Available tools: ${registry.getAllNames().join(', ')}" }
   
   definition = entry.definition
   if definition is undefined:
@@ -472,32 +478,28 @@ private buildToolRegistry(): ToolRegistry {
   return {
     resolve: (name: string) => {
       const trimmed = name.trim();
-      // 1. Exact match (case-sensitive)
+      // 1. Exact match (case-sensitive) in built-in tools
       if (builtInNames.has(trimmed)) {
         return { canonicalName: trimmed, definition: builtInNames.get(trimmed) };
       }
-      // 2. Case-insensitive match
+      // 2. Case-insensitive match in built-in tools
       const lower = trimmed.toLowerCase();
       for (const [canonical, def] of builtInNames) {
         if (canonical.toLowerCase() === lower) {
           return { canonicalName: canonical, definition: def };
         }
       }
-      // 3. MCP tools (delegated to McpManager for name validation)
+      // 3. MCP tools — exact match only (case-insensitive MCP added in Task 7)
       if (this.mcpManager?.isMcpTool(trimmed)) {
         return { canonicalName: trimmed, definition: undefined };
       }
-      // 4. Case-insensitive MCP match
-      if (this.mcpManager) {
-        // MCP tool names are namespace-prefixed: mcp__server__tool
-        // Try case-insensitive match by checking isMcpTool
-        const originalName = this.findMcpToolCaseInsensitive(trimmed);
-        if (originalName) {
-          return { canonicalName: originalName, definition: undefined };
-        }
-      }
       return undefined;
-    }
+    },
+    getAllNames: () => {
+      const builtIn = [...builtInNames.keys()];
+      const mcp = this.mcpManager?.getAllToolNames?.() ?? [];
+      return [...builtIn, ...mcp].sort();
+    },
   };
 }
 ```
@@ -715,6 +717,7 @@ export type ToolDefinition = {
 // src/tools/tool-call-repair.ts
 export type ToolRegistry = {
   resolve(name: string): { canonicalName: string; definition: ToolDefinition | undefined } | undefined;
+  getAllNames(): string[];
 };
 ```
 
@@ -814,6 +817,7 @@ function createMockRegistry(overrides?: Partial<Record<string, ToolDefinition>>)
       }
       return undefined;
     },
+    getAllNames: () => [...map.keys()].sort(),
   };
 }
 ```

@@ -176,12 +176,11 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 4. Add private method `buildToolRegistry(): ToolRegistry`:
    - Load `getBuiltInToolDefinitions()`.
    - Build a `Map<string, ToolDefinition>` from built-in defs keyed by `function.name`.
-   - Return `{ resolve }` function that:
-     a. Checks exact match in map.
-     b. Checks case-insensitive match (iterate map keys, compare `toLowerCase()`).
-     c. If `this.mcpManager` is available, check `isMcpTool(trimmed)` and return `{ canonicalName: name, definition: undefined }`.
-     d. If MCP case-insensitive match needed, iterate MCP tools via `this.mcpManager` (add helper method if needed — see step 4c below).
-   - For MCP case-insensitive lookup, the simplest approach: the current `isMcpTool()` does exact match. Add a private helper `findMcpToolCaseInsensitive(name: string): string | undefined` that queries the MCP manager for tool listings and does a case-insensitive comparison. If `McpManager` has a `getAllToolNames(): string[]` method, use it. Otherwise, call `this.mcpManager.isMcpTool(trimmed)` and if not found, try `toLowerCase()` variants of known MCP tool names (but we don't have the full list readily). **Design decision:** Add `getAllToolNames(): string[]` to `McpManager` if it doesn't exist, or add a method to check case-insensitively. Check if `mcpManager.getMcpServerTools()` returns tool names.
+   - Return `{ resolve, getAllNames }` object where:
+     a. `resolve`: Checks exact match in map.
+     b. `resolve`: Checks case-insensitive match (iterate map keys, compare `toLowerCase()`).
+     c. `resolve`: If `this.mcpManager` is available, check `isMcpTool(trimmed)` for exact MCP match → return `{ canonicalName: trimmed, definition: undefined }`. Case-insensitive MCP matching is deferred to Task 7 (requires `getAllToolNames()` from Task 6).
+     d. `getAllNames`: Returns combined built-in tool names + MCP tool names (via `this.mcpManager?.getAllToolNames?.() ?? []`), sorted alphabetically.
 5. Remove constant `BUILT_IN_TOOL_NAME_ALIASES` (lines 114-119).
 6. In `executeToolCall()` method:
    - At the top of the method (after existing signature), insert repair pipeline call:
@@ -256,31 +255,33 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ---
 
-### Task 7: Implement `ToolRegistry` with MCP Integration in `ToolExecutor`
+### Task 7: Add Case-Insensitive MCP Matching to `buildToolRegistry()`
 
-**Objective:** If Task 6 added `getAllToolNames()`, update `buildToolRegistry()` in `ToolExecutor` to use it for case-insensitive MCP matching. If Task 6 was skipped, implement with whatever MCP API is available.
+**Objective:** Extend `buildToolRegistry()` in `ToolExecutor` to support case-insensitive MCP tool name matching, using the `getAllToolNames()` method added in Task 6 (if needed).
 
-**Requirements Covered:** FR-003 (MCP case-insensitive matching), FR-004 (available tools list in error messages).
+**Requirements Covered:** FR-003 (MCP case-insensitive matching).
 
 **Design References:** Component 7c (`buildToolRegistry`).
 
 **Actions:**
-1. In `src/tools/executor.ts`, finalize `buildToolRegistry()` method:
-   - Ensure it has access to MCP tool names via `this.mcpManager?.getAllToolNames?.()`.
-   - Implement case-insensitive MCP lookup: iterate `getAllToolNames()`, find match with `toLowerCase()` comparison.
-   - Wire into `resolve()`: after built-in exact and case-insensitive check, check MCP exact, then MCP case-insensitive.
-2. Also add `getAllNames(): string[]` to the `ToolRegistry.resolve` return (extended in Task 3 step 2, or add as a separate property on the registry object):
-   ```typescript
-   resolve: (name: string) => { ... } | undefined;
-   getAllNames: () => string[];
-   ```
-   The `getAllNames` returns combined built-in + MCP tool names (sorted alphabetically).
-3. Run `npx tsc --noEmit`.
+1. In `src/tools/executor.ts`, update `buildToolRegistry()`:
+   - In the `resolve` function, after the exact MCP match (`isMcpTool(trimmed)`), add a case-insensitive fallback:
+     ```typescript
+     // 4. Case-insensitive MCP match
+     const mcpNames = this.mcpManager?.getAllToolNames?.() ?? [];
+     const lowerName = trimmed.toLowerCase();
+     const match = mcpNames.find(n => n.toLowerCase() === lowerName);
+     if (match) {
+       return { canonicalName: match, definition: undefined };
+     }
+     ```
+   - If `getAllToolNames()` is not available (Task 6 was skipped), skip this step — MCP case-insensitive matching is a best-effort enhancement.
+2. Run `npx tsc --noEmit`.
 
 **Validation:**
 - `npx tsc --noEmit` passes.
-- `toolRegistry.resolve("Bash")` returns `{ canonicalName: "bash", definition: {...} }`.
 - `toolRegistry.resolve("mcp__GITHUB__create_issue")` (case-different from actual) returns corrected case.
+- `toolRegistry.resolve("MCP__SERVER__TOOL")` (uppercase) → matches correctly if MCP server registers `mcp__server__tool`.
 
 **Status:** [ ] pending
 
