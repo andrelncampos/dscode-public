@@ -74,6 +74,16 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 
 ## Instalación
 
+### Vía npm (recomendado)
+
+```bash
+npm install -g @andrelncampos/dscode
+```
+
+Requiere [Node.js 24+](https://nodejs.org). Después de instalar, ejecuta `dscode` en la terminal.
+
+### Binarios standalone
+
 Descarga el binario para tu sistema operativo desde la **[página de releases](https://github.com/andrelncampos/dscode/releases)**.  
 **Sin prerrequisitos** — el binario es autocontenido, no requiere Node.js ni otras dependencias.
 
@@ -86,6 +96,18 @@ Descarga el binario para tu sistema operativo desde la **[página de releases](h
 
 Cada release incluye un `checksums.txt` con hashes **SHA256** para verificar la integridad de la descarga.
 Después de descargar, extrae el archivo y ejecuta `./dscode` en la terminal.
+
+## Actualización
+
+DsCode verifica automáticamente nuevas versiones al iniciar. Si hay una actualización disponible, serás notificado y podrás instalarla con un comando.
+
+Para verificar manualmente:
+
+```bash
+dscode --update
+```
+
+Si hay una versión más reciente, DsCode preguntará si deseas instalarla. De lo contrario, mostrará "DsCode is up to date."
 
 ---
 
@@ -406,6 +428,42 @@ Imagina que quieres agregar **soporte para OpenAI** en DsCode. El flujo real:
 ```
 
 > 💡 **Consejo**: `spec-verify` y `spec-audit` son tus aliados. Ejecútalos hasta que digan "0 issues found". Cada pasada mejora la calidad sin riesgo de regresión.
+
+---
+
+## MCP — Model Context Protocol
+
+DsCode integra el **Model Context Protocol (MCP)**, permitiendo que la IA se conecte a herramientas externas como bases de datos, navegadores, APIs y servidores locales. El soporte cubre el ciclo completo: skills, SDD y TUI.
+
+### Skills con MCP
+
+Las skills pueden incluir un archivo `mcp.json` que declara servidores MCP. Cuando la skill se activa (por palabra clave o `#skill-name`), los servidores se inician automáticamente. Cuando la conversación cambia de tema, se suspenden — sin contaminar el catálogo global de herramientas.
+
+Ejemplo: una skill `postgres-dba` incluye herramientas como `query`, `list_tables` y `describe`, además de reglas de seguridad (`MCP: deny drop_table`). Todo en un paquete instalable.
+
+### SDD + MCP
+
+El ciclo SDD se integra con MCP en tres niveles:
+- **Las specs declaran dependencias MCP** en el frontmatter YAML, definiendo servidores y herramientas relevantes para esa spec.
+- **Creación asistida**: durante `/spec-new`, la IA consulta fuentes reales (GitHub issues, bases de datos, documentación) para producir requisitos basados en datos concretos.
+- **Acceso controlado**: cada spec define un allowlist temporal de herramientas, manteniendo a la IA enfocada.
+
+### Inspección y acciones vía TUI
+
+El comando `/mcp` abre un panel completo de administración:
+- **Lista de servidores** con estado, alcance (`[global]`, `[project]`, `[skill: ...]`, `[spec: N]`) y resumen de políticas.
+- **Detalles** con badges de política (`auto-allow`, `ask`, `deny`) para cada herramienta.
+- **Historial de ejecuciones** y **registro de errores** para diagnóstico.
+- **Atajos de teclado**: `A` aprobar, `D` denegar, `R` resetear política, `X` deshabilitar servidor, `Ctrl+R` reconectar.
+
+### Dónde configurar servidores MCP
+
+| Nivel | Ubicación | Alcance |
+|---|---|---|
+| Global | `~/.dscode/settings.json` → `mcpServers` | Todas las sesiones |
+| Proyecto | `.dscode/mcp.json` | Sesiones en ese directorio |
+| Skill | `<skill>/mcp.json` | Cuando la skill está activa |
+| Spec | Frontmatter YAML del spec | Durante `/spec-implement` |
 
 ---
 
@@ -804,9 +862,7 @@ Si encuentras un problema, abre una [issue en GitHub](https://github.com/andreln
 
 Al reportar un problema, incluye:
 
-- **Versión de DsCode**: `dscode --version`
-- **Sistema operativo**: Windows 11, Ubuntu 24.04, macOS 15, etc.
-- **Node.js**: `node --version`
+- **Versión de DsCode**: `dscode --version` (muestra versión + node + plataforma)
 - **Modelo usado**: `deepseek-v4-pro`, `deepseek-v4-flash`, etc.
 - **Comando ejecutado** y el error completo
 - **Logs sanitizados**, si son relevantes (elimina claves, tokens y datos privados)
@@ -846,7 +902,7 @@ Consulta [SECURITY.md](../../SECURITY.md) para la política completa.
 
 ## Licencia y origen
 
-DsCode está licenciado bajo la **Licencia MIT**.
+**DsCode es gratuito para uso, pero el código fuente no es público.** El producto se ofrece sin costo para uso individual y profesional. La redistribución está permitida solo de los binarios oficiales.
 
 Este proyecto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado bajo MIT. El aviso de copyright original se conserva en [LICENSE](../../LICENSE) y en [NOTICE](../../NOTICE).
 

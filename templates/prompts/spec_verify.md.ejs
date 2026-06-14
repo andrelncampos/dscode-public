@@ -14,6 +14,12 @@ Read these files:
 
 (You'll need to discover the spec folder name from the roadmap first.)
 
+<% if (typeof mcpTools !== 'undefined' && mcpTools) { %>
+### MCP Tools for this Spec
+The spec declares these MCP tools. Use them when verification requires external data:
+<%= mcpTools %>
+<% } %>
+
 ### Step 2: Verify Requirements Completeness
 
 Check `requirements.md` against these criteria:

@@ -15,6 +15,12 @@ Read these files:
 
 If the spec status is not `verified`, warn the user but proceed anyway.
 
+<% if (typeof mcpTools !== 'undefined' && mcpTools) { %>
+### MCP Tools for this Spec
+The spec declares these MCP tools. Use them when implementation requires external data:
+<%= mcpTools %>
+<% } %>
+
 ### Step 2: Execute Tasks Sequentially
 
 For each task in `task.md`, in numerical order:

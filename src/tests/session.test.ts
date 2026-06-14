@@ -516,6 +516,8 @@ rl.on("line", (line) => {
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 0 },
     },
   ]);
 
@@ -532,6 +534,8 @@ rl.on("line", (line) => {
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 2 },
     },
   ]);
   const mcpManager = (manager as any).mcpManager;
@@ -713,7 +717,8 @@ rl.on("line", (line) => {
   assert.equal(manager.getMcpStatus()[0]?.status, "ready");
   assert.equal((manager as any).mcpToolDefinitions.length, 1);
 
-  await waitForMcpStatus(manager, "failed");
+  // With auto-reconnect enabled (Spec 140), crash → "reconnecting" first
+  await waitForMcpStatus(manager, "reconnecting");
 
   assert.equal((manager as any).mcpToolDefinitions.length, 0);
 
@@ -750,6 +755,8 @@ test("SessionManager reports configured MCP servers as starting before initializ
       prompts: [],
       resourceCount: 0,
       resources: [],
+      scope: undefined,
+      policyStats: { allowed: 0, total: 0 },
     },
   ]);
 });

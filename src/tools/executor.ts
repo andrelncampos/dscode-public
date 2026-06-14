@@ -11,6 +11,7 @@ import { handleUpdatePlanTool } from "./update-plan-handler";
 import { handleWebSearchTool } from "./web-search-handler";
 import { handleWriteTool } from "./write-handler";
 import type { McpManager } from "../mcp/mcp-manager";
+import type { McpPolicy } from "../mcp/mcp-policy";
 
 export type CreateOpenAIClient = () => {
   client: OpenAI | null;
@@ -141,13 +142,26 @@ export class ToolExecutor {
   private readonly projectRoot: string;
   private readonly createOpenAIClient?: CreateOpenAIClient;
   private readonly mcpManager?: McpManager;
+  private readonly mcpPolicy?: McpPolicy;
   private readonly toolHandlers = new Map<string, ToolHandler>();
+  private mcpAuditContext?: { specNumber: number };
 
-  constructor(projectRoot: string, createOpenAIClient?: CreateOpenAIClient, mcpManager?: McpManager) {
+  constructor(
+    projectRoot: string,
+    createOpenAIClient?: CreateOpenAIClient,
+    mcpManager?: McpManager,
+    mcpPolicy?: McpPolicy
+  ) {
     this.projectRoot = projectRoot;
     this.createOpenAIClient = createOpenAIClient;
     this.mcpManager = mcpManager;
+    this.mcpPolicy = mcpPolicy;
     this.registerToolHandlers();
+  }
+
+  /** Set audit context for MCP tool calls during spec commands. */
+  setMcpAuditContext(ctx: { specNumber: number } | undefined): void {
+    this.mcpAuditContext = ctx;
   }
 
   async executeToolCalls(
@@ -237,9 +251,26 @@ export class ToolExecutor {
     if (!handler) {
       // Try MCP tools
       if (this.mcpManager?.isMcpTool(toolName)) {
+        // Evaluate MCP policy before execution
+        const policyAction = this.mcpPolicy?.evaluate(toolName) ?? "ask";
+        if (policyAction === "deny") {
+          const reason = this.mcpPolicy?.findDenyReason(toolName) ?? "unknown";
+          return {
+            ok: false,
+            name: toolName,
+            error: `Tool ${toolName} blocked by steering policy: ${reason}`,
+          };
+        }
+        if (policyAction === "allow") {
+          // Execute directly — bypass permission prompt
+          const parsedArgs = this.parseToolArguments(toolCall.function.arguments);
+          const args = parsedArgs.ok ? parsedArgs.args : {};
+          return this.mcpManager.executeMcpTool(toolName, args, undefined, this.mcpAuditContext);
+        }
+        // "ask" → fall through to existing permission flow
         const parsedArgs = this.parseToolArguments(toolCall.function.arguments);
         const args = parsedArgs.ok ? parsedArgs.args : {};
-        return this.mcpManager.executeMcpTool(toolName, args);
+        return this.mcpManager.executeMcpTool(toolName, args, undefined, this.mcpAuditContext);
       }
       return {
         ok: false,

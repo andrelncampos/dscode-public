@@ -80,6 +80,16 @@ DsCode इनके लिए उपयोगी है:
 
 ## इंस्टॉलेशन
 
+### npm के माध्यम से (अनुशंसित)
+
+```bash
+npm install -g @andrelncampos/dscode
+```
+
+[Node.js 24+](https://nodejs.org) आवश्यक है। इंस्टॉल करने के बाद, टर्मिनल में `dscode` चलाएं।
+
+### स्टैंडअलोन बाइनरी
+
 **[रिलीज़ पेज](https://github.com/andrelncampos/dscode/releases)** से अपने ऑपरेटिंग सिस्टम के लिए बाइनरी डाउनलोड करें।  
 **कोई पूर्वापेक्षा नहीं** — बाइनरी स्वयं-निहित है, Node.js या अन्य निर्भरताओं की आवश्यकता नहीं।
 
@@ -92,6 +102,18 @@ DsCode इनके लिए उपयोगी है:
 
 डाउनलोड की अखंडता सत्यापित करने के लिए प्रत्येक release में **SHA256** हैश के साथ `checksums.txt` शामिल है।
 डाउनलोड करने के बाद, संग्रह निकालें और टर्मिनल में `./dscode` चलाएं।
+
+## अपडेट
+
+DsCode स्टार्टअप पर स्वचालित रूप से नए संस्करणों की जांच करता है। यदि कोई अपडेट उपलब्ध है, तो आपको सूचित किया जाएगा।
+
+मैन्युअल रूप से जांचने के लिए:
+
+```bash
+dscode --update
+```
+
+यदि कोई नया संस्करण उपलब्ध है, तो DsCode पूछेगा कि क्या आप इसे इंस्टॉल करना चाहते हैं। अन्यथा, "DsCode is up to date." प्रदर्शित करेगा।
 
 ---
 
@@ -426,6 +448,44 @@ Imagine you want to add **OpenAI support** to DsCode. The real flow:
 > 💡 **Tip**: `spec-verify` and `spec-audit` are your allies. Run them until they say "0 issues found". Each pass improves quality with zero regression risk.
 
 <!-- end TODO -->
+
+---
+
+<!-- TODO: translate to Hindi -->
+
+## MCP — Model Context Protocol
+
+DsCode integrates the **Model Context Protocol (MCP)**, allowing the AI to connect to external tools such as databases, browsers, APIs, and local servers. Support covers the full lifecycle: skills, SDD, and TUI.
+
+### Skills with MCP
+
+Skills can include an `mcp.json` file that declares MCP servers. When the skill is activated (via keyword match or `#skill-name`), the servers start automatically. When the conversation moves to another topic, they are suspended — no global tool catalog pollution.
+
+Example: a `postgres-dba` skill brings tools like `query`, `list_tables`, and `describe`, plus safety rules (`MCP: deny drop_table`). All in one installable package.
+
+### SDD + MCP
+
+The SDD cycle integrates with MCP at three levels:
+- **Specs declare MCP dependencies** in YAML frontmatter, defining servers and tools relevant to that spec.
+- **Assisted creation**: during `/spec-new`, the AI queries real data sources (GitHub issues, databases, documentation) to produce requirements grounded in real data.
+- **Scoped access**: each spec defines a temporary tool allowlist, keeping the AI focused on what matters.
+
+### TUI Inspection & Actions
+
+The `/mcp` command opens a full management panel:
+- **Server list** with status, scope (`[global]`, `[project]`, `[skill: ...]`, `[spec: N]`), and policy summary.
+- **Details** with policy badges (`auto-allow`, `ask`, `deny`) for each tool.
+- **Execution history** and **error log** for diagnostics.
+- **Keyboard shortcuts**: `A` approve, `D` deny, `R` reset policy, `X` disable server, `Ctrl+R` reconnect.
+
+### Where to configure MCP servers
+
+| Level | Location | Scope |
+|---|---|---|
+| Global | `~/.dscode/settings.json` → `mcpServers` | All sessions |
+| Project | `.dscode/mcp.json` | Sessions in that directory |
+| Skill | `<skill>/mcp.json` | When the skill is active |
+| Spec | Spec YAML frontmatter | During `/spec-implement` |
 
 ---
 
@@ -836,9 +896,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 रिपोर्ट करते समय, शामिल करें:
 
-- **DsCode संस्करण**: `dscode --version`
-- **ऑपरेटिंग सिस्टम**: Windows 11, Ubuntu 24.04, macOS 15 आदि
-- **Node.js**: `node --version`
+- **DsCode संस्करण**: `dscode --version` (संस्करण + node + प्लेटफ़ॉर्म दिखाता है)
 - **उपयोग किया गया मॉडल**: `deepseek-v4-pro`, `deepseek-v4-flash` आदि
 - **निष्पादित कमांड** और पूरी त्रुटि
 - **साफ़ किए गए लॉग**, यदि प्रासंगिक हों (की, टोकन और निजी डेटा हटाएं)
@@ -878,7 +936,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## लाइसेंस और उत्पत्ति
 
-DsCode **MIT लाइसेंस** के तहत लाइसेंस प्राप्त है।
+**DsCode उपयोग के लिए मुफ़्त है, लेकिन स्रोत कोड सार्वजनिक नहीं है।** यह उत्पाद व्यक्तिगत और पेशेवर उपयोग के लिए बिना किसी लागत के उपलब्ध है। पुनर्वितरण केवल आधिकारिक बाइनरी का अनुमत है।
 
 यह प्रोजेक्ट [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli) से लिया गया है, मूल रूप से MIT लाइसेंस प्राप्त है। मूल कॉपीराइट नोटिस [LICENSE](../../LICENSE) और [NOTICE](../../NOTICE) में संरक्षित है।
 

@@ -31,6 +31,17 @@ export type McpServerConfig = {
   command: string;
   args?: string[];
   env?: Record<string, string>;
+
+  // NEW: transport type
+  type?: "stdio" | "http";
+
+  // NEW: HTTP transport
+  url?: string;
+  headers?: Record<string, string>;
+
+  // NEW: server/tool toggles
+  disabled?: boolean;
+  disabledTools?: string[];
 };
 
 export type PermissionScope =

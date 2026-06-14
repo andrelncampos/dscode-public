@@ -16,7 +16,13 @@ const packageInfo = readPackageInfo();
 const isAuditMode = args.includes("--audit") || args.includes("--safe");
 
 if (args.includes("--version") || args.includes("-v")) {
-  process.stdout.write(`${packageInfo.version || "unknown"}\n`);
+  const version = packageInfo.version || "unknown";
+  const nodeVersion = process.version;
+  const platform = `${process.platform} ${process.arch}`;
+  process.stdout.write(
+    [`dscode ${version}`, `node   ${nodeVersion}`, `${platform}`, "", `github.com/andrelncampos/dscode`].join("\n") +
+      "\n"
+  );
   process.exit(0);
 }
 
@@ -34,7 +40,8 @@ if (args.includes("--help") || args.includes("-h")) {
       "  dscode -p <prompt>                  Launch with a pre-filled prompt",
       "  dscode --prompt <prompt>            Same as -p",
       "  dscode --audit                      Safe audit mode (no file writes, no commands)",
-      "  dscode --version                    Print the version",
+      "  dscode --version                    Print version, node, and platform info",
+      "  dscode --update                     Check for updates and install the latest version",
       "  dscode --help                       Show this help",
       "",
       "Safe audit mode (--audit):",
@@ -73,6 +80,21 @@ if (args.includes("--help") || args.includes("-h")) {
       "  ctrl+d twice     Quit",
     ].join("\n") + "\n"
   );
+  process.exit(0);
+}
+
+if (args.includes("--update")) {
+  process.stdout.write(`dscode ${packageInfo.version || "unknown"} — checking for updates...\n`);
+  const found = await checkForNpmUpdate(packageInfo);
+  if (!found) {
+    process.stdout.write("DsCode is up to date.\n");
+    process.exit(0);
+  }
+  const result = await promptForPendingUpdate(packageInfo);
+  if (result.installed) {
+    process.exit(0);
+  }
+  process.stdout.write("Update skipped.\n");
   process.exit(0);
 }
 
@@ -117,6 +139,20 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // Check for updates in THIS session (3s timeout), not just next startup.
+  // This way the user sees the update prompt today, not tomorrow.
+  {
+    const UPDATE_CHECK_TIMEOUT_MS = 3_000;
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, UPDATE_CHECK_TIMEOUT_MS));
+    const found = await Promise.race([checkForNpmUpdate(packageInfo), timeout.then(() => false)]);
+    if (found) {
+      const updatePromptResult = await promptForPendingUpdate(packageInfo);
+      if (updatePromptResult.installed) {
+        process.exit(0);
+      }
+    }
+  }
+
   const restartRef: { current: (() => void) | null } = { current: null };
 
   function startApp(): void {
@@ -147,8 +183,6 @@ async function main(): Promise<void> {
       }
     });
   }
-
-  void checkForNpmUpdate(packageInfo);
 
   startApp();
 }

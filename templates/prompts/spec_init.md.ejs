@@ -169,6 +169,25 @@ Leave this file with a brief note: "*No lessons recorded yet — this file is po
 
 ---
 
+## Gitignore Handling
+
+The project's `repositoryVisibility` is: **<%= repositoryVisibility %>**
+
+<% if (repositoryVisibility === "public") { %>
+Since the repository is **public**, the `management/` directory is already listed in `.gitignore`. These spec files are for local development only and must **never** be committed to the remote repository.
+
+- ✅ Do NOT run `git add` on any files in `management/`
+- ✅ Verify `.gitignore` contains `/management/` (it should already be there)
+- ✅ If the user asks about committing them, explain they are local-only for public repos
+<% } else { %>
+Since the repository is **private**, the `management/` files should be tracked by Git and committed.
+
+- Verify `management/` is **NOT** in `.gitignore` (remove it if it is)
+- After creating the files, suggest the user run `git add management/` and commit them
+<% } %>
+
+---
+
 ## Important: After creating all 5 files, report to the user:
 
 1. Which files were created.

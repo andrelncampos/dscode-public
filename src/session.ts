@@ -27,10 +27,15 @@ import {
   type ToolCall,
   type ToolCallExecution,
   type ToolExecutionHooks,
+  type ToolExecutionResult,
+  type ToolHandler,
 } from "./tools/executor";
 import { handleExploreToolCall } from "./tools/explore-subagent";
 import { handleSkillToolCall } from "./tools/explore-subagent";
 import { McpManager } from "./mcp/mcp-manager";
+import { McpPolicy } from "./mcp/mcp-policy";
+import { McpScopeResolver } from "./mcp/mcp-scopes";
+import { parseSpecMcp } from "./common/spec-mcp";
 import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager";
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
 import { clearSettingsCache } from "./settings";
@@ -307,6 +312,8 @@ export type SkillInfo = {
   agentTools?: string[];
   agentMaxTurns?: number;
   agentTimeoutMs?: number;
+  mcpServers?: Record<string, McpServerConfig>;
+  steering?: string[];
 };
 
 type SessionManagerOptions = {
@@ -371,13 +378,18 @@ export class SessionManager {
   private readonly liveProcessKeys = new Set<string>();
   private readonly toolExecutor: ToolExecutor;
   private readonly mcpManager = new McpManager();
+  private readonly mcpPolicy: McpPolicy;
+  private readonly mcpScopeResolver: McpScopeResolver;
   private mcpToolDefinitions: ToolDefinition[] = [];
   private skillsCache: SkillInfo[] = [];
+  private readonly skillMcpMap = new Map<string, Record<string, McpServerConfig>>();
   private readonly messageConverter: OpenAIMessageConverter;
   private static systemPromptCache = new Map<string, string>();
   private lastInjectedAgentInstructionsHash: string | null = null;
   private fileHistoryCheckpointCount = 0;
   private readonly terminalTitleTemplate: string | undefined;
+  private specMcpActive = false;
+  private specMcpNumber = 0;
   private readonly titleManager: TerminalTitleManager | null = null;
 
   constructor(options: SessionManagerOptions) {
@@ -404,8 +416,15 @@ export class SessionManager {
           model: this.getResolvedSettings().model,
         })
       : null;
-    this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
-    this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
+    this.mcpScopeResolver = new McpScopeResolver(
+      path.join(os.homedir(), ".dscode", "mcp.json"),
+      path.join(this.projectRoot, ".dscode", "mcp.json")
+    );
+    const scopedMcpServers = this.mcpScopeResolver.resolve(this.getResolvedSettings().mcpServers);
+    this.mcpManager.prepare(scopedMcpServers);
+    this.mcpPolicy = new McpPolicy([]);
+    this.mcpManager.setPolicy(this.mcpPolicy);
+    this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager, this.mcpPolicy);
     const converterOptions: OpenAIMessageConverterOptions = {
       renderInitPrompt: () => this.renderInitCommandPrompt(),
       renderSteeringAddPrompt: (steeringText: string) => this.renderSteeringAddCommandPrompt(steeringText),
@@ -437,6 +456,7 @@ export class SessionManager {
   }
 
   async initMcpServers(servers?: Record<string, McpServerConfig>): Promise<void> {
+    const scopedServers = this.mcpScopeResolver.resolve(servers);
     this.mcpManager.setOnToolsListChanged(() => {
       this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
     });
@@ -444,12 +464,39 @@ export class SessionManager {
     this.mcpManager.setOnStatusChanged(() => {
       this.onMcpStatusChanged?.();
     });
-    await this.mcpManager.initialize(servers);
+    await this.mcpManager.initialize(scopedServers);
     this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
   }
 
   getMcpStatus() {
     return this.mcpManager.getStatus();
+  }
+
+  getMcpManager(): McpManager {
+    return this.mcpManager;
+  }
+
+  async disableMcpServer(name: string): Promise<void> {
+    const scope = this.mcpManager.getServerScope(name);
+    if (scope && (scope.kind === "session" || scope.kind === "skill")) {
+      throw new Error("Cannot disable session-scoped servers");
+    }
+    let filePath: string;
+    if (scope?.kind === "global") {
+      filePath = `${require("node:os").homedir()}/.dscode/mcp.json`;
+    } else if (scope?.kind === "project") {
+      filePath = `${this.projectRoot}/.dscode/mcp.json`;
+    } else {
+      // legacy — skip for now, settings.json modification is complex
+      return;
+    }
+    const raw = require("node:fs").readFileSync(filePath, "utf8");
+    const config = JSON.parse(raw);
+    if (!config.servers) config.servers = {};
+    if (!config.servers[name]) config.servers[name] = {};
+    config.servers[name].disabled = true;
+    require("node:fs").writeFileSync(filePath, JSON.stringify(config, null, 2) + "\n", "utf8");
+    this.mcpManager.disconnectServer(name, true);
   }
 
   async reconnectMcpServer(name: string, config?: McpServerConfig): Promise<void> {
@@ -729,6 +776,15 @@ export class SessionManager {
       const inclusion: "auto" | "manual" | undefined =
         rawInclusion === "auto" || rawInclusion === "manual" ? (rawInclusion as "auto" | "manual") : undefined;
 
+      // Parse steering from frontmatter
+      let steering: string[] | undefined;
+      const rawSteering = parsed.data.steering;
+      if (Array.isArray(rawSteering) && rawSteering.every((s: unknown) => typeof s === "string")) {
+        steering = rawSteering as string[];
+      } else if (rawSteering !== undefined && rawSteering !== null) {
+        console.warn(`readSkillInfo: 'steering' must be an array of strings in ${skillPath}`);
+      }
+
       // Parse mode
       const rawMode = typeof parsed.data.mode === "string" ? parsed.data.mode.trim() : "";
       let mode: "prompt" | "agent" | undefined;
@@ -775,6 +831,33 @@ export class SessionManager {
         }
       }
 
+      // Parse mcp.json for skill-scoped MCP servers
+      let mcpServers: Record<string, McpServerConfig> | undefined;
+      try {
+        const mcpJsonPath = path.join(path.dirname(skillPath), "mcp.json");
+        const mcpRaw = fs.readFileSync(mcpJsonPath, "utf8");
+        const mcpParsed = JSON.parse(mcpRaw);
+        if (
+          mcpParsed &&
+          typeof mcpParsed === "object" &&
+          !Array.isArray(mcpParsed) &&
+          mcpParsed.servers &&
+          typeof mcpParsed.servers === "object"
+        ) {
+          mcpServers = mcpParsed.servers as Record<string, McpServerConfig>;
+        } else {
+          console.warn(`readSkillInfo: mcp.json missing 'servers' key in ${mcpJsonPath}`);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+          // No mcp.json — not an error
+        } else {
+          console.warn(
+            `readSkillInfo: invalid JSON in ${path.join(path.dirname(skillPath), "mcp.json")}: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
+      }
+
       return {
         name:
           typeof parsed.data.name === "string" && parsed.data.name.trim()
@@ -789,6 +872,8 @@ export class SessionManager {
         agentTools,
         agentMaxTurns,
         agentTimeoutMs,
+        mcpServers,
+        steering,
       };
     } catch {
       return fallbackSkill;
@@ -985,6 +1070,8 @@ export class SessionManager {
       this.lastInjectedAgentInstructionsHash = this.hashContent(agentInstructions);
       const instructionsMessage = this.buildSystemMessage(sessionId, agentInstructions);
       this.appendSessionMessage(sessionId, instructionsMessage);
+      // Parse MCP policy from steering on initial load
+      this.reloadMcpPolicyFromSteering(agentInstructions);
     }
 
     const memoryContext = await this.buildMemoryContextMessage();
@@ -1030,6 +1117,11 @@ export class SessionManager {
         }
       }
     }
+
+    const activeSkills = userPrompt.skills ?? [];
+    const activeNames = new Set(activeSkills.map((s) => s.name));
+    this.deactivateStaleSkillMcp(activeNames);
+    this.activateSkillMcp(activeSkills);
 
     this.activeSessionId = sessionId;
     await this.activateSession(sessionId, controller);
@@ -1114,6 +1206,11 @@ export class SessionManager {
           this.onAssistantMessage(skillMessage, true);
         }
       }
+
+      const activeSkills = userPrompt.skills ?? [];
+      const activeNames = new Set(activeSkills.map((s) => s.name));
+      this.deactivateStaleSkillMcp(activeNames);
+      this.activateSkillMcp(activeSkills);
 
       // ── Model command dispatch ──────────────────────────────
       if (this.pendingCommandWizard || (userPrompt.text && userPrompt.text.trim().startsWith("/model-"))) {
@@ -1202,6 +1299,7 @@ export class SessionManager {
         false
       );
       this.maybeNotifyTaskCompletion(sessionId, notify, startedAt, env);
+      if (this.specMcpActive) this.teardownSpecMcp();
       return;
     }
 
@@ -1214,6 +1312,7 @@ export class SessionManager {
         updateTime: now,
       }));
       this.maybeNotifyTaskCompletion(sessionId, notify, startedAt, env);
+      if (this.specMcpActive) this.teardownSpecMcp();
       return;
     }
 
@@ -1587,6 +1686,9 @@ export class SessionManager {
         this.sessionControllers.delete(sessionId);
       }
       this.maybeNotifyTaskCompletion(sessionId, notify, startedAt, env);
+      if (this.specMcpActive) {
+        this.teardownSpecMcp();
+      }
     }
   }
 
@@ -2507,7 +2609,19 @@ export class SessionManager {
   private renderSpecInitPrompt(): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_init.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, {});
+    const visibility = this.getRepositoryVisibility();
+    return ejs.render(template, { repositoryVisibility: visibility });
+  }
+
+  private getRepositoryVisibility(): "public" | "private" {
+    try {
+      const settingsPath = path.join(this.projectRoot, ".dscode", "settings.json");
+      const raw = fs.readFileSync(settingsPath, "utf8");
+      const settings = JSON.parse(raw);
+      return settings?.repositoryVisibility === "public" ? "public" : "private";
+    } catch {
+      return "private";
+    }
   }
 
   private renderSpecPlanPrompt(planText: string): string {
@@ -2519,25 +2633,32 @@ export class SessionManager {
   private renderSpecNewPrompt(specNumber: number): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_new.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
+    this.setupSpecMcp(specNumber, false); // start servers, no filter (discovery)
     return ejs.render(template, { specNumber });
   }
 
   private renderSpecVerifyPrompt(specNumber: number): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_verify.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, { specNumber });
+    const mcpConfig = this.setupSpecMcp(specNumber);
+    const mcpTools = mcpConfig ? this.buildSpecMcpToolsListing(Object.keys(mcpConfig)) : undefined;
+    return ejs.render(template, { specNumber, mcpTools });
   }
 
   private renderSpecImplementPrompt(specNumber: number): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_implement.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, { specNumber });
+    const mcpConfig = this.setupSpecMcp(specNumber);
+    const mcpTools = mcpConfig ? this.buildSpecMcpToolsListing(Object.keys(mcpConfig)) : undefined;
+    return ejs.render(template, { specNumber, mcpTools });
   }
 
   private renderSpecAuditPrompt(specNumber: number): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_audit.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, { specNumber });
+    this.setupSpecMcp(specNumber, false); // start servers, no filter (audit shows all)
+    const mcpTools = this.buildSpecMcpToolsListing(null); // all visible tools
+    return ejs.render(template, { specNumber, mcpTools });
   }
 
   private renderSpecListPrompt(): string {
@@ -2627,6 +2748,105 @@ export class SessionManager {
     this.lastInjectedAgentInstructionsHash = hash;
     const message = this.buildSystemMessage(sessionId, agentInstructions);
     this.appendSessionMessage(sessionId, message);
+
+    // Reload MCP policy from updated steering
+    this.reloadMcpPolicyFromSteering(agentInstructions);
+  }
+
+  /** Extract MCP: rules from AGENTS.md steering and reload the policy engine. */
+  private reloadMcpPolicyFromSteering(agentInstructions: string): void {
+    const lines = agentInstructions.split("\n");
+    const mcpRules = lines.filter((line) => /^\s*-\s+MCP:\s/.test(line));
+    this.mcpPolicy.reload(mcpRules);
+  }
+
+  /** Start MCP servers and load steering rules for activated skills. */
+  private activateSkillMcp(skills: SkillInfo[]): void {
+    for (const skill of skills) {
+      if (skill.mcpServers && Object.keys(skill.mcpServers).length > 0) {
+        this.mcpScopeResolver.addSkillServers(skill.name, skill.mcpServers);
+        this.mcpManager.initializeSkillServers(skill.name, skill.mcpServers); // fire-and-forget
+        this.skillMcpMap.set(skill.name, skill.mcpServers);
+
+        // Auto-allow MCP tools from this skill's servers (FR-006)
+        const autoAllowRules = Object.keys(skill.mcpServers).map((serverName) => `- MCP: allow mcp__${serverName}__*`);
+        this.mcpPolicy.addSkillRules(`__auto__${skill.name}`, autoAllowRules);
+      }
+      if (skill.steering && skill.steering.length > 0) {
+        this.mcpPolicy.addSkillRules(skill.name, skill.steering);
+      }
+    }
+    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+  }
+
+  /** Deactivate MCP servers and remove steering rules for skills no longer matched. */
+  private deactivateStaleSkillMcp(activeSkillNames: Set<string>): void {
+    const currentActive = this.mcpScopeResolver.getActiveSkillNames();
+    for (const name of currentActive) {
+      if (!activeSkillNames.has(name)) {
+        this.mcpManager.disconnectSkillServers(name);
+        this.mcpScopeResolver.removeSkillServers(name);
+        this.mcpPolicy.removeSkillRules(name);
+        this.mcpPolicy.removeSkillRules(`__auto__${name}`);
+        this.skillMcpMap.delete(name);
+      }
+    }
+    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+  }
+
+  /** Start MCP servers declared by a spec. Returns the config for prompt building. */
+  setupSpecMcp(specNumber: number, applyFilter = true): Record<string, McpServerConfig> | undefined {
+    if (this.specMcpActive) this.teardownSpecMcp();
+
+    // Find the spec directory by prefix
+    const specsRoot = path.join(getExtensionRoot(), "management", "specs");
+    const dirs = fs
+      .readdirSync(specsRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && d.name.startsWith(`${specNumber}-`))
+      .map((d) => d.name);
+    if (dirs.length === 0) return undefined;
+    const specDir = path.join(specsRoot, dirs[0]);
+
+    const config = parseSpecMcp(specDir);
+    if (!config) return undefined;
+
+    this.specMcpActive = true;
+    this.specMcpNumber = specNumber;
+
+    this.mcpManager.initializeSkillServers(`__spec__${specNumber}`, config);
+
+    if (applyFilter) {
+      this.mcpManager.setSpecMcpFilter(Object.keys(config));
+    }
+    this.toolExecutor.setMcpAuditContext({ specNumber });
+
+    return config;
+  }
+
+  /** Disconnect spec MCP servers and clear the tool filter. */
+  teardownSpecMcp(): void {
+    if (!this.specMcpActive) return;
+    this.mcpManager.disconnectSkillServers(`__spec__${this.specMcpNumber}`);
+    this.mcpManager.setSpecMcpFilter(null);
+    this.toolExecutor.setMcpAuditContext(undefined);
+    this.specMcpActive = false;
+    this.specMcpNumber = 0;
+  }
+
+  /** Build a compact MCP tools listing string for spec command prompts. */
+  private buildSpecMcpToolsListing(serverNames: string[] | null): string {
+    const inventory = this.mcpManager.getMcpToolCompactInventoryForPrompt();
+    const filtered = serverNames ? inventory.filter((t) => serverNames.includes(t.serverName)) : inventory;
+    return filtered.map((t) => `- \`${t.name}\`: ${t.description}`).join("\n");
+  }
+
+  /** Build a ToolHandler that routes mcp__* tool calls to McpManager. */
+  private buildMcpToolHandler(): ToolHandler {
+    return async (args: Record<string, unknown>, context): Promise<ToolExecutionResult> => {
+      const toolName = context.toolCall?.function?.name ?? "";
+      if (!toolName) return { ok: false, name: "", error: "Unknown MCP tool name." };
+      return this.mcpManager.executeMcpTool(toolName, args);
+    };
   }
 
   private buildSystemMessage(
@@ -2819,11 +3039,15 @@ export class SessionManager {
       // Intercept agent skill tool calls and route to the skill subagent handler
       const agentSkill = this.skillsCache.find((s) => s.mode === "agent" && s.name === toolCall.function.name);
       if (agentSkill) {
+        const skillMcpDefs = this.mcpManager.getMcpToolDefinitionsForSkill(agentSkill.name);
+        const mcpHandler = this.buildMcpToolHandler();
         const skillResult = await handleSkillToolCall(
           toolCall as ToolCall,
           this.createOpenAIClient,
           agentSkill,
-          this.projectRoot
+          this.projectRoot,
+          skillMcpDefs.length > 0 ? skillMcpDefs : undefined,
+          skillMcpDefs.length > 0 ? mcpHandler : undefined
         );
         const content = this.formatSubagentToolResult(skillResult);
         toolExecutions.push({
@@ -2944,6 +3168,11 @@ export class SessionManager {
         }
       }
     }
+
+    const activeSkills = userPrompt.skills ?? [];
+    const activeNames = new Set(activeSkills.map((s) => s.name));
+    this.deactivateStaleSkillMcp(activeNames);
+    this.activateSkillMcp(activeSkills);
   }
 
   private buildToolParamsSnippet(toolFunction: unknown | null): string {

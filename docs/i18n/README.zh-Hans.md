@@ -80,6 +80,16 @@ DsCode 对以下人群有用：
 
 ## 安装
 
+### 通过 npm（推荐）
+
+```bash
+npm install -g @andrelncampos/dscode
+```
+
+需要 [Node.js 24+](https://nodejs.org)。安装后，在终端运行 `dscode`。
+
+### 独立二进制文件
+
 从 **[Releases 页面](https://github.com/andrelncampos/dscode/releases)** 下载适合你操作系统的二进制文件。  
 **无需任何前提条件** — 二进制文件独立运行，不需要 Node.js 或其他依赖。
 
@@ -92,6 +102,18 @@ DsCode 对以下人群有用：
 
 每个 release 包含 `checksums.txt` 文件用于 **SHA256** 校验下载完整性。
 下载后解压并在终端运行 `./dscode`。
+
+## 更新
+
+DsCode 在启动时自动检查新版本。如果有更新可用，您将收到通知并可以安装。
+
+手动检查：
+
+```bash
+dscode --update
+```
+
+如果有更新的版本，DsCode 将询问是否安装。否则显示 "DsCode is up to date."
 
 ---
 
@@ -426,6 +448,44 @@ Imagine you want to add **OpenAI support** to DsCode. The real flow:
 > 💡 **Tip**: `spec-verify` and `spec-audit` are your allies. Run them until they say "0 issues found". Each pass improves quality with zero regression risk.
 
 <!-- end TODO -->
+
+---
+
+<!-- TODO: translate to Chinese -->
+
+## MCP — Model Context Protocol
+
+DsCode 集成了 **Model Context Protocol (MCP)**，允许 AI 连接到外部工具，如数据库、浏览器、API 和本地服务器。支持覆盖完整生命周期：skills、SDD 和 TUI。
+
+### Skills 与 MCP
+
+Skills 可以包含声明 MCP 服务器的 `mcp.json` 文件。当 skill 激活时（通过关键词匹配或 `#skill-name`），服务器自动启动。当对话转移到其他主题时，它们会被暂停 — 不污染全局工具目录。
+
+示例：`postgres-dba` skill 包含 `query`、`list_tables` 和 `describe` 等工具，以及安全规则（`MCP: deny drop_table`）。全部在一个可安装的包中。
+
+### SDD + MCP
+
+SDD 周期在三个层面与 MCP 集成：
+- **Specs 声明 MCP 依赖**在 YAML frontmatter 中，定义与该 spec 相关的服务器和工具。
+- **辅助创建**：在 `/spec-new` 期间，AI 查询真实数据源（GitHub issues、数据库、文档）以生成基于真实数据的需求。
+- **范围控制**：每个 spec 定义临时工具白名单，保持 AI 专注。
+
+### TUI 检查与操作
+
+`/mcp` 命令打开完整的管理面板：
+- **服务器列表**，包含状态、范围（`[global]`、`[project]`、`[skill: ...]`、`[spec: N]`）和策略摘要。
+- **详细信息**，包含每个工具的策略标识（`auto-allow`、`ask`、`deny`）。
+- **执行历史**和**错误日志**，用于诊断。
+- **键盘快捷键**：`A` 批准，`D` 拒绝，`R` 重置策略，`X` 禁用服务器，`Ctrl+R` 重新连接。
+
+### 在哪里配置 MCP 服务器
+
+| 层级 | 位置 | 范围 |
+|---|---|---|
+| 全局 | `~/.dscode/settings.json` → `mcpServers` | 所有会话 |
+| 项目 | `.dscode/mcp.json` | 该目录中的会话 |
+| Skill | `<skill>/mcp.json` | skill 激活时 |
+| Spec | Spec YAML frontmatter | `/spec-implement` 期间 |
 
 ---
 
@@ -835,9 +895,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 报告问题时，请包括：
 
-- **DsCode 版本**：`dscode --version`
-- **操作系统**：Windows 11、Ubuntu 24.04、macOS 15 等
-- **Node.js**：`node --version`
+- **DsCode 版本**：`dscode --version`（显示版本 + node + 平台）
 - **使用的模型**：`deepseek-v4-pro`、`deepseek-v4-flash` 等
 - **执行的命令**和完整错误信息
 - **清理后的日志**，如果相关（删除密钥、token 和私人数据）
@@ -877,7 +935,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## 许可证和来源
 
-DsCode 使用 **MIT 许可证**。
+**DsCode 免费使用，但源代码不公开。** 本产品免费提供给个人和专业用途。仅允许分发官方二进制文件。
 
 本项目源自 [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli)，原始许可为 MIT。原始版权声明保存在 [LICENSE](../../LICENSE) 和 [NOTICE](../../NOTICE) 中。
 

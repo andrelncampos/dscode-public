@@ -14,6 +14,12 @@ Read these files:
 
 (Discover the spec folder name from the roadmap first.)
 
+<% if (typeof mcpTools !== 'undefined' && mcpTools) { %>
+### MCP Tools Available
+All MCP tools are available during audit. The spec declares these as relevant:
+<%= mcpTools %>
+<% } %>
+
 ### Step 2: Verify Task Completion
 
 - [ ] Are ALL tasks marked as `[x] done`?

@@ -11,6 +11,20 @@ Read these files:
 
 If the spec does not exist in the roadmap, report that and stop.
 
+### MCP Support
+If this spec benefits from external data sources (APIs, databases, documentation servers), include an `mcp` frontmatter section in `requirements.md` at spec creation time:
+```yaml
+---
+mcp:
+  servers:
+    name:
+      command: "..."
+      args: [...]
+      env: { ... }
+---
+```
+The MCP servers declared here will be available during `/spec-implement`.
+
 ### Step 2: Determine Spec Folder
 
 The spec folder is `management/specs/<%= specNumber %>-<name>/` where `<name>` is the kebab-case name from the roadmap. Create this folder if it does not exist.
