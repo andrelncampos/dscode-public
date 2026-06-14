@@ -39,7 +39,7 @@ type ListToolsResult = {
   nextCursor?: string;
 };
 
-type CallToolResult = {
+export type CallToolResult = {
   content: Array<{ type: string; text?: string }>;
   isError?: boolean;
 };
@@ -66,7 +66,7 @@ export type McpPromptMessage = {
   content: { type: string; text?: string };
 };
 
-type GetPromptResult = {
+export type GetPromptResult = {
   description?: string;
   messages: McpPromptMessage[];
 };
@@ -90,7 +90,7 @@ export type McpResourceContent = {
   blob?: string;
 };
 
-type ReadResourceResult = {
+export type ReadResourceResult = {
   contents: McpResourceContent[];
 };
 

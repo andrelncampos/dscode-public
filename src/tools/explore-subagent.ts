@@ -392,6 +392,8 @@ export type SkillSubagentOptions = {
   prompt: string;
   projectRoot: string;
   createOpenAIClient: CreateOpenAIClient;
+  mcpToolDefinitions?: ToolDefinition[];
+  mcpToolHandler?: ToolHandler;
 };
 
 function buildSkillSystemPrompt(skill: SkillInfo): string {
@@ -405,7 +407,14 @@ function buildSkillSystemPrompt(skill: SkillInfo): string {
 ${skill.description}
 
 ## Tools Available
-You have access to the following tools: ${toolNames}.
+You have access to the following tools: ${toolNames}.`;
+
+  if (skill.mcpServers && Object.keys(skill.mcpServers).length > 0) {
+    const mcpNames = Object.keys(skill.mcpServers);
+    prompt += `\nMCP tools (from this skill's servers: ${mcpNames.join(", ")}).\nUse them by name with full mcp__ prefix.`;
+  }
+
+  prompt += `
 
 ## Rules
 1. Complete the task assigned to you.
@@ -483,6 +492,17 @@ export async function runSkillSubagent(opts: SkillSubagentOptions): Promise<stri
     }
   }
 
+  // Inject MCP tool definitions if the skill has them
+  if (opts.mcpToolDefinitions && opts.mcpToolDefinitions.length > 0) {
+    toolDefs.push(...opts.mcpToolDefinitions);
+    if (opts.mcpToolHandler) {
+      for (const def of opts.mcpToolDefinitions) {
+        const defName = typeof def.function === "object" && "name" in def.function ? def.function.name : "";
+        if (defName) toolHandlers[defName] = opts.mcpToolHandler;
+      }
+    }
+  }
+
   const maxTurns = skill.agentMaxTurns ?? 50;
   const timeoutMs = skill.agentTimeoutMs ?? 300000;
 
@@ -513,7 +533,9 @@ export async function handleSkillToolCall(
   toolCall: ToolCall,
   createOpenAIClient: CreateOpenAIClient,
   skill: SkillInfo,
-  projectRoot: string
+  projectRoot: string,
+  mcpToolDefinitions?: ToolDefinition[],
+  mcpToolHandler?: ToolHandler
 ): Promise<ToolExecutionResult> {
   let args: Record<string, unknown>;
   try {
@@ -532,6 +554,8 @@ export async function handleSkillToolCall(
     prompt,
     projectRoot,
     createOpenAIClient,
+    mcpToolDefinitions,
+    mcpToolHandler,
   });
 
   if (summary.startsWith("Explore error:")) {
