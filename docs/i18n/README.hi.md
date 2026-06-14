@@ -78,6 +78,24 @@ DsCode इनके लिए उपयोगी है:
 
 ---
 
+## Comparison
+
+**16 models. 4 providers. Zero vendor lock-in.**
+
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|---|---|---|---|---|---|
+| **Works in terminal** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ❌ IDE only |
+| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon only |
+| **Thinking mode per provider** | ✅ max/high/medium/low native | ❌ | ❌ | ⚠️ Claude only | ❌ |
+| **Full MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Partial | ⚠️ Partial | ❌ |
+| **Spec-Driven Development** | ✅ Full built-in cycle | ❌ | ❌ | ❌ | ❌ |
+| **Skills & subagents** | ✅ Markdown, agent mode, MCP per skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ⚠️ Agents |
+| **Steering system** | ✅ Persistent per-project rules | ❌ | ❌ | ❌ | ❌ |
+| **Paste images (Ctrl+V)** | ✅ Clipboard | ❌ | ✅ | ❌ | ❌ |
+| **Free to use** | ✅ | ⚠️ Limited free plan | ⚠️ Limited free plan | ⚠️ Credits | ⚠️ Limited free plan |
+
+---
+
 ## इंस्टॉलेशन
 
 ### npm के माध्यम से (अनुशंसित)

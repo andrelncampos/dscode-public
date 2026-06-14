@@ -81,6 +81,24 @@ O DsCode funciona em **sessões**. Cada sessão é uma conversa contínua. A IA 
 
 ---
 
+## Comparação com outras ferramentas
+
+**16 modelos. 4 provedores. Zero dependência de vendor.**
+
+|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Q |
+|---|---|---|---|---|---|
+| **Roda no terminal** | ✅ TUI nativa | ❌ Só IDE | ❌ Só IDE | ✅ CLI | ❌ Só IDE |
+| **Liberdade de provedor** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + qualquer compatível | ❌ Só GitHub | ⚠️ Limitado | ⚠️ Só Anthropic | ⚠️ Só Amazon |
+| **Thinking mode por provedor** | ✅ max/high/medium/low nativo | ❌ | ❌ | ⚠️ Claude only | ❌ |
+| **MCP completo** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Parcial | ⚠️ Parcial | ❌ |
+| **Spec-Driven Development** | ✅ Ciclo completo built-in | ❌ | ❌ | ❌ | ❌ |
+| **Skills & subagentes** | ✅ Markdown, modo agente, MCP por skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ⚠️ Agents |
+| **Steering system** | ✅ Regras persistentes por projeto | ❌ | ❌ | ❌ | ❌ |
+| **Colar imagens (Ctrl+V)** | ✅ Clipboard | ❌ | ✅ | ❌ | ❌ |
+| **Grátis para uso** | ✅ | ⚠️ Plano grátis limitado | ⚠️ Plano grátis limitado | ⚠️ Créditos | ⚠️ Plano grátis limitado |
+
+---
+
 ## Instalação
 
 ### Via npm (recomendado)
