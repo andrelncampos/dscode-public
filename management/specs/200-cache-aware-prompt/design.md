@@ -10,6 +10,10 @@ This spec is a **configuration + ordering** change, not a new subsystem. The des
 
 The core change is: make the system prompt content deterministic → partition it into stable/dynamic regions → control behavior with a settings flag.
 
+**Key insight from codebase analysis:** The current system prompt already has a natural stable/dynamic separation. `getSystemPrompt()` returns `SYSTEM_PROMPT_BASE + tool docs` (stable). `getRuntimeContext()` contains model name + project root (dynamic). The only non-deterministic part is skill document ordering in `buildSkillDocumentsPrompt()`. This means:
+- **"aware" mode** just adds alphabetical sort to skills + logs the prefix hash.
+- **"strict" mode** is identical to "aware" in code — the separation already exists. It adds the guarantee (verifiable via hash) that no regressions will leak volatile content into the stable prefix.
+
 ---
 
 ## Architecture Decisions
@@ -151,9 +155,11 @@ export function getStablePrefixContent(args: {
   skillPrompt: string;
   cacheMode: "off" | "aware" | "strict";
 }): string {
-  const systemBase = cacheMode === "strict"
-    ? SYSTEM_PROMPT_BASE  // No model name line in strict mode
-    : SYSTEM_PROMPT_BASE;
+  // Note: getSystemPrompt() already returns only SYSTEM_PROMPT_BASE + tool docs.
+  // Model name line lives in getRuntimeContext() (dynamic tail), not in getSystemPrompt().
+  // Both aware and strict modes produce the same stable prefix content —
+  // the difference is that strict mode guarantees this via hash verification.
+  const systemBase = SYSTEM_PROMPT_BASE;
 
   const toolDocs = readToolDocs(args.extensionRoot, args.promptToolOptions);
 
@@ -167,17 +173,17 @@ export function getStablePrefixContent(args: {
 ```
 
 **Internal Logic:**
-1. Start with `SYSTEM_PROMPT_BASE`. In strict mode, skip the `getCurrentDateAndModelPrompt()` line.
+1. Start with `SYSTEM_PROMPT_BASE` (constant string — no model name, never was).
 2. Append tool docs (already sorted alphabetically by Component 2).
 3. Append default skill prompt (already sorted by Component 3).
 4. Append agent instructions (AGENTS.md content, user-controlled, not sorted).
 5. Return concatenated string.
 
-**What is NOT included:**
-- Model name (in strict mode).
-- Runtime context JSON (project root, homedir, system info).
-- Memory context (recent turn transcripts).
-- Theme messages (permission hints, skill activation hints).
+**What is NOT included (never was — verified by design):**
+- Model name (`getCurrentDateAndModelPrompt()` lives in `getRuntimeContext()`, not `getSystemPrompt()`).
+- Runtime context JSON (project root, homedir, system info — lives in `getRuntimeContext()`).
+- Memory context (recent turn transcripts — lives in `buildMemoryContextMessage()`).
+- Theme messages (permission hints, skill activation hints — appended separately).
 
 **Dependencies:** `readToolDocs`, `SYSTEM_PROMPT_BASE`.
 
@@ -270,10 +276,10 @@ private async createSession(sessionId: string, userPrompt: UserPrompt, signal: A
   const agentInstructions = this.loadAgentInstructions();
   if (agentInstructions) { /* append */ }
 
-  // Runtime context — always appended, but in strict mode model name is separate
+  // Runtime context — always appended with actual model
   const runtimeContext = getRuntimeContext(
     this.projectRoot,
-    effectiveCacheMode === "strict" ? undefined : promptToolOptions.model
+    promptToolOptions.model
   );
   /* append runtimeContext */
 
@@ -303,15 +309,16 @@ private async createSession(sessionId: string, userPrompt: UserPrompt, signal: A
 
 **Changes to `getPromptToolOptions()`:**
 ```typescript
-private getPromptToolOptions(): { model: string; webSearchEnabled: boolean } {
+private getPromptToolOptions(): { model: string; webSearchEnabled: boolean; cacheMode: "off" | "aware" | "strict" } {
   const settings = this.getResolvedSettings();
   return {
-    model: settings.cacheMode === "strict" ? "" : settings.model,
+    model: settings.model,  // Always returns actual model — model name is in runtime context, not system prompt
     webSearchEnabled: true,
+    cacheMode: settings.cacheMode,
   };
 }
 ```
-When cacheMode is `"strict"`, `model` is empty string → `getCurrentDateAndModelPrompt("")` returns `""` → model name not in system prompt. The model name still appears in runtime context (which is in dynamic tail).
+`getPromptToolOptions()` does not suppress model in any mode. The model name was never part of `getSystemPrompt()` — it lives in `getRuntimeContext()` (dynamic tail). Setting `model: ""` would break `isMultimodalModel()` in EJS templates, changing tool descriptions and invalidating the cache.
 
 **Dependencies:** `getSystemPrompt`, `getDefaultSkillPrompt`, `getRuntimeContext`, `loadAgentInstructions`, `getStablePrefixContent`, `getStablePrefixHash`, `getEffectiveCacheMode`.
 
@@ -442,31 +449,33 @@ createSession()
     - readToolDocs() already sorted (unchanged)
   → After appending all messages:
     → getStablePrefixContent({..., cacheMode: "aware"})
-      → SYSTEM_PROMPT_BASE + modelNameLine + toolDocs + skillPrompt + agentInstructions
+      → SYSTEM_PROMPT_BASE + toolDocs + skillPrompt + agentInstructions
+      (model name is in runtime context, not stable prefix — already the case)
     → getStablePrefixHash(content) → "a1b2c3..."
     → debugLog("[cache-aware] Stable prefix hash: a1b2c3... (mode: aware)")
 ```
 
-### Flow 3: Session Creation with cacheMode "strict" (stable prefix)
+### Flow 3: Session Creation with cacheMode "strict" (stable prefix guarantee)
 
 ```
 createSession()
   → getEffectiveCacheMode("strict", "deepseek") → "strict"
-  → getPromptToolOptions() → { model: "", webSearchEnabled: true }  ← empty model
-  → getSystemPrompt(projectRoot, {model: "", ...})
-    → getCurrentDateAndModelPrompt("") → ""  ← no model line
-    → return SYSTEM_PROMPT_BASE + toolDocs  ← shorter prefix
+  → getPromptToolOptions() → { model: "deepseek-v4-pro", webSearchEnabled: true }  ← unchanged
+  → getSystemPrompt(projectRoot, {model: "deepseek-v4-pro", ...})
+    → returns SYSTEM_PROMPT_BASE + toolDocs  ← model name not here (never was)
   → buildSystemMessage(systemPrompt) → append
   → getDefaultSkillPrompt() → sorted skills → append
   → loadAgentInstructions() → AGENTS.md → append
-  → getRuntimeContext(projectRoot, undefined) → does NOT skip — appended with model name
-    → runtime context message includes model name in dynamic tail
+  → getRuntimeContext(projectRoot, "deepseek-v4-pro") → model name + env JSON → append
+    → runtime context message includes model name in dynamic tail (unchanged)
   → buildMemoryContextMessage() → append (already in tail)
   → getStablePrefixContent({..., cacheMode: "strict"})
     → SYSTEM_PROMPT_BASE + toolDocs + skillPrompt + agentInstructions  ← no model, no project root
   → getStablePrefixHash(content) → "d4e5f6..."
   → debugLog("[cache-aware] Stable prefix hash: d4e5f6... (mode: strict)")
 ```
+
+Note: Strict mode does not change `getPromptToolOptions()` or `getSystemPrompt()` behavior. The model name was never in `getSystemPrompt()` — it lives in `getRuntimeContext()` (dynamic tail). Strict mode's value is the guarantee (verifiable via hash) that no future code change leaks volatile content into the stable prefix. The only behavioral change from aware → strict is the hash is now logged as proof of prefix stability.
 
 ### Flow 4: Budget Write (3-column format)
 
@@ -503,9 +512,17 @@ export type DeepcodingSettings = {
 };
 ```
 
-### `PromptToolOptions` (`src/prompt.ts` line ~100) — NO CHANGE
+### `PromptToolOptions` (`src/prompt.ts` line ~100)
 
-The `model` field already exists. In strict mode, it is set to `""` by the caller in `getPromptToolOptions()`.
+```typescript
+type PromptToolOptions = {
+  model?: string;
+  webSearchEnabled?: boolean;
+  cacheMode?: "off" | "aware" | "strict";  // NEW — carried through for consistency, unused by getSystemPrompt()
+};
+```
+
+The `model` field already exists. It is NOT suppressed in any mode — model name lives in `getRuntimeContext()`, not `getSystemPrompt()`.
 
 ### `DailyCost` (`src/common/budget-tracker.ts` line ~11) — NO CHANGE
 
@@ -556,14 +573,14 @@ type StablePrefixArgs = {
 | `buildSkillDocumentsPrompt — case-insensitive sort` | FR-003 | `[{name:"b"},{name:"A"}]` → A before b |
 | `buildSkillDocumentsPrompt — idempotent` | FR-001 | Same input twice → identical output |
 | `readToolDocs — idempotent` | FR-002 | Same options twice → identical string |
-| `getStablePrefixContent — aware mode` | FR-004 | Includes model name, tool docs, skills, agent instructions |
-| `getStablePrefixContent — strict mode` | FR-007 | Excludes model name. Excludes project root. |
+| `getStablePrefixContent — aware mode` | FR-004 | Includes tool docs, skills, agent instructions. Does NOT include model name or project root. |
+| `getStablePrefixContent — strict mode` | FR-007 | Same as aware — model name and project root were never in stable prefix. |
 | `getStablePrefixContent — idempotent strict` | FR-007 AC 6 | Two calls with different project roots → identical content |
 | `getStablePrefixHash — same content` | FR-009 | `"abc"` → same hash twice |
 | `getStablePrefixHash — different content` | FR-009 | `"abc"` vs `"abd"` → different hashes |
 | `getStablePrefixHash — 64 hex chars` | FR-009 | Output is 64 lowercase hex characters |
-| `getSystemPrompt — strict mode no model line` | FR-007 | Does not contain "The current LLM model is" |
-| `getSystemPrompt — aware mode has model line` | FR-006 | Contains "The current LLM model is" |
+| `getRuntimeContext — includes model name` | FR-007 | `getRuntimeContext(root, "deepseek-v4-pro")` contains "The current LLM model is deepseek-v4-pro" |
+| `getRuntimeContext — empty model` | FR-007 | `getRuntimeContext(root, undefined)` does NOT contain "The current LLM model is" |
 
 ### Budget Tracker Tests — `src/tests/budget-tracker.test.ts` (additions)
 

@@ -72,7 +72,7 @@ This separation is a logical annotation; no structural message format change. Th
 
 ### FR-005: cacheMode Setting Schema
 
-**What:** A new optional `cacheMode` field in the DeepSeek settings namespace, resolved via `ResolvedDeepcodingSettings`. The field accepts one of three string values: `"off"`, `"aware"`, `"strict"`.
+**What:** A new optional `cacheMode` field at the top level of `DeepcodingSettings` (provider-agnostic, per P7), resolved via `ResolvedDeepcodingSettings`. The field accepts one of three string values: `"off"`, `"aware"`, `"strict"`. Activation is restricted to DeepSeek via the multi-provider guard (FR-008).
 
 **Why:** Users need control over cache optimization level. "off" preserves current behavior; "aware" enables deterministic ordering at zero risk; "strict" maximizes cache hit rate for advanced users.
 
@@ -91,30 +91,31 @@ This separation is a logical annotation; no structural message format change. Th
 **Why:** This is the safe default for users who want cache benefits without any risk of altered behavior. Compatible with all providers (OpenAI, Anthropic, Gemini) but only activated for DeepSeek.
 
 **Acceptance Criteria:**
-- [ ] When `cacheMode === "aware"`, `getSystemPrompt()` applies alphabetical sort to tool docs.
+- [ ] When `cacheMode === "aware"`, `getSystemPrompt()` maintains alphabetical sort on tool docs (already the current behavior — verified by test).
 - [ ] When `cacheMode === "aware"`, `buildSkillDocumentsPrompt()` applies alphabetical sort to skills.
 - [ ] When `cacheMode === "aware"`, the system message append order in `createSession()` is identical to `"off"` — no reordering of message blocks.
 - [ ] When `cacheMode === "aware"` and provider is NOT DeepSeek, the mode is silently ignored (acts as `"off"`). Logged at debug level.
-- [ ] Unit test: two consecutive `getSystemPrompt()` calls with `cacheMode: "aware"` return identical strings.
+- [ ] Unit test: two consecutive `getSystemPrompt()` calls return identical strings (already passes — verifies no regression).
 
-### FR-007: cacheMode "strict" — Stable Prefix with Volatile Content Removal
+### FR-007: cacheMode "strict" — Stable Prefix Guarantee
 
-**What:** When `cacheMode === "strict"`, in addition to deterministic ordering (FR-006), volatile content is moved from the stable prefix to the dynamic tail. Specifically:
-1. The model name line (`The current LLM model is ${model}`) is extracted from the stable prefix and appended after the prefix.
-2. The runtime context JSON block (project root, homedir, system info, etc.) is moved to the dynamic tail.
-3. The memory context (recent turn transcripts) remains in the dynamic tail.
-4. Only `SYSTEM_PROMPT_BASE` + tool docs + default skill docs + agent instructions form the stable prefix.
+**What:** When `cacheMode === "strict"`, in addition to deterministic ordering (FR-006), the system guarantees that no volatile content leaks into the stable prefix. Specifically:
+1. The stable prefix is verified to contain only `SYSTEM_PROMPT_BASE` + tool docs + default skill docs + agent instructions. No model name, no project root path, no runtime data.
+2. Volatile content (`getRuntimeContext()` — model name + project root + env JSON; `buildMemoryContextMessage()` — recent turn transcripts) always resides in separate system messages appended AFTER the stable prefix messages.
+3. The stable prefix hash is computed and logged on every `createSession()` call.
 
-**Why:** The runtime context contains the project root path and model name — both can change between runs. Moving them out of the stable prefix ensures the KV cache prefix is identical across sessions on the same project with the same config.
+Note: The current codebase already places model name and project root path in `getRuntimeContext()` (dynamic tail), not in `getSystemPrompt()` (stable prefix). FR-007 ensures this separation is maintained and verifiable. No content needs to be "moved" — it's already in the correct location. The strict mode guarantee prevents future regressions where volatile data could accidentally leak into the stable prefix.
+
+**Why:** The runtime context contains the project root path and model name — both can change between runs. Ensuring they stay in the dynamic tail guarantees the KV cache prefix is identical across sessions on the same project with the same config. The prefix hash provides a verifiable fingerprint to detect regressions.
 
 **Acceptance Criteria:**
-- [ ] When `cacheMode === "strict"`, `getRuntimeContext()` output is appended as a separate system message AFTER the stable prefix messages.
-- [ ] The model name line is not embedded in the stable prefix — it appears only in the runtime context message.
-- [ ] `getSystemPrompt()` in strict mode does NOT include the model name line.
-- [ ] The stable prefix content (FR-004) does NOT include the project root path.
-- [ ] `getStablePrefixContent()` called twice with different `process.cwd()` paths returns identical content (paths are in dynamic tail).
-- [ ] When provider is NOT DeepSeek, `"strict"` degrades to `"aware"` behavior. Logged at debug level.
+- [ ] `getStablePrefixContent()` in strict mode returns `SYSTEM_PROMPT_BASE` + tool docs + skill prompt + agent instructions only. No model name. No project root path. No env JSON.
+- [ ] `getRuntimeContext()` output is appended as a separate system message AFTER the stable prefix messages.
+- [ ] The model name line (`The current LLM model is ${model}`) appears only in the runtime context message — never in the system prompt or skill messages.
+- [ ] `getStablePrefixContent()` called twice with different `process.cwd()` paths returns identical content (project root path is in runtime context, not stable prefix).
+- [ ] When provider is NOT DeepSeek, `"strict"` degrades to `"off"` behavior (via `getEffectiveCacheMode()`). Logged at debug level.
 - [ ] Unit test: hash of stable prefix is identical across two calls with different project roots but same AGENTS.md + tools.
+- [ ] The prefix hash is computed and logged for both `"aware"` and `"strict"` modes (FR-009).
 
 ### FR-008: Multi-Provider Guard
 
@@ -213,7 +214,7 @@ This separation is a logical annotation; no structural message format change. Th
 ## Edge Cases & Error States
 
 1. **`cacheMode` set to invalid value (e.g., `"enabled"`, `true`, `1`, `null`):** Silently coerced to `"off"`. Debug log: `[cache-aware] Invalid cacheMode "enabled" — defaulting to "off"`.
-2. **`cacheMode: "strict"` with non-DeepSeek provider:** Degrades to `"aware"` behavior. Debug log: `[cache-aware] cacheMode "strict" requires DeepSeek provider — degrading to "aware"`.
+2. **`cacheMode: "strict"` with non-DeepSeek provider:** Degrades to `"off"` behavior (same as `"aware"`). Debug log: `[cache-aware] cacheMode "strict" suppressed — provider "openai" is not DeepSeek`.
 3. **`cacheMode: "aware"` with non-DeepSeek provider:** Silently treated as `"off"`. Debug log: `[cache-aware] cacheMode suppressed — provider "openai" does not benefit from cache-aware ordering`.
 4. **AGENTS.md changes mid-session:** `reloadAgentInstructions()` detects hash change → injects new system message → next turn has different stable prefix → KV cache invalidated. Acceptable — user explicitly changed configuration.
 5. **MCP server connects/disconnects mid-session:** MCP tools are NOT part of the stable prefix (they're sent as API-level tools, not system message content). No impact on cache.

@@ -144,39 +144,40 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ---
 
-### Task 6: Modify getSystemPrompt for Strict Mode
+### Task 6: Add cacheMode to PromptToolOptions + Session Integration Prep
 
-**Objective:** Modify `getSystemPrompt()` to accept a `cacheMode` parameter and suppress the model name line in strict mode. Modify `getPromptToolOptions()` in `SessionManager` to pass empty model string in strict mode.
+**Objective:** Add `cacheMode` field to `PromptToolOptions` type and update `getPromptToolOptions()` to pass it through. This enables `createSession()` to access the resolved cache mode without separate settings lookups.
 
-**Requirements Covered:** FR-006, FR-007 (model name suppression)
+**Requirements Covered:** FR-006, FR-007 (infrastructure)
 
 **Design References:** Component 7 (Cache Mode in Session Creation)
 
 **Actions:**
 1. Open `src/prompt.ts`.
-2. Add `cacheMode?: "off" | "aware" | "strict"` to `PromptToolOptions` type.
-3. Modify `getCurrentDateAndModelPrompt(model?: string)` — no change needed, it already handles `undefined`/empty.
-4. Modify `getSystemPrompt()` signature: add `cacheMode?: "off" | "aware" | "strict"` parameter.
-5. In `getSystemPrompt()`, when `cacheMode === "strict"`, call `getCurrentDateAndModelPrompt(undefined)` → returns `""`.
-6. Open `src/session.ts`.
-7. Find `getPromptToolOptions()` method (around line 2070).
-8. Modify it:
+2. Add `cacheMode?: "off" | "aware" | "strict"` to `PromptToolOptions` type (line ~100).
+3. Open `src/session.ts`.
+4. Find `getPromptToolOptions()` method (around line 2070).
+5. Modify it to return `cacheMode`:
    ```typescript
-   private getPromptToolOptions(): { model: string; webSearchEnabled: boolean; cacheMode: "off" | "aware" | "strict" } {
+   private getPromptToolOptions(): {
+     model: string;
+     webSearchEnabled: boolean;
+     cacheMode: "off" | "aware" | "strict";
+   } {
      const settings = this.getResolvedSettings();
      return {
-       model: settings.cacheMode === "strict" ? "" : settings.model,
+       model: settings.model,
        webSearchEnabled: true,
        cacheMode: settings.cacheMode,
      };
    }
    ```
+   Note: `model` is ALWAYS the actual model — never suppressed. The model name line lives in `getRuntimeContext()` (dynamic tail), not `getSystemPrompt()`.
 
 **Validation:**
 - `tsc --noEmit` passes.
-- `getSystemPrompt(root, {model: "deepseek-v4-pro", cacheMode: "strict"})` does NOT contain "The current LLM model is".
-- `getSystemPrompt(root, {model: "deepseek-v4-pro", cacheMode: "aware"})` DOES contain "The current LLM model is deepseek-v4-pro".
-- All existing tests still pass (cacheMode defaults to undefined → model name included).
+- All existing tests still pass.
+- `getPromptToolOptions().cacheMode` returns the resolved cache mode value.
 
 **Status:** [ ] pending
 
@@ -205,7 +206,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    const settings = this.getResolvedSettings();
    const effectiveCacheMode = getEffectiveCacheMode(settings.cacheMode, settings.providerName);
    ```
-5. Update the cache key to include cacheMode: `const cacheKey = ${promptToolOptions.model}:${effectiveCacheMode};`.
+5. The system prompt cache key remains `"${promptToolOptions.model}"` — cache mode does not affect `getSystemPrompt()` output.
 6. After the memory context is appended (line ~1086), add prefix hash logging:
    ```typescript
    if (effectiveCacheMode !== "off") {
@@ -221,7 +222,6 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    }
    ```
 7. In `reloadAgentInstructions()` (around line 2753), add the same hash logging after the new agent instructions message is appended.
-8. Update `systemPromptCache` type from `Map<string, string>` to include cache mode in key — or simply keep it as-is (the `cacheKey` already encodes the differentiation).
 
 **Validation:**
 - `tsc --noEmit` passes.
@@ -277,7 +277,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    - `readToolDocs` idempotent test.
    - `getStablePrefixContent` tests (aware mode, strict mode, idempotent strict).
    - `getStablePrefixHash` tests (same content, different content, 64 hex chars).
-   - `getSystemPrompt` tests (strict mode no model line, aware mode has model line).
+   - `getRuntimeContext` tests (includes model name, empty model).
 3. Open `src/tests/budget-tracker.test.ts`. Add tests:
    - `buildBudgetMarkdown()` with cache data produces 3 columns.
    - `parseBudgetFile()` legacy 2-column format → cache defaults to 0.
