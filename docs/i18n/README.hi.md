@@ -29,7 +29,7 @@ DsCode [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli
 
 
 
-## How DsCode works
+## DsCode कैसे काम करता है
 
 ```mermaid
 flowchart TD
@@ -78,7 +78,7 @@ DsCode इनके लिए उपयोगी है:
 
 ---
 
-## Comparison
+## तुलना
 
 **16 models. 4 providers. Zero vendor lock-in.**
 
@@ -95,7 +95,7 @@ DsCode इनके लिए उपयोगी है:
 | **Free to use** | ✅ | ⚠️ Limited free plan | ⚠️ Limited free plan | ⚠️ Credits | ⚠️ Limited free plan |
 
 
-## The DsCode triad: Spec + SDD + Agent
+## DsCode त्रयी: Spec + SDD + Agent
 
 DsCode is the **only** AI assistant that combines three capabilities in one integrated cycle:
 
@@ -250,7 +250,7 @@ DsCode टोकन उपयोग के आधार पर सत्र ल�
 
 
 
-## Files and structure
+## फ़ाइलें और संरचना
 
 DsCode organizes its data in `.dscode/` directories within the project and the user's home:
 
@@ -341,11 +341,11 @@ AI कोड की जांच करेगा और सुधार सु�
 
 
 
-## All slash commands
+## सभी स्लैश कमांड
 
 Type `/` in the prompt to open the menu. There are **28 built-in commands** + dynamic skills (`/<skill-name>`):
 
-### Session
+### सेशन
 
 | Command | Description |
 |---|---|
@@ -354,14 +354,14 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/continue` | Continue the active conversation (or resume if empty) |
 | `/undo` | Restore code and/or conversation to a previous checkpoint |
 
-### Model and display
+### मॉडल और प्रदर्शन
 
 | Command | Description |
 |---|---|
 | `/model` | 4 प्रदाताओं के 16 मॉडलों में से चुनें, प्रोवाइडर-अनुरूप thinking mode और reasoning effort के साथ |
 | `/raw` | Toggle display mode: `lite` (summarized), `normal` (full), `raw-scrollback` (scroll) |
 
-### Provider & model
+### प्रोवाइडर और मॉडल
 
 | Command | Description |
 |---|---|
@@ -376,7 +376,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 
 > 💡 **Encrypted keys**: API keys are stored encrypted (AES-256-GCM) in `settings.json`. Plaintext key migration is automatic on first use. Use `/model-key` to update.
 
-### Skills and agents
+### स्किल्स और एजेंट
 
 | Command | Description |
 |---|---|
@@ -386,7 +386,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/steering-add` | Add a steering rule to the STEERINGS section of `AGENTS.md` |
 | `/steering-list` | List all steering rules from `AGENTS.md` |
 
-### SDD (Spec-Driven Development)
+### SDD (स्पेक-ड्रिवन डेवलपमेंट)
 
 | Command | Description |
 |---|---|
@@ -399,13 +399,13 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
 
-### External tools
+### बाहरी उपकरण
 
 | Command | Description |
 |---|---|
 | `/mcp` | Show MCP server status and available tools |
 
-### System
+### सिस्टम
 
 | Command | Description |
 |---|---|
@@ -417,7 +417,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 
 
 
-## Steering system
+## स्टीयरिंग सिस्टम
 
 **Steering** lets you define persistent rules that the AI follows in **all sessions** of the project. The rules live in the `## Steering` section of the `.dscode/AGENTS.md` file. The full management lifecycle includes adding, listing, altering, and removing rules by position.
 
@@ -446,7 +446,7 @@ flowchart LR
 
 
 
-## SDD — Spec-Driven Development
+## SDD — स्पेक-ड्रिवन डेवलपमेंट
 
 DsCode implements a complete spec-driven development cycle. All files live in `management/`.
 
@@ -472,7 +472,7 @@ flowchart TD
 | `adr.md` | Architecture Decision Records |
 | `lessons.md` | Lessons learned throughout development |
 
-### SDD in practice — a complete example
+### SDD व्यवहार में — एक पूर्ण उदाहरण
 
 Imagine you want to add **OpenAI support** to DsCode. The real flow:
 
@@ -501,11 +501,11 @@ Imagine you want to add **OpenAI support** to DsCode. The real flow:
 
 
 
-## MCP — Model Context Protocol
+## MCP — मॉडल कॉन्टेक्स्ट प्रोटोकॉल
 
 DsCode integrates the **Model Context Protocol (MCP)**, allowing the AI to connect to external tools such as databases, browsers, APIs, and local servers. Support covers the full lifecycle: skills, SDD, and TUI.
 
-### Skills with MCP
+### MCP के साथ स्किल्स
 
 Skills can include an `mcp.json` file that declares MCP servers. When the skill is activated (via keyword match or `#skill-name`), the servers start automatically. When the conversation moves to another topic, they are suspended — no global tool catalog pollution.
 
@@ -518,7 +518,7 @@ The SDD cycle integrates with MCP at three levels:
 - **Assisted creation**: during `/spec-new`, the AI queries real data sources (GitHub issues, databases, documentation) to produce requirements grounded in real data.
 - **Scoped access**: each spec defines a temporary tool allowlist, keeping the AI focused on what matters.
 
-### TUI Inspection & Actions
+### TUI निरीक्षण और कार्रवाइयां
 
 The `/mcp` command opens a full management panel:
 - **Server list** with status, scope (`[global]`, `[project]`, `[skill: ...]`, `[spec: N]`), and policy summary.
@@ -526,7 +526,7 @@ The `/mcp` command opens a full management panel:
 - **Execution history** and **error log** for diagnostics.
 - **Keyboard shortcuts**: `A` approve, `D` deny, `R` reset policy, `X` disable server, `Ctrl+R` reconnect.
 
-### Where to configure MCP servers
+### MCP सर्वर कहां कॉन्फ़िगर करें
 
 | Level | Location | Scope |
 |---|---|---|
@@ -539,7 +539,7 @@ The `/mcp` command opens a full management panel:
 
 
 
-## Skills
+## स्किल्स
 
 Skills are Markdown guides that teach the AI to work in a specific way. DsCode loads skills from 3 sources:
 
@@ -549,7 +549,7 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 | `~/.agents/skills/<name>/SKILL.md` | User's personal skills |
 | `./.agents/skills/<name>/SKILL.md` | Project skills |
 
-### Built-in skills
+### बिल्ट-इन स्किल्स
 
 | Skill | Purpose |
 |---|---|
@@ -557,7 +557,7 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 | **karpathy-guidelines** | Best practices to reduce common LLM mistakes |
 | **plan-and-execute** | Structured planning with progress tracking |
 
-### Inclusion modes
+### समावेशन मोड
 
 Each `SKILL.md` can declare how it should be loaded via the optional `inclusion` field in YAML frontmatter:
 
@@ -581,7 +581,7 @@ Before deploying, verify...
 
 To activate a manual skill, type `#my-deploy` at the start of the prompt — the `#` prefix is stripped and the skill is loaded.
 
-### Skills as autonomous agents
+### स्वायत्त एजेंट के रूप में स्किल्स
 
 In addition to the `inclusion` field, each `SKILL.md` can declare an execution `mode`:
 
@@ -685,7 +685,7 @@ DsCode DeepSeek V4 मॉडल के लिए अनुकूलित है
 | `deepseek-v4-pro` | जटिल कार्य, आर्किटेक्चर, डीबगिंग, गहन तर्क | सामान्य | अधिक |
 | `deepseek-v4-flash` | सरल कार्य, रीफैक्टरिंग, त्वरित समीक्षा | तेज़ | कम |
 
-### Thinking mode
+### थिंकिंग मोड
 - **उपयोग करें**: जटिल कार्य (डीबगिंग, आर्किटेक्चर, डिज़ाइन)
 - **अक्षम करें**: त्वरित, सरल कार्य
 - **विकल्प**: `"max"` (गहन तर्क), `"high"` (संतुलित), `"No thinking"` (अक्षम)
@@ -697,11 +697,11 @@ DsCode DeepSeek V4 मॉडल के लिए अनुकूलित है
 
 
 
-## Using with OpenAI
+## OpenAI के साथ उपयोग
 
 DsCode has **native OpenAI support** via `OpenAIProvider`. Models with the `gpt-`, `o1`, `o3`, `o4`, or `openai-` prefix are automatically routed to the OpenAI provider — no additional configuration needed.
 
-### OpenAI configuration
+### OpenAI कॉन्फ़िगरेशन
 
 ```json
 {
@@ -717,7 +717,7 @@ DsCode has **native OpenAI support** via `OpenAIProvider`. Models with the `gpt-
 
 > 💡 `thinkingEnabled` works with OpenAI: `reasoningEffort` is sent as the native `reasoning_effort` API parameter.
 
-### Using multiple providers with `engines`
+### `engines` के साथ कई प्रोवाइडर का उपयोग
 
 You can configure separate keys for each provider without switching `settings.json` files:
 
@@ -737,7 +737,7 @@ You can configure separate keys for each provider without switching `settings.js
 
 When you switch to `gpt-5.4` (via `/model`), DsCode automatically uses the `openai` engine key. The correct provider and key are selected based on the model prefix.
 
-### What changes compared to DeepSeek
+### DeepSeek की तुलना में क्या बदलता है
 
 | Feature | With OpenAI |
 |---|---|
@@ -748,7 +748,7 @@ When you switch to `gpt-5.4` (via `/model`), DsCode automatically uses the `open
 | **Supported models** | `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5`, `gpt-4.5`, `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4` — any Chat Completions model |
 | **Compaction** | Uses `getAuxiliaryModel()`: `gpt-5.4` → `gpt-5.4-mini` to reduce cost (no thinking) when summarizing history |
 
-### Example with a cheaper model
+### सस्ते मॉडल के साथ उदाहरण
 
 ```json
 {
@@ -828,11 +828,11 @@ DsCode में `AnthropicProvider` के माध्यम से **ने�
 
 
 
-## Using with Google Gemini
+## Google Gemini के साथ उपयोग
 
 DsCode has **native Google Gemini support** via `GeminiProvider`. Models with the `gemini-` prefix are automatically routed to the Gemini provider — no additional configuration needed. Gemini is the first provider implemented with **zero SDK** — it uses Node 24's native `fetch()`.
 
-### Gemini configuration
+### Gemini कॉन्फ़िगरेशन
 
 ```json
 {
@@ -848,7 +848,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 > 💡 `thinkingEnabled` works with Gemini: the provider sends `thinkingConfig: { thinkingBudget: 8192, includeThoughts: true }` in `generationConfig`. Gemini uses "thinking budget" instead of "reasoning effort".
 
-### Using multiple providers with `engines`
+### `engines` के साथ कई प्रोवाइडर का उपयोग
 
 ```json
 {
@@ -864,7 +864,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 }
 ```
 
-### What changes compared to DeepSeek
+### DeepSeek की तुलना में क्या बदलता है
 
 | Feature | With Gemini |
 |---|---|
@@ -875,7 +875,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | **Supported models** | `gemini-3.5-flash`, `gemini-3-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash` |
 | **Compaction** | Uses `getAuxiliaryModel()`: `gemini-3.5-flash` → `gemini-3.1-flash-lite` to reduce cost (no thinking) |
 
-### Example with a cheaper model
+### सस्ते मॉडल के साथ उदाहरण
 
 ```json
 {
