@@ -115,15 +115,16 @@ function buildSEA() {
   return { binPath, binName, method: "SEA (standalone)" };
 }
 
-// ── Windows Portable Fallback ────────────────────────────────────
+// ── Cross-Platform Portable Fallback ─────────────────────────────
 
-function buildWindowsPortable() {
-  console.log("[sea] Building Windows portable package...");
+function buildPortable() {
+  console.log("[sea] Building portable package...");
 
   const portableDir = resolve(BIN_DIR);
-  // Clean bin dir of any leftover SEA artifacts
-  const existing = ["dscode.exe", "dscode.cmd", "dscode.ps1", "dscode.js", "node.exe"];
-  for (const f of existing) {
+  const toClean = isWindows
+    ? ["dscode.exe", "dscode.cmd", "dscode.ps1", "dscode.js", "node.exe"]
+    : ["dscode", "dscode.js", "node"];
+  for (const f of toClean) {
     const fp = resolve(portableDir, f);
     if (existsSync(fp)) {
       try {
@@ -134,11 +135,10 @@ function buildWindowsPortable() {
     }
   }
 
-  // Copy Node binary
-  copyFileSync(NODE_BIN, resolve(portableDir, "node.exe"));
-  console.log("[sea] node.exe copied.");
+  const nodeDest = isWindows ? "node.exe" : "node";
+  copyFileSync(NODE_BIN, resolve(portableDir, nodeDest));
+  console.log(`[sea] ${nodeDest} copied.`);
 
-  // Copy the ESM bundle (dist/cli.js is the one with --packages=external)
   const distBundle = resolve(root, "dist", "cli.js");
   if (!existsSync(distBundle)) {
     console.error("[sea] ERROR: dist/cli.js not found. Run build first.");
@@ -147,59 +147,61 @@ function buildWindowsPortable() {
   copyFileSync(distBundle, resolve(portableDir, "dscode.js"));
   console.log("[sea] dscode.js copied.");
 
-  // Create dscode.cmd — always uses node.exe from own directory, never PATH
-  const cmdPath = resolve(portableDir, "dscode.cmd");
-  const cmdContent = [
-    "@echo off",
-    "setlocal",
-    'set "DSCODE_HOME=%~dp0"',
-    '"%DSCODE_HOME%node.exe" "%DSCODE_HOME%dscode.js" %*',
-    "exit /b %ERRORLEVEL%",
-    "",
-  ].join("\r\n");
-  writeFileSync(cmdPath, cmdContent, "utf8");
-  console.log("[sea] dscode.cmd created.");
+  if (isWindows) {
+    const cmdPath = resolve(portableDir, "dscode.cmd");
+    const cmdContent = [
+      "@echo off",
+      "setlocal",
+      'set "DSCODE_HOME=%~dp0"',
+      '"%DSCODE_HOME%node.exe" "%DSCODE_HOME%dscode.js" %*',
+      "exit /b %ERRORLEVEL%",
+      "",
+    ].join("\r\n");
+    writeFileSync(cmdPath, cmdContent, "utf8");
+    console.log("[sea] dscode.cmd created.");
 
-  // Create dscode.ps1
-  const ps1Path = resolve(portableDir, "dscode.ps1");
-  const ps1Content = [
-    "$DscodeHome = Split-Path -Parent $MyInvocation.MyCommand.Path",
-    '& "$DscodeHome\\node.exe" "$DscodeHome\\dscode.js" @args',
-    "exit $LASTEXITCODE",
-    "",
-  ].join("\r\n");
-  writeFileSync(ps1Path, ps1Content, "utf8");
-  console.log("[sea] dscode.ps1 created.");
+    const ps1Path = resolve(portableDir, "dscode.ps1");
+    const ps1Content = [
+      "$DscodeHome = Split-Path -Parent $MyInvocation.MyCommand.Path",
+      '& "$DscodeHome\\node.exe" "$DscodeHome\\dscode.js" @args',
+      "exit $LASTEXITCODE",
+      "",
+    ].join("\r\n");
+    writeFileSync(ps1Path, ps1Content, "utf8");
+    console.log("[sea] dscode.ps1 created.");
 
-  return {
-    binPath: cmdPath,
-    binName: "dscode.cmd",
-    method: "portable (bundled Node.js, no system Node required)",
-  };
+    return { binPath: cmdPath, binName: "dscode.cmd", method: "portable" };
+  }
+
+  const launcherPath = resolve(portableDir, "dscode");
+  const launcherContent = [
+    "#!/usr/bin/env bash",
+    'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
+    'exec "$DIR/node" "$DIR/dscode.js" "$@"',
+    "",
+  ].join("\n");
+  writeFileSync(launcherPath, launcherContent, "utf8");
+  chmodSync(launcherPath, 0o755);
+  console.log("[sea] dscode launcher created (chmod +x).");
+
+  return { binPath: launcherPath, binName: "dscode", method: "portable" };
 }
 
 function validatePortablePackage() {
   console.log("[sea] Validating portable package...");
-
   const cmdPath = resolve(BIN_DIR, "dscode.cmd");
-  if (!existsSync(cmdPath)) {
-    throw new Error("dscode.cmd not found after portable build");
-  }
-
-  // Test --version
+  if (!existsSync(cmdPath)) throw new Error("dscode.cmd not found");
   try {
-    const versionOut = execSync(`"${cmdPath}" --version`, {
+    const ver = execSync(`"${cmdPath}" --version`, {
       cwd: BIN_DIR,
       encoding: "utf8",
       timeout: 30_000,
       env: { ...process.env, DSCODE_NO_CHECK: "1" },
     });
-    console.log(`[sea] --version: ${versionOut.trim()}`);
+    console.log(`[sea] --version: ${ver.trim()}`);
   } catch (e) {
-    throw new Error(`Portable package validation failed (--version): ${e.message}`, { cause: e });
+    throw new Error(`Portable validation failed (--version): ${e.message}`, { cause: e });
   }
-
-  // Test --help (exit code 0 expected)
   try {
     execSync(`"${cmdPath}" --help`, {
       cwd: BIN_DIR,
@@ -209,9 +211,37 @@ function validatePortablePackage() {
     });
     console.log("[sea] --help: OK");
   } catch (e) {
-    throw new Error(`Portable package validation failed (--help): ${e.message}`, { cause: e });
+    throw new Error(`Portable validation failed (--help): ${e.message}`, { cause: e });
   }
+  console.log("[sea] ✅ Portable package validated.");
+}
 
+function validatePosixPortable() {
+  console.log("[sea] Validating portable package...");
+  const launcherPath = resolve(BIN_DIR, "dscode");
+  if (!existsSync(launcherPath)) throw new Error("dscode not found");
+  try {
+    const ver = execSync(`"${launcherPath}" --version`, {
+      cwd: BIN_DIR,
+      encoding: "utf8",
+      timeout: 30_000,
+      env: { ...process.env, DSCODE_NO_CHECK: "1" },
+    });
+    console.log(`[sea] --version: ${ver.trim()}`);
+  } catch (e) {
+    throw new Error(`Portable validation failed (--version): ${e.message}`, { cause: e });
+  }
+  try {
+    execSync(`"${launcherPath}" --help`, {
+      cwd: BIN_DIR,
+      encoding: "utf8",
+      timeout: 30_000,
+      env: { ...process.env, DSCODE_NO_CHECK: "1" },
+    });
+    console.log("[sea] --help: OK");
+  } catch (e) {
+    throw new Error(`Portable validation failed (--help): ${e.message}`, { cause: e });
+  }
   console.log("[sea] ✅ Portable package validated.");
 }
 
@@ -226,21 +256,16 @@ try {
 } catch (seaError) {
   const errMsg = seaError instanceof Error ? seaError.message : String(seaError);
   console.warn(`[sea] ⚠️  SEA build failed: ${errMsg}`);
-
-  if (!isWindows) {
-    // On Linux/macOS, SEA failure is fatal
-    console.error("[sea] SEA build failed on non-Windows platform. Aborting.");
-    process.exit(1);
-  }
-
-  // Windows fallback to portable
-  console.warn("[sea] Postject may not support this Node binary on Windows.");
-  console.warn("[sea] Falling back to Windows portable package.");
-  console.warn("[sea] This produces a self-contained package that does NOT require Node.js installed.");
+  console.warn("[sea] Postject may not support this Node binary on this platform.");
+  console.warn("[sea] Falling back to portable package.");
 
   try {
-    result = buildWindowsPortable();
-    validatePortablePackage();
+    result = buildPortable();
+    if (isWindows) {
+      validatePortablePackage();
+    } else {
+      validatePosixPortable();
+    }
   } catch (portableError) {
     const pMsg = portableError instanceof Error ? portableError.message : String(portableError);
     console.error(`[sea] Portable build also failed: ${pMsg}`);
