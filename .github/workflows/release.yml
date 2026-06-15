@@ -127,3 +127,29 @@ jobs:
 
           echo "=== Assets finais ==="
           gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name'
+
+      - name: Publish release to public repo
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_PAT }}
+        run: |
+          set -e
+          TAG="${{ github.ref_name }}"
+          PUBLIC_REPO="andrelncampos/dscode-public"
+
+          echo "=== Criando release $TAG no repo público ==="
+          gh release create "$TAG" release-out/* \
+            --repo "$PUBLIC_REPO" \
+            --title "$TAG" \
+            --generate-notes \
+            --latest
+
+          sleep 5
+
+          echo "=== Removendo source code assets do repo público ==="
+          gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets[] | select(.name | contains("Source code")) | .id' | while read id; do
+            echo "Deletando asset $id..."
+            gh api -X DELETE "repos/$PUBLIC_REPO/releases/assets/$id" --silent || echo "FALHA ao deletar $id"
+          done
+
+          echo "=== Release pública criada ==="
+          gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets[].name'
