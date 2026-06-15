@@ -3096,8 +3096,10 @@ export class SessionManager {
   setupSpecMcp(specNumber: number, applyFilter = true): Record<string, McpServerConfig> | undefined {
     if (this.specMcpActive) this.teardownSpecMcp();
 
-    // Find the spec directory by prefix
+    // Find the spec directory by prefix.
+    // In the portable package, management/specs/ does not exist — return gracefully.
     const specsRoot = path.join(getExtensionRoot(), "management", "specs");
+    if (!fs.existsSync(specsRoot)) return undefined;
     const dirs = fs
       .readdirSync(specsRoot, { withFileTypes: true })
       .filter((d) => d.isDirectory() && d.name.startsWith(`${specNumber}-`))
