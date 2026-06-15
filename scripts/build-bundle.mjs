@@ -15,7 +15,7 @@ const version = (() => {
 const name = pkg.name;
 
 const OUT_DIR = resolve(root, "release", "bundle");
-const OUT_FILE = resolve(OUT_DIR, "dscode.cjs");
+const OUT_FILE = resolve(OUT_DIR, "dscode.mjs");
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -30,10 +30,11 @@ await build({
   outfile: OUT_FILE,
   jsx: "automatic",
   jsxImportSource: "react",
-  // For SEA compatibility, bundle everything. If this fails with CJS
-  // top-level-await errors, the build-sea script will fall back to
-  // the launcher approach using dist/cli.js (which uses external packages).
+  // Bundle everything except Node built-ins (which need CJS require in ESM).
   external: [],
+  banner: {
+    js: [`import { createRequire } from "node:module";`, `const require = createRequire(import.meta.url);`].join("\n"),
+  },
   define: {
     "process.env.DSCODE_VERSION": JSON.stringify(version),
   },

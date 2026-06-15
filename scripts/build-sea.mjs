@@ -10,7 +10,7 @@ const platform = process.platform;
 const arch = process.arch;
 const isWindows = platform === "win32";
 
-const BUNDLE_FILE = resolve(root, "release", "bundle", "dscode.cjs");
+const BUNDLE_FILE = resolve(root, "release", "bundle", "dscode.mjs");
 const SEA_CONFIG = resolve(root, "release", "sea-config.json");
 const BLOB_FILE = resolve(root, "release", "blob", "dscode.blob");
 const BIN_DIR = resolve(root, "release", "bin");
@@ -122,8 +122,8 @@ function buildPortable() {
 
   const portableDir = resolve(BIN_DIR);
   const toClean = isWindows
-    ? ["dscode.exe", "dscode.cmd", "dscode.ps1", "dscode.js", "node.exe"]
-    : ["dscode", "dscode.js", "node"];
+    ? ["dscode.exe", "dscode.cmd", "dscode.ps1", "dscode.mjs", "node.exe"]
+    : ["dscode", "dscode.mjs", "node"];
   for (const f of toClean) {
     const fp = resolve(portableDir, f);
     if (existsSync(fp)) {
@@ -139,13 +139,13 @@ function buildPortable() {
   copyFileSync(NODE_BIN, resolve(portableDir, nodeDest));
   console.log(`[sea] ${nodeDest} copied.`);
 
-  const distBundle = resolve(root, "dist", "cli.js");
-  if (!existsSync(distBundle)) {
-    console.error("[sea] ERROR: dist/cli.js not found. Run build first.");
+  // Use the fully-bundled ESM file (external: []) — self-contained, no node_modules needed.
+  if (!existsSync(BUNDLE_FILE)) {
+    console.error("[sea] ERROR: Bundle not found. Run build:bundle first.");
     process.exit(1);
   }
-  copyFileSync(distBundle, resolve(portableDir, "dscode.js"));
-  console.log("[sea] dscode.js copied.");
+  copyFileSync(BUNDLE_FILE, resolve(portableDir, "dscode.mjs"));
+  console.log("[sea] dscode.mjs copied.");
 
   if (isWindows) {
     const cmdPath = resolve(portableDir, "dscode.cmd");
@@ -153,7 +153,7 @@ function buildPortable() {
       "@echo off",
       "setlocal",
       'set "DSCODE_HOME=%~dp0"',
-      '"%DSCODE_HOME%node.exe" "%DSCODE_HOME%dscode.js" %*',
+      '"%DSCODE_HOME%node.exe" "%DSCODE_HOME%dscode.mjs" %*',
       "exit /b %ERRORLEVEL%",
       "",
     ].join("\r\n");
@@ -163,7 +163,7 @@ function buildPortable() {
     const ps1Path = resolve(portableDir, "dscode.ps1");
     const ps1Content = [
       "$DscodeHome = Split-Path -Parent $MyInvocation.MyCommand.Path",
-      '& "$DscodeHome\\node.exe" "$DscodeHome\\dscode.js" @args',
+      '& "$DscodeHome\\node.exe" "$DscodeHome\\dscode.mjs" @args',
       "exit $LASTEXITCODE",
       "",
     ].join("\r\n");
@@ -177,7 +177,7 @@ function buildPortable() {
   const launcherContent = [
     "#!/usr/bin/env bash",
     'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
-    'exec "$DIR/node" "$DIR/dscode.js" "$@"',
+    'exec "$DIR/node" "$DIR/dscode.mjs" "$@"',
     "",
   ].join("\n");
   writeFileSync(launcherPath, launcherContent, "utf8");

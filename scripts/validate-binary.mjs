@@ -67,8 +67,8 @@ function runBinary(bin, flag) {
       env: { ...process.env, DEEPCODE_API_KEY: "" },
     }).trim();
   }
-  // Fallback: bundle is dscode.js alongside the launcher
-  const jsFile = resolve(BIN_DIR, "dscode.js");
+  // Fallback: bundle is dscode.mjs alongside the launcher
+  const jsFile = resolve(BIN_DIR, "dscode.mjs");
   if (existsSync(jsFile)) {
     return execSync(`node "${jsFile}" ${flag}`, {
       encoding: "utf8",
@@ -213,7 +213,7 @@ if (existsSync(resolve(extractDir, "NOTICE"))) {
 // Try SEA binary first, then fallback launcher / portable package
 const extractedSea = resolve(extractDir, seaBinName);
 const extractedFallback = resolve(extractDir, fallbackBinName);
-const extractedJs = resolve(extractDir, "dscode.js");
+const extractedJs = resolve(extractDir, "dscode.mjs");
 const extractedNode = resolve(extractDir, platform === "win32" ? "node.exe" : "node");
 
 let extractedBin = existsSync(extractedSea) ? extractedSea : existsSync(extractedFallback) ? extractedFallback : null;
