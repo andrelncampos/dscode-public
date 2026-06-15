@@ -182,7 +182,7 @@ test("buildBudgetMarkdown produces 5-column format", () => {
   const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
   const content = fs.readFileSync(budgetPath, "utf8");
 
-  assert.match(content, /Sessões/);
+  assert.match(content, /Chamadas/);
   assert.match(content, /Tokens/);
   assert.match(content, /Economia/);
 
@@ -258,7 +258,7 @@ test("budget round-trip preserves cost and session count", () => {
   assert.ok(fs.existsSync(budgetPath));
 
   const content = fs.readFileSync(budgetPath, "utf8");
-  assert.match(content, /Sessões/);
+  assert.match(content, /Chamadas/);
   assert.match(content, /Economia/);
 
   const { todayCost, projectTotal } = getBudgetCosts(projectRoot);

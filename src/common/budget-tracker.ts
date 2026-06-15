@@ -132,8 +132,8 @@ function buildBudgetMarkdown(costs: DailyCost[]): string {
   const lines: string[] = [
     "# Budget — Custo acumulado do projeto",
     "",
-    "| Data | Sessões | Tokens | Custo (USD) | Economia (USD) |",
-    "|------|---------|--------|-------------|----------------|",
+    "| Data | Chamadas | Tokens | Custo (USD) | Economia (USD) |",
+    "|------|----------|--------|-------------|----------------|",
   ];
 
   for (const entry of sorted) {

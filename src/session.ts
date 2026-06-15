@@ -1581,10 +1581,8 @@ export class SessionManager {
             : null);
         if (responseUsage) {
           const cache = normalizeCacheTokens(responseUsage);
-          if (cache !== null) {
-            responseUsage.normalizedCacheHitTokens = cache.hit;
-            responseUsage.normalizedCacheMissTokens = cache.miss;
-          }
+          responseUsage.normalizedCacheHitTokens = cache?.hit ?? 0;
+          responseUsage.normalizedCacheMissTokens = cache?.miss ?? 0;
           const budgetWarning = recordBudgetCost(
             this.projectRoot,
             model,
