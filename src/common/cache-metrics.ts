@@ -82,10 +82,13 @@ export function computeCacheHitRate(hit: number, miss: number): number | null {
 
 /**
  * Compute estimated USD saved by cache reads.
+ * Savings = what cached tokens would have cost as uncached input minus what was actually paid as cache reads.
  */
 export function computeCacheSavings(cachedTokens: number, pricing: ModelPricing): number {
   if (!pricing.cacheReadPrice || pricing.cacheReadPrice <= 0) return 0;
-  return (cachedTokens / 1_000_000) * pricing.cacheReadPrice;
+  const uncachedCost = (cachedTokens / 1_000_000) * pricing.inputPrice;
+  const cachedCost = (cachedTokens / 1_000_000) * pricing.cacheReadPrice;
+  return Math.max(0, uncachedCost - cachedCost);
 }
 
 /**

@@ -123,8 +123,8 @@ describe("computeCacheHitRate", () => {
 describe("computeCacheSavings", () => {
   const pricing: ModelPricing = { inputPrice: 1, outputPrice: 2, cacheReadPrice: 0.1 };
 
-  test("1M cached tokens at 0.10/1M = $0.10", () => {
-    assert.equal(computeCacheSavings(1_000_000, pricing), 0.1);
+  test("1M cached tokens saves inputPrice - cacheReadPrice = $0.90", () => {
+    assert.equal(computeCacheSavings(1_000_000, pricing), 0.9);
   });
 
   test("with zero cacheReadPrice", () => {
