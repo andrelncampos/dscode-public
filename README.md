@@ -987,3 +987,4 @@ Dependências de terceiros mantêm suas próprias licenças. Consulte [NOTICE](N
 
 [github-license-link]: https://github.com/andrelncampos/dscode/blob/main/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
+
