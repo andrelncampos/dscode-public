@@ -493,3 +493,32 @@ without revealing how it's built.
 matching heuristics, compaction strategy). These remain proprietary.
 
 **Delivered by:** Spec 240 (auditabilidade).
+
+---
+
+### V27: Billing Completeness & Integrity
+
+Garantia de que todos os pontos de consumo de API são contabilizados com precisão
+no `budget.md`, incluindo custo de cache e economia real.
+
+- **Normalização universal de cache:** Todos os 7 call sites de `recordBudgetCost`
+  devem chamar `normalizeCacheTokens()` antes de gravar. Atualmente apenas o chat
+  flow principal (1 de 7) o faz — compaction, edit handler, explore subagent e
+  web-search handler gravam custo mas nunca registram economia.
+- **Cache tokens no Gemini:** O provider Gemini emite `usageMetadata` mas não mapeia
+  campos de cache (`cachedContentTokenCount`). Investigar e implementar.
+- **Compaction budget tracking:** O caminho de compaction (`session.ts:1936`) registra
+  custo mas não normaliza cache — corrigir para manter paridade com o chat principal.
+- **Tool handlers budget tracking:** `edit-handler.ts`, `explore-subagent.ts` e
+  `web-search-handler.ts` registram custo via `response.usage` direto sem normalização
+  de cache — corrigir todos.
+- **Helper extraction:** Extrair a dupla `normalizeCacheTokens` + `recordBudgetCost`
+  em uma função helper para evitar regressão e garantir consistência em todos os
+  call sites presentes e futuros.
+- **Test coverage:** Adicionar testes que verificam que todo call site de
+  `recordBudgetCost` produz `cacheSaved > 0` quando a resposta da API contém tokens
+  de cache.
+
+**Auditado em:** 2026-06-15 — 7 call sites, 6 com bug de normalização ausente.
+
+**Delivered by:** Spec 250 (billing-completeness).

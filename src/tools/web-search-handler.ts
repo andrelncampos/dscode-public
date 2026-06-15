@@ -1,5 +1,5 @@
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
-import { recordBudgetCost } from "../common/budget-tracker";
+import { recordBudgetCostWithCache } from "../common/budget-tracker";
 import type { ModelUsage } from "../session";
 import { getAuxiliaryModel } from "../common/model-catalog";
 
@@ -80,7 +80,7 @@ async function executeNativeWebSearch(
     );
 
     if (r1.usage) {
-      recordBudgetCost(projectRoot, model, r1.usage as ModelUsage);
+      recordBudgetCostWithCache(projectRoot, model, r1.usage as ModelUsage);
     }
 
     const r1Msg = r1.choices[0]?.message;
@@ -111,7 +111,7 @@ async function executeNativeWebSearch(
       );
 
       if (r2.usage) {
-        recordBudgetCost(projectRoot, model, r2.usage as ModelUsage);
+        recordBudgetCostWithCache(projectRoot, model, r2.usage as ModelUsage);
       }
 
       const content = r2.choices[0]?.message?.content ?? "";

@@ -421,11 +421,17 @@ function getUnameInfo(): string {
 
 export function getExtensionRoot(): string {
   // Prefer `__dirname` which is always available in the CJS bundle output.
-  // Fall back to `import.meta.url` for ESM test environments (tsx --test).
   if (typeof __dirname !== "undefined") {
+    // Portable package: the bundle lives alongside templates/ (no .. needed).
+    // npm / dev: the bundle is in dist/ or src/, templates/ is in the parent.
+    const portableCandidate = path.resolve(__dirname);
+    if (fs.existsSync(path.join(portableCandidate, "templates"))) {
+      return portableCandidate;
+    }
     return path.resolve(__dirname, "..");
   }
 
+  // Fall back to `import.meta.url` for ESM test environments (tsx --test).
   const currentFilePath = fileURLToPath(import.meta.url);
   return path.resolve(path.dirname(currentFilePath), "..");
 }

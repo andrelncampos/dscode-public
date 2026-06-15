@@ -255,6 +255,10 @@ export class GeminiProvider implements ILlmProvider {
               prompt_tokens: inputTokens,
               completion_tokens: outputTokens,
               total_tokens: inputTokens + outputTokens,
+              ...(typeof usageMetadata.cachedContentTokenCount === "number" &&
+              usageMetadata.cachedContentTokenCount >= 0
+                ? { prompt_tokens_details: { cached_tokens: usageMetadata.cachedContentTokenCount } }
+                : {}),
             };
             yield { type: "usage", usage };
           }
@@ -275,6 +279,10 @@ export class GeminiProvider implements ILlmProvider {
                 total_tokens:
                   (usageMetadata.promptTokenCount ?? inputTokens) +
                   (usageMetadata.candidatesTokenCount ?? outputTokens),
+                ...(typeof usageMetadata.cachedContentTokenCount === "number" &&
+                usageMetadata.cachedContentTokenCount >= 0
+                  ? { prompt_tokens_details: { cached_tokens: usageMetadata.cachedContentTokenCount } }
+                  : {}),
               };
               yield { type: "usage", usage };
             }

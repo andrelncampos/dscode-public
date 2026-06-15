@@ -62,7 +62,7 @@ import {
 import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
-import { recordBudgetCost, getBudgetMarkdown } from "./common/budget-tracker";
+import { recordBudgetCostWithCache, getBudgetMarkdown } from "./common/budget-tracker";
 import { normalizeCacheTokens } from "./common/cache-metrics";
 import type { ModelPricing } from "./common/model-capabilities";
 import { DEFAULT_MODEL_PRICING } from "./common/model-capabilities";
@@ -1589,7 +1589,7 @@ export class SessionManager {
             hit: responseUsage.normalizedCacheHitTokens,
             miss: responseUsage.normalizedCacheMissTokens,
           };
-          const budgetWarning = recordBudgetCost(
+          const budgetWarning = recordBudgetCostWithCache(
             this.projectRoot,
             model,
             responseUsage,
@@ -1933,7 +1933,7 @@ export class SessionManager {
         : undefined;
 
     if (responseUsage) {
-      const budgetWarning = recordBudgetCost(
+      const budgetWarning = recordBudgetCostWithCache(
         this.projectRoot,
         compactionModel,
         responseUsage,
@@ -3096,8 +3096,10 @@ export class SessionManager {
   setupSpecMcp(specNumber: number, applyFilter = true): Record<string, McpServerConfig> | undefined {
     if (this.specMcpActive) this.teardownSpecMcp();
 
-    // Find the spec directory by prefix
+    // Find the spec directory by prefix.
+    // In the portable package, management/specs/ does not exist — return gracefully.
     const specsRoot = path.join(getExtensionRoot(), "management", "specs");
+    if (!fs.existsSync(specsRoot)) return undefined;
     const dirs = fs
       .readdirSync(specsRoot, { withFileTypes: true })
       .filter((d) => d.isDirectory() && d.name.startsWith(`${specNumber}-`))
