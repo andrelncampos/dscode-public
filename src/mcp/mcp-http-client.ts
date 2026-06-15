@@ -6,6 +6,7 @@ import type {
   McpResourceDefinition,
   McpResourceContent,
 } from "./mcp-client";
+import pkg from "../../package.json" with { type: "json" };
 
 export class McpHttpClient {
   private url: string;
@@ -29,7 +30,7 @@ export class McpHttpClient {
       {
         protocolVersion: "2025-03-26",
         capabilities: {},
-        clientInfo: { name: "dscode", version: "1.0.0" },
+        clientInfo: { name: "dscode", version: pkg.version },
       },
       timeoutMs
     );

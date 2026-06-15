@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
 import * as path from "node:path";
 import { killProcessTree } from "../common/process-tree";
+import pkg from "../../package.json" with { type: "json" };
 
 type JsonRpcRequest = {
   jsonrpc: "2.0";
@@ -191,7 +192,7 @@ export class McpClient {
       {
         protocolVersion: "2025-03-26",
         capabilities: {},
-        clientInfo: { name: "deepcode-cli", version: "0.1.0" },
+        clientInfo: { name: "deepcode-cli", version: pkg.version },
       },
       timeoutMs
     )
