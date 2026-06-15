@@ -147,6 +147,16 @@ function buildPortable() {
   copyFileSync(BUNDLE_FILE, resolve(portableDir, "dscode.mjs"));
   console.log("[sea] dscode.mjs copied.");
 
+  // Copy templates/ so getExtensionRoot() finds them at runtime.
+  const templatesSrc = resolve(root, "templates");
+  const templatesDest = resolve(portableDir, "templates");
+  if (existsSync(templatesDest)) rmSync(templatesDest, { recursive: true, force: true });
+  execSync(
+    isWindows ? `xcopy /E /I /Q "${templatesSrc}" "${templatesDest}"` : `cp -r "${templatesSrc}" "${templatesDest}"`,
+    { stdio: "pipe" }
+  );
+  console.log("[sea] templates/ copied.");
+
   if (isWindows) {
     const cmdPath = resolve(portableDir, "dscode.cmd");
     const cmdContent = [
