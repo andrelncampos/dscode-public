@@ -153,3 +153,24 @@ jobs:
 
           echo "=== Release pública criada ==="
           gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets[].name'
+
+  verify-public-release:
+    name: Verify public release
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - name: Check that release exists on public repo
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_PAT }}
+        run: |
+          set -e
+          TAG="${{ github.ref_name }}"
+          PUBLIC_REPO="andrelncampos/dscode-public"
+          ASSETS=$(gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets | length')
+          if [ "$ASSETS" -lt 4 ]; then
+            echo "ERRO: Release pública tem apenas $ASSETS assets. Esperado >= 4."
+            exit 1
+          fi
+          echo "✅ Release pública verificada: $ASSETS assets."
+          echo "=== Assets ==="
+          gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets[].name'
