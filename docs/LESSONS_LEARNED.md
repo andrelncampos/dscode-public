@@ -73,3 +73,11 @@ const require = __createRequire(import.meta.url);
 **Problema:** Ao bump de versão no `package.json`, o `package-lock.json` continuava com versão antiga (`1.0.10`).
 
 **Solução:** Ambos os arquivos precisam ser atualizados juntos (2 ocorrências no `package-lock.json`: top-level e `packages[""]`).
+
+### 11. Templates não estavam no pacote portátil → todos os comandos slash quebravam
+
+**Problema:** O ZIP portátil incluía apenas `dscode.mjs` + `node.exe` + launchers. O diretório `templates/` (com arquivos `.md.ejs` para `/steering-add`, `/spec-list`, `/spec-new`, etc.) nunca era copiado. No modo dev, `getExtensionRoot()` retornava `path.resolve(__dirname, "..")` — de `src/` ia para a raiz do repo onde `templates/` existe. No pacote portátil, o bundle está na raiz do diretório de instalação, então `..` ia para o diretório pai (ex: `C:\Git\`), onde `templates/` não existe. Resultado: `ENOENT` em todo comando que usasse template.
+
+**Solução:** Duas mudanças:
+1. `build-sea.mjs`: copiar `templates/` para `release/bin/templates/` (ao lado do bundle).
+2. `getExtensionRoot()`: detectar modo portátil — se `__dirname/templates/` existir, retornar `__dirname` direto (sem `..`). Fallback para comportamento antigo nos modos dev/npm.
