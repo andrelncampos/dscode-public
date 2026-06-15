@@ -146,7 +146,7 @@ DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscod
 | `notify` | string | Script executed after each task completes | *(none)* |
 | `engines` | object | Per-provider configuration (e.g., `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Custom model pricing overrides | *(DeepSeek V4 defaults)* |
-| `cacheMode` | string | Cache strategy: `"off"` (default), `"aware"` (optimizes prefix for KV Cache), `"strict"` (aware + hash verification). DeepSeek only | `"off"` |
+| `cacheMode` | string | Cache strategy: `"aware"` (default, optimizes prefix for KV Cache), `"strict"` (aware + hash verification), `"off"` (disables). DeepSeek only | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Repository visibility. `"public"` adds `/management/` and `/.agents/` to `.gitignore` automatically | `"private"` |
 
 ### Model pricing (`modelPricing`)
