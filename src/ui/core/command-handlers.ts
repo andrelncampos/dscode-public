@@ -1,5 +1,6 @@
 import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
+import type { TerminalRuntimeProfile } from "./terminal-runtime";
 import { getActiveTFunction } from "../../i18n/context";
 
 export type CommandContext = {
@@ -14,6 +15,8 @@ export type CommandContext = {
   setShowModelDropdown: (show: boolean) => void;
   setOpenRawModelDropdown: (show: boolean) => void;
   setStatusMessage: (msg: string) => void;
+  /** Terminal profile for diagnostic commands like /keys. */
+  terminalProfile?: TerminalRuntimeProfile;
 };
 
 type CommandHandler = (item: SlashCommandItem, ctx: CommandContext) => void;
@@ -73,6 +76,25 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   cls: (_item, ctx) => {
     process.stdout.write("\x1b[2J\x1b[H");
     ctx.clearSlashToken();
+  },
+  keys: (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const p = ctx.terminalProfile;
+
+    if (!p) {
+      ctx.setStatusMessage(t("cmd.keys-no-profile"));
+      return;
+    }
+
+    // Infer keyboard protocol from capability.
+    const protocol = p.shiftEnterCapable ? "CSI u" : "legacy";
+    const shiftStatus = p.shiftEnterCapable ? t("cmd.keys-shift-yes") : t("cmd.keys-shift-no");
+    const shortcutLabel =
+      p.newlinePrimaryShortcut === "Shift+Enter" ? t("cmd.keys-newline-shiftenter") : t("cmd.keys-newline-ctrlj");
+
+    const msg = `${t("cmd.keys-prefix")}${p.kind} · ${t("cmd.keys-protocol")}${protocol} · ${t("cmd.keys-shift-label")}${shiftStatus} · ${t("cmd.keys-use")}${shortcutLabel}`;
+    ctx.setStatusMessage(msg);
   },
   "steering-remove": (_item, ctx) => {
     ctx.onSubmit({

@@ -34,6 +34,16 @@ const esDictionary = {
   "cmd.model-params": "Configurar par\u00e1metros de generaci\u00f3n (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar presupuesto de thinking para modelos de pensamiento extendido",
   "cmd.budget": "Mostrar el resumen de costos acumulados del proyecto (budget.md)",
+  "cmd.keys": "Diagnosticar el protocolo de teclado del terminal y mostrar atajos disponibles",
+  "cmd.keys-no-profile": "Perfil de terminal no disponible",
+  "cmd.keys-prefix": "Terminal: ",
+  "cmd.keys-protocol": "Protocolo: ",
+  "cmd.keys-shift-label": "Shift+Enter: ",
+  "cmd.keys-shift-yes": "s\u00ed",
+  "cmd.keys-shift-no": "no",
+  "cmd.keys-newline-shiftenter": "Shift+Enter o Ctrl+J",
+  "cmd.keys-newline-ctrlj": "Ctrl+J o \\ + Enter",
+  "cmd.keys-use": "Usar: ",
   "cmd.no-description": "(sin descripci\u00f3n)",
 
   // Welcome screen

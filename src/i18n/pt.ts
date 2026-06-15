@@ -34,6 +34,16 @@ const ptDictionary = {
   "cmd.model-params": "Configurar par\u00e2metros de gera\u00e7\u00e3o (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar or\u00e7amento de thinking para modelos de pensamento estendido",
   "cmd.budget": "Exibir o resumo de custos acumulados do projeto (budget.md)",
+  "cmd.keys": "Diagnosticar o protocolo de teclado do terminal e mostrar atalhos dispon\u00edveis",
+  "cmd.keys-no-profile": "Perfil de terminal n\u00e3o dispon\u00edvel",
+  "cmd.keys-prefix": "Terminal: ",
+  "cmd.keys-protocol": "Protocolo: ",
+  "cmd.keys-shift-label": "Shift+Enter: ",
+  "cmd.keys-shift-yes": "sim",
+  "cmd.keys-shift-no": "n\u00e3o",
+  "cmd.keys-newline-shiftenter": "Shift+Enter ou Ctrl+J",
+  "cmd.keys-newline-ctrlj": "Ctrl+J ou \\ + Enter",
+  "cmd.keys-use": "Usar: ",
   "cmd.no-description": "(sem descri\u00e7\u00e3o)",
 
   // Welcome screen

@@ -696,6 +696,7 @@ export const PromptInput = React.memo(function PromptInput({
       setShowModelDropdown,
       setOpenRawModelDropdown,
       setStatusMessage,
+      terminalProfile,
     };
     executeSlashCommand(item, ctx);
   }

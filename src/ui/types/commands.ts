@@ -41,6 +41,7 @@ export const COMMAND_KINDS = [
   "model-params",
   "model-thinking",
   "budget",
+  "keys",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];

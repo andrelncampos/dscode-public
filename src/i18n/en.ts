@@ -32,6 +32,16 @@ const enDictionary = {
   "cmd.model-params": "Configure generation parameters (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configure thinking budget for extended-thinking models",
   "cmd.budget": "Display accumulated project cost summary (budget.md)",
+  "cmd.keys": "Diagnose terminal keyboard protocol and show available shortcuts",
+  "cmd.keys-no-profile": "Terminal profile not available",
+  "cmd.keys-prefix": "Keys: ",
+  "cmd.keys-protocol": "Protocol: ",
+  "cmd.keys-shift-label": "Shift+Enter: ",
+  "cmd.keys-shift-yes": "yes",
+  "cmd.keys-shift-no": "no",
+  "cmd.keys-newline-shiftenter": "Shift+Enter or Ctrl+J",
+  "cmd.keys-newline-ctrlj": "Ctrl+J or \\ + Enter",
+  "cmd.keys-use": "Use: ",
   "cmd.no-description": "(no description)",
 
   // Welcome screen (11 keys)

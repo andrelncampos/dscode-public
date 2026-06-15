@@ -218,6 +218,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/budget",
     description: "cmd.budget",
   },
+  {
+    kind: "keys",
+    name: "keys",
+    label: "/keys",
+    description: "cmd.keys",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

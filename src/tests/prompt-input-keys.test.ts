@@ -203,6 +203,48 @@ test("CRLF (\\r\\n) in single chunk is normalized to a single Enter", () => {
   assert.equal(getPromptReturnKeyAction(events[0]!.key, events[0]!.input), "submit");
 });
 
+test("\\ + Enter: backslash before plain Enter inserts newline (universal fallback)", () => {
+  // Step 1: user types a literal backslash
+  let buf = EMPTY_BUFFER;
+  const { input: backslashInput, key: backslashKey } = parseTerminalInput("\\");
+  assert.equal(backslashInput, "\\");
+  buf = insertText(buf, backslashInput);
+  assert.equal(buf.text, "\\");
+
+  // Step 2: user presses Enter (plain \r, no modifiers)
+  const { input: enterInput, key: enterKey } = parseTerminalInput("\r");
+  assert.equal(enterKey.return, true);
+  assert.equal(enterKey.shift, false);
+  assert.equal(getPromptReturnKeyAction(enterKey, enterInput), "submit");
+
+  // Step 3: the backslash+Enter handler (same logic as PromptInput.tsx line 482)
+  // removes the trailing backslash and inserts a newline
+  assert.ok(buf.text.endsWith("\\"));
+  const trimmed = { ...buf, text: buf.text.slice(0, -1), cursor: Math.max(0, buf.cursor - 1) };
+  buf = insertText(trimmed, "\n");
+  assert.equal(buf.text, "\n");
+  assert.equal(buf.cursor, 1);
+});
+
+test("\\ + Enter: does NOT trigger when buffer does not end with backslash", () => {
+  const buf = { ...EMPTY_BUFFER, text: "hello world" };
+  assert.ok(!buf.text.endsWith("\\")); // guard: no trailing backslash
+  // Plain Enter should NOT be intercepted — it should submit
+  const { input, key } = parseTerminalInput("\r");
+  assert.equal(getPromptReturnKeyAction(key, input), "submit");
+});
+
+test("\\ + Enter: double backslash + Enter inserts literal backslash + newline", () => {
+  // User typed "first \\" then Enter: buffer has "first\\" (2 backslashes)
+  // endsWith("\\") evaluates: "first\\".endsWith("\") → true (trailing single \)
+  // Removes one backslash, inserts newline → "first\" + "\n" = "first\\\n" in source
+  let buf = { text: "first\\\\", cursor: "first\\\\".length };
+  assert.ok(buf.text.endsWith("\\"));
+  const trimmed = { ...buf, text: buf.text.slice(0, -1), cursor: Math.max(0, buf.cursor - 1) };
+  buf = insertText(trimmed, "\n");
+  assert.equal(buf.text, "first\\\n");
+});
+
 test("terminal extended key helpers request and restore modifyOtherKeys mode", () => {
   assert.equal(enableTerminalExtendedKeys(), "\u001B[>4;2m");
   assert.equal(disableTerminalExtendedKeys(), "\u001B[>4;0m");
