@@ -15,11 +15,12 @@ git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUBLIC_REPO}.git" "$W
 echo "=== Transforming README.md ==="
 cp README.md "$WORKDIR/public/README.md"
 
-# Fix repo URLs: dscode -> dscode-public (but not dscode-public -> dscode-public-public)
+# Fix repo URLs: dscode -> dscode-public (lines already containing dscode-public are skipped)
 sed -i 's|github.com/andrelncampos/dscode/releases|github.com/andrelncampos/dscode-public/releases|g' "$WORKDIR/public/README.md"
 sed -i 's|github.com/andrelncampos/dscode/issues|github.com/andrelncampos/dscode-public/issues|g' "$WORKDIR/public/README.md"
 sed -i 's|github.com/andrelncampos/dscode/blob/main/LICENSE|github.com/andrelncampos/dscode-public/blob/master/LICENSE|g' "$WORKDIR/public/README.md"
-sed -i 's|github.com/andrelncampos/dscode|github.com/andrelncampos/dscode-public|g' "$WORKDIR/public/README.md"
+# Only replace on lines that don't already have dscode-public (prevents double-replacement)
+sed -i '/dscode-public/!s|github.com/andrelncampos/dscode|github.com/andrelncampos/dscode-public|g' "$WORKDIR/public/README.md"
 
 # Fix relative links that point outside
 sed -i 's|(../../LICENSE)|(LICENSE)|g' "$WORKDIR/public/README.md"
