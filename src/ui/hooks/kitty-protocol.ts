@@ -39,27 +39,8 @@ const KITTY_ENABLED_VALUE = 25; // 1 + 8 + 16 (disambiguate + report all keys + 
 
 // ── Internal state ────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
-
 let kittyActive = false;
 let kittySupported: boolean | null = null;
-
-// ── Listeners (for React components to react to Kitty state changes) ────
-
-type KittyChangeListener = (active: boolean) => void;
-const listeners = new Set<KittyChangeListener>();
-
-function notifyListeners(active: boolean): void {
-  for (const l of listeners) l(active);
-}
-
-/** Subscribe to Kitty protocol state changes. Returns unsubscribe function. */
-export function onKittyChange(listener: KittyChangeListener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
 
 // ── Public API ─────────────────────────────────────────────────────────
 
@@ -81,16 +62,6 @@ export function getKittyProtocolState(): KittyProtocolState {
     active: kittyActive,
     flags: kittyActive ? KITTY_ENABLED_VALUE : null,
   };
-}
-
-/**
- * React hook: returns true when the Kitty Keyboard Protocol is active.
- * Updates reactively when the protocol activates or deactivates.
- */
-export function useKittyProtocolActive(): boolean {
-  const [active, setActive] = useState(kittyActive);
-  useEffect(() => onKittyChange(setActive), []);
-  return active;
 }
 
 /**
@@ -184,7 +155,6 @@ function activateKittyProtocol(stdin: NodeJS.ReadStream, stdout: NodeJS.WriteStr
   stdout.write(pushSequence);
   kittyActive = true;
   kittySupported = true;
-  notifyListeners(true);
 
   // Register restore handlers.
   const pop = () => {
@@ -195,7 +165,6 @@ function activateKittyProtocol(stdin: NodeJS.ReadStream, stdout: NodeJS.WriteStr
       // Terminal may already be closed — ignore.
     }
     kittyActive = false;
-    notifyListeners(false);
   };
 
   const onExit = () => pop();
@@ -229,7 +198,6 @@ function deactivateKittyProtocol(stdout: NodeJS.WriteStream): void {
     // Ignore.
   }
   kittyActive = false;
-  notifyListeners(false);
 }
 
 /** Build a push sequence string for arbitrary flag values. */

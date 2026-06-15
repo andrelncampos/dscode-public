@@ -4,7 +4,6 @@ export type { InputKey, DscodeReturnAction } from "./useTerminalInput";
 export {
   enableKittyProtocol,
   getKittyProtocolState,
-  useKittyProtocolActive,
   buildKittyPushSequence,
   buildKittyPopSequence,
 } from "./kitty-protocol";

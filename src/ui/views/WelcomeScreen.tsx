@@ -12,7 +12,6 @@ import { AsciiLogo } from "../ascii-art";
 import { useAppContext } from "../contexts";
 import { WELCOME_PANEL_MIN_WIDTH } from "../core/layout-constants";
 import { detectTerminalRuntime } from "../core/terminal-runtime";
-import { useKittyProtocolActive } from "../hooks";
 
 type WelcomeScreenProps = {
   projectRoot: string;
@@ -21,19 +20,17 @@ type WelcomeScreenProps = {
   width: number;
 };
 
-function getShortcutTips(t: I18nTFunction, kittyActive: boolean): Array<{ label: string; description: string }> {
+function getShortcutTips(t: I18nTFunction): Array<{ label: string; description: string }> {
   const profile = detectTerminalRuntime();
-  const shiftEnterWorks = kittyActive || profile.shiftEnterCapable;
-  const primaryNewline = shiftEnterWorks ? "Shift+Enter" : "Ctrl+J";
   const tips: Array<{ label: string; description: string }> = [
     { label: "Enter", description: t("welcome.tip-send-prompt") },
-    { label: primaryNewline, description: t("welcome.tip-insert-newline") },
+    { label: profile.newlinePrimaryShortcut, description: t("welcome.tip-insert-newline") },
   ];
   // Show the alternative newline shortcut as a separate tip
-  if (shiftEnterWorks) {
+  if (profile.shiftEnterCapable && profile.newlinePrimaryShortcut === "Ctrl+J") {
+    tips.push({ label: "Shift+Enter", description: t("welcome.tip-insert-newline-alt") });
+  } else if (profile.shiftEnterCapable && profile.newlinePrimaryShortcut === "Shift+Enter") {
     tips.push({ label: "Ctrl+J", description: t("welcome.tip-insert-newline-alt") });
-  } else {
-    tips.push({ label: "\\ + Enter", description: t("welcome.tip-insert-newline-alt") });
   }
   tips.push(
     { label: "Ctrl+V", description: t("welcome.tip-paste-image") },
@@ -47,8 +44,7 @@ function getShortcutTips(t: I18nTFunction, kittyActive: boolean): Array<{ label:
 export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeScreenProps): React.ReactElement {
   const { version } = useAppContext();
   const { t } = useLocale();
-  const kittyActive = useKittyProtocolActive();
-  const tips = useMemo(() => buildWelcomeTips(skills, t, kittyActive), [skills, t, kittyActive]);
+  const tips = useMemo(() => buildWelcomeTips(skills, t), [skills, t]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
   const compact = width < WELCOME_PANEL_MIN_WIDTH + 20;
   const cwd = formatHomeRelativePath(projectRoot);
@@ -111,11 +107,7 @@ export function formatHomeRelativePath(value: string, home = os.homedir()): stri
   return normalizedValue;
 }
 
-export function buildWelcomeTips(
-  skills: SkillInfo[],
-  t: I18nTFunction,
-  kittyActive = false
-): Array<{ label: string; description: string }> {
+export function buildWelcomeTips(skills: SkillInfo[], t: I18nTFunction): Array<{ label: string; description: string }> {
   const slashTips = buildSlashCommands(skills)
     .filter((item) => item.kind !== "skill" || item.skill?.isLoaded)
     .map((item) => ({
@@ -125,9 +117,7 @@ export function buildWelcomeTips(
 
   return [
     ...slashTips,
-    ...getShortcutTips(t, kittyActive).filter(
-      (tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)
-    ),
+    ...getShortcutTips(t).filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
   ];
 }
 
