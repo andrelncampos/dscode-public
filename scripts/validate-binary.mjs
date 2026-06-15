@@ -91,9 +91,9 @@ if (existsSync(binPath)) {
     if (!ver) {
       err("--version returned empty string");
       failures++;
-    } else if (!isSeaBinary) {
-      // Fallback: version comes from process.env.DSCODE_VERSION injected at build
-      log(`Fallback binary version OK`);
+    } else if (!isSeaBinary || existsSync(resolve(BIN_DIR, platform === "win32" ? "node.exe" : "node"))) {
+      // Portable fallback or launcher — version is multi-line, not just the number
+      log(`Fallback/portable binary version OK`);
     } else if (ver !== version) {
       log(`--version mismatch: got "${ver}", expected "${version}" (may include different format)`);
     }
@@ -214,7 +214,7 @@ if (existsSync(resolve(extractDir, "NOTICE"))) {
 const extractedSea = resolve(extractDir, seaBinName);
 const extractedFallback = resolve(extractDir, fallbackBinName);
 const extractedJs = resolve(extractDir, "dscode.js");
-const extractedNode = resolve(extractDir, "node.exe");
+const extractedNode = resolve(extractDir, platform === "win32" ? "node.exe" : "node");
 
 let extractedBin = existsSync(extractedSea) ? extractedSea : existsSync(extractedFallback) ? extractedFallback : null;
 
