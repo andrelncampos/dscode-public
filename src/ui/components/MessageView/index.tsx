@@ -140,6 +140,27 @@ export function MessageView({ message, collapsed, width = 80 }: MessageViewProps
         </Box>
       );
     }
+    if (message.meta?.isBudget) {
+      const segments = renderMarkdownSegments(message.content || "", width);
+      return (
+        <Box marginY={0} marginLeft={1} marginBottom={1} flexDirection="column">
+          {segments.map((seg, i) => {
+            if (seg.kind === "table") {
+              return (
+                <Box key={i} flexDirection="column">
+                  {seg.body.split("\n").map((line, lineIndex) => (
+                    <Text key={lineIndex} wrap="truncate-end">
+                      {line}
+                    </Text>
+                  ))}
+                </Box>
+              );
+            }
+            return <Text key={i}>{seg.body}</Text>;
+          })}
+        </Box>
+      );
+    }
     return null;
   }
 

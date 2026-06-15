@@ -35,7 +35,7 @@
 | 180 | cache-metrics-display | audited | V21, V11, ADR-005 |
 | 190 | tool-call-repair | audited | V23, ADR-002 |
 | 200 | cache-aware-prompt | audited | V22, V6, ADR-001, ADR-002, ADR-200-001, ADR-200-002, ADR-200-003 |
-| 210 | cache-aware-compaction | planned | V22, V8, ADR-005 |
+| 210 | cache-aware-compaction | audited | V22, V8, ADR-005 |
 | 220 | pro-first-modes | planned | V25, V13 |
 | 230 | deepseek-native-parser | planned | V24, V6, V12, ADR-001, ADR-002 |
 | 240 | auditabilidade | planned | V26 |

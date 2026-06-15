@@ -21,7 +21,6 @@ import { PermissionPrompt, type PermissionPromptResult } from "./PermissionPromp
 import { computeSessionCost } from "../../common/model-capabilities";
 import { computeCacheLine } from "../../common/cache-metrics";
 import { getModelCapabilities } from "../../common/model-catalog";
-import { getBudgetCosts } from "../../common/budget-tracker";
 import { RawMode, useRawModeContext } from "../contexts";
 import { useAppState, useAppActions } from "../contexts/AppStateContext";
 import { isCollapsedThinking } from "../core/thinking-state";
@@ -186,8 +185,6 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
   if (activeSession) {
     sessionActiveTokens = activeSession.activeTokens;
   }
-  const budgetCosts = getBudgetCosts(projectRoot ?? "");
-
   const showWelcomeInStatic = showWelcome && view === ViewKind.Chat;
   const staticItems = useMemo(() => {
     if (mode === RawMode.Raw) return [];
@@ -444,8 +441,6 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         sessionActiveTokens={sessionActiveTokens}
         sessionCost={sessionCost}
         sessionContextWindow={getModelCapabilities(resolvedSettings.model)?.contextWindow}
-        dailyCost={budgetCosts.todayCost}
-        projectCost={budgetCosts.projectTotal}
         cacheLine={cacheLine}
         onSubmit={handleSubmit}
         onModelConfigChange={handleModelConfigChange}

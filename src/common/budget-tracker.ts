@@ -22,6 +22,7 @@ type DailyCost = {
   cacheMissTokens: number;
   sessionCount: number;
   totalTokens: number;
+  meta?: Record<string, string | number>;
 };
 
 function getBudgetPath(projectRoot: string): string {
@@ -122,7 +123,12 @@ function parseTokenCount(raw: string): number {
   return Math.round(num);
 }
 
-function buildBudgetMarkdown(costs: DailyCost[]): string {
+/** Format savings cost with exactly 3 decimal places (savings are typically sub-cent). */
+function formatSavings(value: number): string {
+  return `$${value.toFixed(3)}`;
+}
+
+export function buildBudgetMarkdown(costs: DailyCost[]): string {
   const sorted = [...costs].sort((a, b) => b.date.localeCompare(a.date));
   const totalCost = sorted.reduce((sum, e) => sum + e.cost, 0);
   const totalCacheSaved = sorted.reduce((sum, e) => sum + e.cacheSaved, 0);
@@ -138,12 +144,12 @@ function buildBudgetMarkdown(costs: DailyCost[]): string {
 
   for (const entry of sorted) {
     lines.push(
-      `| ${entry.date} | ${entry.sessionCount} | ${formatTokenCount(entry.totalTokens)} | ${formatCost(entry.cost)} | ${formatCost(entry.cacheSaved)} |`
+      `| ${entry.date} | ${entry.sessionCount} | ${formatTokenCount(entry.totalTokens)} | ${formatCost(entry.cost)} | ${formatSavings(entry.cacheSaved)} |`
     );
   }
 
   lines.push(
-    `| **Total** | **${totalSessions}** | **${formatTokenCount(totalTokens)}** | **${formatCost(totalCost)}** | **${formatCost(totalCacheSaved)}** |`
+    `| **Total** | **${totalSessions}** | **${formatTokenCount(totalTokens)}** | **${formatCost(totalCost)}** | **${formatSavings(totalCacheSaved)}** |`
   );
 
   return lines.join("\n") + "\n";
@@ -168,6 +174,13 @@ function writeBudget(projectRoot: string, costs: DailyCost[]): void {
   const budgetPath = getBudgetPath(projectRoot);
   const markdown = buildBudgetMarkdown(costs);
   atomicWriteFileSync(budgetPath, markdown);
+}
+
+/** Regenerate the budget markdown from existing budget data. Returns "" when no data. */
+export function getBudgetMarkdown(projectRoot: string): string {
+  const costs = readBudget(projectRoot);
+  if (costs.length === 0) return "";
+  return buildBudgetMarkdown(costs);
 }
 
 /**
@@ -208,7 +221,8 @@ export function recordBudgetCost(
   model: string,
   usage: ModelUsage,
   pricingOverrides?: Record<string, ModelPricing>,
-  limits?: BudgetLimits
+  limits?: BudgetLimits,
+  meta?: Record<string, string | number>
 ): string | null {
   try {
     const pricing = pricingOverrides?.[model] ?? DEFAULT_MODEL_PRICING[model];
@@ -234,6 +248,9 @@ export function recordBudgetCost(
         existing.cacheHitTokens += usage.normalizedCacheHitTokens;
         existing.cacheMissTokens += usage.normalizedCacheMissTokens ?? 0;
         existing.cacheSaved += computeCacheSavings(usage.normalizedCacheHitTokens, pricing);
+      }
+      if (meta) {
+        existing.meta = { ...existing.meta, ...meta };
       }
     } else {
       const cacheHit = typeof usage.normalizedCacheHitTokens === "number" ? usage.normalizedCacheHitTokens : 0;

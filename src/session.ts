@@ -62,9 +62,10 @@ import {
 import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
-import { recordBudgetCost } from "./common/budget-tracker";
+import { recordBudgetCost, getBudgetMarkdown } from "./common/budget-tracker";
 import { normalizeCacheTokens } from "./common/cache-metrics";
 import type { ModelPricing } from "./common/model-capabilities";
+import { DEFAULT_MODEL_PRICING } from "./common/model-capabilities";
 import { runWithExecCtx } from "./common/execution-context";
 import { TerminalTitleManager } from "./common/terminal-title";
 import { storeTurn, readRecentTurns } from "./memory/turn-memory-store";
@@ -274,6 +275,7 @@ export type MessageMeta = {
   asThinking?: boolean;
   isSummary?: boolean;
   isModelChange?: boolean;
+  isBudget?: boolean;
   skill?: SkillInfo;
   permissions?: MessageToolPermission[];
   userPrompt?: UserPromptContent;
@@ -404,6 +406,7 @@ export class SessionManager {
   private specMcpActive = false;
   private specMcpNumber = 0;
   private readonly titleManager: TerminalTitleManager | null = null;
+  private lastCallCacheMetrics: { hit: number; miss: number } | null = null;
 
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -984,6 +987,20 @@ export class SessionManager {
     this.activePromptController = controller;
 
     try {
+      // ── Budget command dispatch ──────────────────────────────
+      // Handled here (before session routing) so it never consumes LLM tokens,
+      // regardless of whether this is the first message or a reply.
+      if (userPrompt.text && userPrompt.text.trim() === "/budget") {
+        let message = getBudgetMarkdown(this.projectRoot);
+        if (!message) {
+          message =
+            "Nenhum dado de budget ainda. O arquivo `.dscode/budget.md` será criado após a primeira chamada de API com custo registrado.";
+        }
+        const sysMsg = this.buildSystemMessage("budget", message, null, true, { isBudget: true });
+        this.onAssistantMessage(sysMsg, true);
+        return;
+      }
+
       if (!this.activeSessionId || !this.getSession(this.activeSessionId)) {
         await this.createSession(userPrompt, controller);
       } else {
@@ -1281,21 +1298,6 @@ export class SessionManager {
         }
       }
     }
-    // ── Budget command dispatch ──────────────────────────────
-    if (userPrompt.text && userPrompt.text.trim() === "/budget") {
-      const budgetPath = path.join(this.projectRoot, ".dscode", "budget.md");
-      let message: string;
-      if (fs.existsSync(budgetPath)) {
-        message = fs.readFileSync(budgetPath, "utf-8");
-      } else {
-        message =
-          "Nenhum dado de budget ainda. O arquivo `.dscode/budget.md` será criado após a primeira chamada de API com custo registrado.";
-      }
-      const sysMsg = this.buildSystemMessage(sessionId, message);
-      this.appendSessionMessage(sessionId, sysMsg);
-      this.onAssistantMessage(sysMsg, true);
-      return;
-    }
     this.activeSessionId = sessionId;
     await this.activateSession(sessionId, controller);
     if (this.isSteeringAddPrompt(userPrompt.text)) {
@@ -1583,6 +1585,10 @@ export class SessionManager {
           const cache = normalizeCacheTokens(responseUsage);
           responseUsage.normalizedCacheHitTokens = cache?.hit ?? 0;
           responseUsage.normalizedCacheMissTokens = cache?.miss ?? 0;
+          this.lastCallCacheMetrics = {
+            hit: responseUsage.normalizedCacheHitTokens,
+            miss: responseUsage.normalizedCacheMissTokens,
+          };
           const budgetWarning = recordBudgetCost(
             this.projectRoot,
             model,
@@ -1744,46 +1750,124 @@ export class SessionManager {
     if (!provider) {
       return;
     }
-    const sessionMessages = this.listSessionMessages(sessionId).filter((message) => !message.compacted);
-    if (sessionMessages.length === 0) {
+    const allMessages = this.listSessionMessages(sessionId);
+    if (allMessages.length === 0) {
       return;
     }
 
-    const startIndex = sessionMessages.findIndex((message) => message.role !== "system");
-    if (startIndex === -1) {
-      return;
-    }
+    const settings = this.getResolvedSettings();
+    const effectiveCacheMode = getEffectiveCacheMode(settings.cacheMode, settings.providerName);
 
-    const searchStart = Math.floor(startIndex + ((sessionMessages.length - startIndex) * 2) / 3);
-    let endIndex = -1;
-    for (let i = Math.max(searchStart, startIndex); i < sessionMessages.length; i += 1) {
-      if (sessionMessages[i].role !== "tool") {
-        endIndex = i;
-        break;
-      }
-    }
-    // Fallback: if no non-tool message found forward, walk backward from end
-    if (endIndex === -1) {
-      for (let i = sessionMessages.length - 1; i > startIndex; i -= 1) {
-        if (sessionMessages[i].role !== "tool") {
+    let messages: SessionMessage[];
+    let rangeStart: number;
+    let endIndex: number;
+    let cacheHitRate = 0;
+    let cacheContext: { cachedPrefixMessageCount: number; cacheHitRate: number } | undefined;
+    let stablePrefixContent: string | undefined;
+
+    if (effectiveCacheMode !== "off") {
+      // ── Cache-aware path ────────────────────────────────────────────
+      messages = allMessages;
+      const candidateRange = this.getCompactionCandidateRange(allMessages);
+      if (!candidateRange) return;
+      rangeStart = candidateRange.rangeStart;
+
+      const metrics = this.lastCallCacheMetrics;
+      cacheHitRate = metrics ? metrics.hit / Math.max(1, metrics.hit + metrics.miss) : 0;
+
+      // Compute endIndex with 2/3-point heuristic, bounded to rangeEnd
+      const searchStart = Math.floor(rangeStart + ((candidateRange.rangeEnd - rangeStart) * 2) / 3);
+      endIndex = -1;
+      for (let i = Math.max(searchStart, rangeStart); i < candidateRange.rangeEnd; i += 1) {
+        if (allMessages[i].role !== "tool") {
           endIndex = i;
           break;
         }
       }
-    }
-    if (endIndex === -1 || endIndex <= startIndex) {
-      return;
+      if (endIndex === -1) {
+        for (let i = candidateRange.rangeEnd - 1; i > rangeStart; i -= 1) {
+          if (allMessages[i].role !== "tool") {
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      if (endIndex === -1 || endIndex <= rangeStart) return;
+
+      // Token estimates for economic check
+      const compactedTokenCount = this.estimateContextTokens(allMessages.slice(rangeStart, endIndex));
+      const remainingTokenCount = this.estimateContextTokens(allMessages.slice(endIndex, candidateRange.rangeEnd));
+      stablePrefixContent = getStablePrefixContent({
+        extensionRoot: getExtensionRoot(),
+        promptToolOptions: this.getPromptToolOptions(),
+        agentInstructions: this.loadAgentInstructions(),
+        skillPrompt: getDefaultSkillPrompt(),
+        cacheMode: effectiveCacheMode,
+      });
+      const stablePrefixTokenCount = this.estimateStreamTokens(stablePrefixContent);
+
+      // estimatedNewTurnTokens: average of last 3 user messages
+      const userMessages = allMessages.filter((m) => m.role === "user");
+      let estimatedNewTurnTokens = 500;
+      if (userMessages.length >= 3) {
+        const last3 = userMessages.slice(-3);
+        estimatedNewTurnTokens = Math.round(
+          last3.reduce((sum, m) => sum + this.estimateStreamTokens(m.content ?? ""), 0) / 3
+        );
+      }
+
+      // Economic check (uses existing estimateContextTokens for accuracy)
+      const activeTokens = this.estimateContextTokens(allMessages);
+
+      if (
+        !this.shouldCompactSession({
+          activeTokens,
+          model: settings.model,
+          effectiveCacheMode,
+          cacheHitRate,
+          compactedTokenCount,
+          remainingTokenCount,
+          stablePrefixTokenCount,
+          estimatedNewTurnTokens,
+        })
+      ) {
+        return; // skip compaction — not economically beneficial
+      }
+
+      cacheContext = { cachedPrefixMessageCount: candidateRange.rangeEnd - rangeStart, cacheHitRate };
+    } else {
+      // ── Legacy path (unchanged from pre-210) ─────────────────────────
+      messages = allMessages.filter((message) => !message.compacted);
+      if (messages.length === 0) return;
+
+      rangeStart = messages.findIndex((message) => message.role !== "system");
+      if (rangeStart === -1) return;
+
+      const searchStart = Math.floor(rangeStart + ((messages.length - rangeStart) * 2) / 3);
+      endIndex = -1;
+      for (let i = Math.max(searchStart, rangeStart); i < messages.length; i += 1) {
+        if (messages[i].role !== "tool") {
+          endIndex = i;
+          break;
+        }
+      }
+      if (endIndex === -1) {
+        for (let i = messages.length - 1; i > rangeStart; i -= 1) {
+          if (messages[i].role !== "tool") {
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      if (endIndex === -1 || endIndex <= rangeStart) return;
     }
 
-    // Selective compaction: preserve high-importance messages (errors, recent reads)
-    // by adjusting the compaction boundary earlier.
-    const adjustedEndIndex = this.findCompactionBoundary(sessionMessages, startIndex, endIndex);
-    if (adjustedEndIndex <= startIndex) {
-      return;
-    }
+    // ── Common: find boundary ────────────────────────────────────────
+    const adjustedEndIndex = this.findCompactionBoundary(messages, rangeStart, endIndex, cacheContext);
+    if (adjustedEndIndex <= rangeStart) return;
 
-    const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, adjustedEndIndex));
-    // Use a cheaper model variant for compaction, falling back to the current model
+    // ── Common: LLM call for summary generation ───────────────────────
+    const compactPrompt = getCompactPrompt(messages.slice(rangeStart, adjustedEndIndex));
     const resolvedModel = this.createOpenAIClient().model;
     const compactionModel = provider?.getAuxiliaryModel?.(resolvedModel) ?? resolvedModel;
 
@@ -1828,8 +1912,6 @@ export class SessionManager {
     }
 
     const now = new Date().toISOString();
-    // Use API-reported usage when available; fall back to estimated tokens from
-    // response length so interrupted compactions still contribute to budget tracking.
     const responseUsage: ModelUsage | null =
       compactionUsage ??
       (compactedContent.length > 0
@@ -1839,13 +1921,25 @@ export class SessionManager {
             total_tokens: Math.ceil(compactedContent.length / 4),
           }
         : null);
+
+    // ── Common: budget recording (with compaction meta when cache-aware) ──
+    const budgetMeta: Record<string, string> | undefined =
+      effectiveCacheMode !== "off"
+        ? {
+            compaction: "true",
+            cacheHitRateBefore: cacheHitRate.toFixed(4),
+            rangeSize: String(adjustedEndIndex - rangeStart),
+          }
+        : undefined;
+
     if (responseUsage) {
       const budgetWarning = recordBudgetCost(
         this.projectRoot,
         compactionModel,
         responseUsage,
         this.getResolvedSettings().modelPricing,
-        this.getResolvedSettings().budget
+        this.getResolvedSettings().budget,
+        budgetMeta
       );
       if (budgetWarning) {
         this.addSessionSystemMessage(sessionId, budgetWarning, true);
@@ -1855,16 +1949,34 @@ export class SessionManager {
       ...entry,
       usage: accumulateUsage(entry.usage, responseUsage),
       usagePerModel: accumulateUsagePerModel(entry.usagePerModel, compactionModel, responseUsage),
-      activeTokens: this.estimateContextTokens(sessionMessages),
+      activeTokens: this.estimateContextTokens(messages),
       updateTime: now,
     }));
 
-    for (let i = startIndex; i < adjustedEndIndex; i += 1) {
-      sessionMessages[i] = { ...sessionMessages[i], compacted: true, updateTime: now };
+    // ── Common: mark messages as compacted ───────────────────────────
+    for (let i = rangeStart; i < adjustedEndIndex; i += 1) {
+      messages[i] = { ...messages[i], compacted: true, updateTime: now };
+    }
+
+    // ── Summary placement (stable-prefix vs legacy) ──────────────────
+    let insertionIndex: number;
+    let summaryId: string;
+
+    if (effectiveCacheMode !== "off" && stablePrefixContent) {
+      const stablePrefixHash = getStablePrefixHash(stablePrefixContent);
+      insertionIndex = this.findStablePrefixEndIndex(messages, stablePrefixHash);
+      summaryId = crypto
+        .createHash("sha256")
+        .update("compaction:" + rangeStart + ":" + adjustedEndIndex + ":" + compactedSummary)
+        .digest("hex")
+        .substring(0, 16);
+    } else {
+      insertionIndex = adjustedEndIndex;
+      summaryId = crypto.randomUUID();
     }
 
     const summaryMessage: SessionMessage = {
-      id: crypto.randomUUID(),
+      id: summaryId,
       sessionId,
       role: "system",
       content: `There are earlier parts of the conversation. Here is a summary: \n\n${compactedSummary}`,
@@ -1878,8 +1990,8 @@ export class SessionManager {
         isSummary: true,
       },
     };
-    sessionMessages.splice(adjustedEndIndex, 0, summaryMessage);
-    this.saveSessionMessages(sessionId, sessionMessages);
+    messages.splice(insertionIndex, 0, summaryMessage);
+    this.saveSessionMessages(sessionId, messages);
   }
 
   /**
@@ -1887,8 +1999,20 @@ export class SessionManager {
    * and stopping before high-importance messages (errors, recent reads).
    * Returns the adjusted end index (exclusive).
    */
-  private findCompactionBoundary(messages: SessionMessage[], startIndex: number, endIndex: number): number {
+  private findCompactionBoundary(
+    messages: SessionMessage[],
+    startIndex: number,
+    endIndex: number,
+    cacheContext?: { cachedPrefixMessageCount: number; cacheHitRate: number }
+  ): number {
+    // Determine preservation count (cache-aware or legacy)
+    const preservationCount =
+      cacheContext && cacheContext.cacheHitRate > 0.5
+        ? Math.min(5, Math.max(3, Math.floor(cacheContext.cachedPrefixMessageCount * 0.1)))
+        : 5;
+
     let boundary = endIndex;
+    let preservedCount = 0;
     for (let i = endIndex - 1; i > startIndex; i -= 1) {
       const msg = messages[i];
       if (!msg) continue;
@@ -1899,16 +2023,121 @@ export class SessionManager {
         break;
       }
 
-      // Preserve recent user and assistant messages (last 5 messages before endIndex)
+      // Preserve recent user and assistant messages (last N messages before endIndex)
       if (msg.role === "user" || msg.role === "assistant") {
-        const distanceFromEnd = endIndex - i;
-        if (distanceFromEnd <= 5) {
+        preservedCount += 1;
+        if (preservedCount >= preservationCount) {
           boundary = i;
           break;
         }
       }
     }
     return boundary;
+  }
+
+  /**
+   * Compute the range of messages eligible for compaction,
+   * excluding already-compacted messages and previous summaries.
+   */
+  private getCompactionCandidateRange(
+    sessionMessages: SessionMessage[]
+  ): { rangeStart: number; rangeEnd: number } | null {
+    // Find rangeStart: last summary message + 1, or first non-system message
+    let rangeStart = -1;
+    for (let i = sessionMessages.length - 1; i >= 0; i -= 1) {
+      if (sessionMessages[i]?.meta?.isSummary) {
+        rangeStart = i + 1;
+        break;
+      }
+    }
+    if (rangeStart === -1) {
+      // No summary found — find first non-system message
+      const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
+      rangeStart = firstNonSystem >= 0 ? firstNonSystem : sessionMessages.length;
+    }
+
+    if (rangeStart >= sessionMessages.length) return null;
+
+    // Count eligible messages (user, assistant, tool; not compacted, not summary)
+    let eligibleCount = 0;
+    for (let i = rangeStart; i < sessionMessages.length; i += 1) {
+      const m = sessionMessages[i];
+      if (!m) continue;
+      if (m.compacted) continue;
+      if (m.meta?.isSummary) continue;
+      if (m.role === "user" || m.role === "assistant" || m.role === "tool") {
+        eligibleCount += 1;
+      }
+    }
+
+    if (eligibleCount < 5) return null;
+
+    return { rangeStart, rangeEnd: sessionMessages.length };
+  }
+
+  /**
+   * Locate the insertion point for compaction summaries — immediately after
+   * the last stable prefix system message. Uses hash comparison to find the
+   * exact boundary between stable prefix messages and volatile messages.
+   */
+  private findStablePrefixEndIndex(sessionMessages: SessionMessage[], stablePrefixHash: string): number {
+    let runningContent = "";
+    for (let i = 0; i < sessionMessages.length; i += 1) {
+      const msg = sessionMessages[i];
+      if (!msg || msg.role !== "system") continue;
+      runningContent += msg.content ?? "";
+      const hash = crypto.createHash("sha256").update(runningContent).digest("hex");
+      if (hash === stablePrefixHash) return i + 1;
+    }
+    // Fallback: first non-system message index (existing behavior)
+    const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
+    return firstNonSystem >= 0 ? firstNonSystem : 0;
+  }
+
+  /**
+   * Cache-aware compaction trigger: decides whether to compact based on
+   * token count threshold AND economic cost comparison (cache hit rate × pricing).
+   */
+  private shouldCompactSession(args: {
+    activeTokens: number;
+    model: string;
+    effectiveCacheMode: "off" | "aware" | "strict";
+    cacheHitRate: number;
+    compactedTokenCount: number;
+    remainingTokenCount: number;
+    stablePrefixTokenCount: number;
+    estimatedNewTurnTokens: number;
+  }): boolean {
+    const threshold = getCompactPromptTokenThreshold(args.model);
+    if (args.activeTokens <= threshold) return false;
+    if (args.effectiveCacheMode === "off") return true;
+
+    const pricing = DEFAULT_MODEL_PRICING[args.model];
+    if (!pricing || pricing.inputPrice <= 0) return true; // conservative: compact
+
+    const safeHitRate = Number.isFinite(args.cacheHitRate) && args.cacheHitRate >= 0 ? args.cacheHitRate : 0;
+
+    // Safety override: context window integrity > cost optimization
+    const contextWindow = getModelCapabilities(args.model)?.contextWindow ?? 0;
+    if (contextWindow > 0 && args.activeTokens > contextWindow * 0.85) return true;
+
+    // Cost without compaction: all existing tokens (split by cache hit rate) + new turn
+    const nonNewTurnTokens = args.activeTokens - args.estimatedNewTurnTokens;
+    const cacheHits = nonNewTurnTokens * safeHitRate;
+    const cacheMisses = nonNewTurnTokens * (1 - safeHitRate);
+    const costWithoutCompaction =
+      (cacheHits / 1_000_000) * pricing.cacheReadPrice +
+      (cacheMisses / 1_000_000) * pricing.inputPrice +
+      (args.estimatedNewTurnTokens / 1_000_000) * pricing.inputPrice;
+
+    // Cost with compaction: stable prefix (cached) + summary + remaining + new turn (all fresh)
+    const summaryTokens = args.compactedTokenCount * 0.15;
+    const freshTokens = summaryTokens + args.remainingTokenCount + args.estimatedNewTurnTokens;
+    const costWithCompaction =
+      (args.stablePrefixTokenCount / 1_000_000) * pricing.cacheReadPrice +
+      (freshTokens / 1_000_000) * pricing.inputPrice;
+
+    return costWithCompaction < costWithoutCompaction;
   }
 
   private async buildMemoryContextMessage(): Promise<SessionMessage | null> {

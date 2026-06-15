@@ -90,10 +90,6 @@ type Props = PromptStreamState &
     sessionCost?: number | null;
     /** Current model's context window size in tokens. */
     sessionContextWindow?: number;
-    /** Today's total cost in USD. */
-    dailyCost?: number;
-    /** Project lifetime total cost in USD. */
-    projectCost?: number;
     /** Cache efficiency display line, or null when no cache data. */
     cacheLine?: string | null;
     /** Set of provider names that have configured API keys. */
@@ -149,8 +145,6 @@ export const PromptInput = React.memo(function PromptInput({
   sessionActiveTokens = 0,
   sessionCost = null,
   sessionContextWindow,
-  dailyCost = 0,
-  projectCost = 0,
   cacheLine = null,
   providerKeys,
 }: Props): React.ReactElement {
@@ -235,8 +229,6 @@ export const PromptInput = React.memo(function PromptInput({
       stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
     }
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
-    stats += ` · 📅 ${formatCost(dailyCost)}`;
-    stats += ` · 📦 ${formatCost(projectCost)}`;
     if (cacheLine) stats += ` · ${cacheLine}`;
     return `${newlineHint} · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
   })();

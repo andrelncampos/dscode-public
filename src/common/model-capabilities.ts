@@ -35,13 +35,16 @@ export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-mythos-5": { inputPrice: 10.0, outputPrice: 50.0, cacheReadPrice: 1.0 },
   "gpt-5.5": { inputPrice: 5.0, outputPrice: 30.0, cacheReadPrice: 0.5 },
   "gpt-5.4": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
+  // gpt-5.4 Standard long context (>272k input tokens): 2× input/1.5× output
+  "gpt-5.4-long": { inputPrice: 5.0, outputPrice: 22.5, cacheReadPrice: 0.5 },
   "gpt-5.4-mini": { inputPrice: 0.75, outputPrice: 4.5, cacheReadPrice: 0.075 },
   "gpt-5.4-nano": { inputPrice: 0.2, outputPrice: 1.25, cacheReadPrice: 0.02 },
   "gemini-3.5-flash": { inputPrice: 1.5, outputPrice: 9.0, cacheReadPrice: 0.15 },
   "gemini-3-flash": { inputPrice: 1.0, outputPrice: 6.0, cacheReadPrice: 0.1 },
   "gemini-3.1-flash-lite": { inputPrice: 0.25, outputPrice: 1.5, cacheReadPrice: 0.025 },
-  "gemini-2.5-pro": { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 },
-  // gemini-2.5-pro ≤ 200k tokens: { inputPrice: 1.25, outputPrice: 10.0, cacheReadPrice: 0.125 }
+  // gemini-2.5-pro Standard ≤ 200k input tokens (default tier).
+  // Above 200k: { inputPrice: 2.5, outputPrice: 15.0, cacheReadPrice: 0.25 }
+  "gemini-2.5-pro": { inputPrice: 1.25, outputPrice: 10.0, cacheReadPrice: 0.125 },
   "gemini-2.5-flash": { inputPrice: 0.3, outputPrice: 2.5, cacheReadPrice: 0.03 },
 };
 
