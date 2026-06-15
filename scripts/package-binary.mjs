@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync } from "node:fs";
-import { resolve, dirname, basename, join } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, cpSync } from "node:fs";
+import { resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
@@ -112,9 +112,7 @@ mkdirSync(tmpPkgDir, { recursive: true });
 
 for (const f of filesToPack) {
   const dest = resolve(tmpPkgDir, basename(f));
-  if (f !== dest) {
-    copyFileSync(f, dest);
-  }
+  cpSync(f, dest, { recursive: true });
 }
 
 console.log(`[package] Creating ${pkgExt} archive: ${pkgFile}...`);
