@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   analyze:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     name: Analyze (javascript-typescript)
     runs-on: ubuntu-latest
 
