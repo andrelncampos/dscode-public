@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Box, Static, Text, useInput } from "ink";
+import { Box, Static, Text, useInput, useStdin } from "ink";
 import { MessageView, RawModeExitPrompt } from "../components";
 import { SessionList } from "./SessionList";
 import { UndoSelector } from "./UndoSelector";
@@ -32,6 +32,7 @@ import { resolveLocale } from "../../i18n/locale";
 import { getDictionary, resolveDictionary } from "../../i18n/dictionary";
 import { createTFunction } from "../../i18n/translate";
 import { LocaleContext, setActiveTFunction, type LocaleContextValue } from "../../i18n/context";
+import { enableKittyProtocol } from "../hooks/kitty-protocol";
 import type { PromptSubmission } from "../types/commands";
 import type { SessionMessage } from "../../session";
 
@@ -139,6 +140,14 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
     initialPromptSubmittedRef.current = true;
     // The initial prompt is now handled inside AppStateProvider
   }, []);
+
+  // Kitty Keyboard Protocol — query and activate on supported terminals.
+  // Safe to call on any terminal: unsupported ones ignore the query (200ms timeout).
+  const { stdin } = useStdin();
+  useEffect(() => {
+    const cleanup = enableKittyProtocol("auto", stdin as NodeJS.ReadStream | null, process.stdout);
+    return cleanup;
+  }, [stdin]);
 
   // Resize handler
   useResizeHandler({

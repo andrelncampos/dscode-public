@@ -52,8 +52,9 @@ import {
   getPromptCursorPlacement,
   hardWrapText,
   usePromptTerminalCursor,
+  classifyReturnAction,
 } from "../hooks";
-import type { InputKey } from "../hooks";
+import type { InputKey, DscodeReturnAction } from "../hooks";
 import {
   useHiddenTerminalCursor,
   useTerminalExtendedKeys,
@@ -438,11 +439,12 @@ export const PromptInput = React.memo(function PromptInput({
       }
 
       const noModifier = !key.shift && !key.ctrl && !key.meta;
-      const returnAction = getPromptReturnKeyAction(key, input);
-      const isPlainReturn = returnAction === "submit";
+
+      // Semantic classification: what does this key *mean*?
+      const returnAction = classifyReturnAction(input, key, buffer.text.endsWith("\\"));
 
       if (showFileMentionMenu) {
-        if (key.upArrow || key.downArrow || key.tab || returnAction === "submit") {
+        if (key.upArrow || key.downArrow || key.tab || returnAction?.kind === "submit") {
           return;
         }
       }
@@ -463,7 +465,7 @@ export const PromptInput = React.memo(function PromptInput({
             return;
           }
         }
-        if (returnAction === "submit") {
+        if (returnAction?.kind === "submit") {
           const selected = slashMenu[menuIndex];
           if (selected) {
             handleSlashSelection(selected);
@@ -472,27 +474,24 @@ export const PromptInput = React.memo(function PromptInput({
         }
       }
 
-      if (busy && isPlainReturn) {
+      if (busy && returnAction?.kind === "submit") {
         setStatusMessage("wait for the current response or press esc to interrupt");
         return;
       }
 
-      // \\ + Enter: backslash followed by plain Enter inserts a newline
-      // (removes the trailing backslash). Works in every terminal — no setup needed.
-      if (returnAction === "submit" && buffer.text.endsWith("\\")) {
+      if (returnAction?.kind === "newline") {
         updateBuffer((s) => {
-          const trimmed = { ...s, text: s.text.slice(0, -1), cursor: Math.max(0, s.cursor - 1) };
-          return insertText(trimmed, "\n");
+          if (returnAction.source === "backslash-enter") {
+            // Remove the trailing backslash, then insert newline.
+            const trimmed = { ...s, text: s.text.slice(0, -1), cursor: Math.max(0, s.cursor - 1) };
+            return insertText(trimmed, "\n");
+          }
+          return insertText(s, "\n");
         });
         return;
       }
 
-      if (returnAction === "newline") {
-        updateBuffer((s) => insertText(s, "\n"));
-        return;
-      }
-
-      if (returnAction === "submit") {
+      if (returnAction?.kind === "submit") {
         submitCurrentBuffer();
         return;
       }
@@ -925,16 +924,10 @@ export function getPromptReturnKeyAction(
   key: Pick<InputKey, "return" | "shift" | "meta" | "ctrl">,
   input: string
 ): PromptReturnKeyAction {
-  // Ctrl+J is always newline intent (regardless of key.return).
-  if (key.ctrl && (input === "j" || input === "J")) {
-    return "newline";
-  }
-  if (!key.return) {
-    return null;
-  }
-  if (key.shift || key.meta) {
-    return "newline";
-  }
+  // Delegate to the semantic classifier (backslash check disabled — caller must handle it).
+  const action = classifyReturnAction(input, key, false);
+  if (!action) return null;
+  if (action.kind === "newline") return "newline";
   return "submit";
 }
 
