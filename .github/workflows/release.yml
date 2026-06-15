@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build-windows:
     name: Build Windows x64
-    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'push' || inputs.build_windows) }}
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_windows == true)) }}
     runs-on: windows-latest
 
     steps:
@@ -72,7 +72,7 @@ jobs:
 
   build-linux:
     name: Build Linux x64
-    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'push' || inputs.build_linux) }}
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_linux == true)) }}
     runs-on: ubuntu-latest
 
     steps:
