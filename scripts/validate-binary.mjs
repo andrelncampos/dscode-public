@@ -226,7 +226,10 @@ if (extractedBin) {
       /* chmod may fail on Windows, OK */
     }
   }
-  const isExtractedSea = extractedBin === extractedSea;
+  // On POSIX, the portable launcher has the same name as SEA ("dscode").
+  // Detect the difference: if a bundled "node" binary exists, it's portable.
+  const isExtractedPortable = existsSync(extractedNode) && existsSync(extractedJs);
+  const isExtractedSea = extractedBin === extractedSea && !isExtractedPortable;
   let ver2;
   try {
     if (isExtractedSea) {
