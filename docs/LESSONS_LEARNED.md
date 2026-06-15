@@ -81,3 +81,31 @@ const require = __createRequire(import.meta.url);
 **Solução:** Duas mudanças:
 1. `build-sea.mjs`: copiar `templates/` para `release/bin/templates/` (ao lado do bundle).
 2. `getExtensionRoot()`: detectar modo portátil — se `__dirname/templates/` existir, retornar `__dirname` direto (sem `..`). Fallback para comportamento antigo nos modos dev/npm.
+
+### 12. `copyFileSync` não copia diretórios — usar `cpSync` com `recursive: true`
+
+**Problema:** O script `package-binary.mjs` (CI) montava o ZIP lendo todos os arquivos de `release/bin/` e copiando com `copyFileSync`. Quando `templates/` (diretório) foi adicionado ao pacote, `copyFileSync` quebrou com `EPERM` no Windows e `EISDIR` no Linux — ele só copia arquivos, não diretórios.
+
+**Solução:** Substituir `copyFileSync(f, dest)` por `cpSync(f, dest, { recursive: true })`. O `cpSync` é nativo do Node desde a v16.7.0 e copia arquivos E diretórios recursivamente.
+
+**Commit:** `ea227834` (depois mergeado via `703fc3eb`)
+
+### 13. Bundle ESM não tem `__dirname` — o fallback também precisa checar modo portátil
+
+**Problema:** O bundle é gerado como ESM (`format: "esm"` no `build-bundle.mjs`). Em ESM, `__dirname` não existe. O `getExtensionRoot()` tinha um branch CJS (`typeof __dirname !== "undefined"`) que detectava modo portátil corretamente, mas o fallback ESM (`import.meta.url`) **não tinha** o cheque de modo portátil — sempre subia `..`. Resultado: no pacote portátil, retornava `C:\Git\` em vez de `C:\Git\dscode\`. Templates não encontrados. Só descobrimos porque um usuário reportou.
+
+**Por que escapou:** O código CJS funcionava no dev (`npx tsx`), e o teste de validação (`--version`, `--help`) não exercita caminhos que leem templates. A auditoria inicial assumiu que `__dirname` existia no bundle, mas ele era ESM.
+
+**Solução:** Adicionar o mesmo cheque de modo portátil no fallback ESM:
+
+```typescript
+const currentDir = path.dirname(currentFilePath);
+if (fs.existsSync(path.join(currentDir, "templates"))) {
+  return currentDir;  // modo portátil
+}
+return path.resolve(currentDir, "..");  // modo dev
+```
+
+**Commit:** `924072a3`
+
+**Lição:** Sempre verificar se o formato do bundle (CJS vs ESM) corresponde às premissas do código. ESM não tem `__dirname`, `__filename`, `require` — qualquer código que dependa deles precisa de fallback ou shim.
