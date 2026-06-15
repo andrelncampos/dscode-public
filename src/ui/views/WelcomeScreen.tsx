@@ -24,10 +24,13 @@ function getShortcutTips(t: I18nTFunction): Array<{ label: string; description: 
   const profile = detectTerminalRuntime();
   const tips: Array<{ label: string; description: string }> = [
     { label: "Enter", description: t("welcome.tip-send-prompt") },
-    { label: "Ctrl+J", description: t("welcome.tip-insert-newline") },
+    { label: profile.newlinePrimaryShortcut, description: t("welcome.tip-insert-newline") },
   ];
-  if (!profile.isClassicWindowsConsole) {
+  // Show the alternative newline shortcut as a separate tip
+  if (profile.shiftEnterCapable && profile.newlinePrimaryShortcut === "Ctrl+J") {
     tips.push({ label: "Shift+Enter", description: t("welcome.tip-insert-newline-alt") });
+  } else if (profile.shiftEnterCapable && profile.newlinePrimaryShortcut === "Shift+Enter") {
+    tips.push({ label: "Ctrl+J", description: t("welcome.tip-insert-newline-alt") });
   }
   tips.push(
     { label: "Ctrl+V", description: t("welcome.tip-paste-image") },

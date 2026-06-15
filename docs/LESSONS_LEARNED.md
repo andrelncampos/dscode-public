@@ -109,3 +109,17 @@ return path.resolve(currentDir, "..");  // modo dev
 **Commit:** `924072a3`
 
 **Lição:** Sempre verificar se o formato do bundle (CJS vs ESM) corresponde às premissas do código. ESM não tem `__dirname`, `__filename`, `require` — qualquer código que dependa deles precisa de fallback ou shim.
+
+### 14. Shift+Enter é impossível de detectar no Windows Console clássico — a solução é CSI u / xterm modifyOtherKeys + `\` + Enter
+
+**Problema:** No Windows CMD / Console Host clássico, o sistema operacional corta o modificador Shift antes de entregar o evento. `Shift+Enter` chega como `Enter` puro (`\r` = CR = 0x0D) — é **tecnicamente impossível** distinguir os dois no Node.js. O Ink/`key.shift` nunca será `true` para Shift+Enter nesse ambiente.
+
+**Solução em 3 camadas:**
+
+1. **Parser de bytes crus (CSI u + xterm):** `useTerminalInput.ts` já detecta `ESC [ 13 ; 2 u` (CSI u), `ESC [ 27 ; 2 ; 13 ~` (xterm modifyOtherKeys), e `ESC \r` (split sequence do mintty/conpty). Isso cobre Windows Terminal, VS Code, WezTerm, ConEmu, Cmder e terminais modernos. Ver `SHIFT_RETURN_SEQUENCES` + `CSI_RETURN_U_RE` + `isShiftReturn()`.
+
+2. **`\` + Enter como fallback universal:** Backslash seguido de Enter insere nova linha em qualquer terminal, sem setup. O handler remove o `\` e insere `\n`. Funciona até no CMD clássico.
+
+3. **UI adaptativa por perfil:** `TerminalRuntimeProfile.shiftEnterCapable` indica se o terminal suporta CSI u. Se sim, o footer mostra "Shift+Enter newline". Se não, mostra "Ctrl+J newline · \\ + Enter newline". Oito perfis de detecção cobrem todos os terminais comuns.
+
+**Arquitetura correta:** Parse os bytes crus primeiro (`stdin.on('data')`), não confie no `key.shift` do Ink/Node. Se chegar `\x1b[13;2u`, é Shift+Enter. Se chegar `\r` puro, é Enter (nunca invente que é Shift+Enter).

@@ -8,6 +8,7 @@ import {
   HELP_MODAL_KEY_COL_WIDTH,
   HELP_MODAL_KEY_COL_MAX_RATIO,
 } from "../core/layout-constants";
+import type { TerminalRuntimeProfile } from "../core/terminal-runtime";
 import { detectTerminalRuntime } from "../core/terminal-runtime";
 
 type HelpModalProps = {
@@ -19,7 +20,7 @@ type ShortcutEntry = {
   description: string;
 };
 
-function buildBaseShortcuts(t: (key: string) => string): ShortcutEntry[] {
+function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntimeProfile): ShortcutEntry[] {
   return [
     { key: "?", description: t("help.toggle") },
     { key: "Esc", description: t("help.close") },
@@ -37,7 +38,7 @@ function buildBaseShortcuts(t: (key: string) => string): ShortcutEntry[] {
     { key: "Alt+Backspace", description: t("help.delete-word-alt") },
     { key: "Up/Down", description: t("help.history") },
     { key: "Tab", description: t("help.autocomplete") },
-    { key: "Ctrl+J", description: t("help.newline") },
+    { key: profile.newlinePrimaryShortcut, description: t("help.newline") },
     { key: "Enter", description: t("help.submit") },
     { key: "@", description: t("help.file-mention") },
     { key: "/", description: t("help.command-menu") },
@@ -57,17 +58,21 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
   const { t } = useLocale();
 
   const shortcuts = useMemo(() => {
-    const base = buildBaseShortcuts(t);
     const profile = detectTerminalRuntime();
-    if (profile.isClassicWindowsConsole) {
+    const base = buildBaseShortcuts(t, profile);
+    // For terminals that support Shift+Enter, the primary shortcut is already
+    // set by the profile. For terminals that don't, show only Ctrl+J.
+    // Always add Shift+Enter as a secondary option when the terminal may support it
+    // but the primary fallback is Ctrl+J.
+    if (!profile.shiftEnterCapable) {
       return base;
     }
-    // Insert Shift+Enter with terminal-dependent qualifier after Ctrl+J
-    const ctrlJIndex = base.findIndex((s) => s.key === "Ctrl+J");
+    // Insert Ctrl+J as a fallback hint after the primary newline shortcut
+    const newlineIndex = base.findIndex((s) => s.key === profile.newlinePrimaryShortcut);
     const result = [...base];
-    if (ctrlJIndex !== -1) {
-      result.splice(ctrlJIndex + 1, 0, {
-        key: "Shift+Enter",
+    if (newlineIndex !== -1 && profile.newlinePrimaryShortcut !== "Ctrl+J") {
+      result.splice(newlineIndex + 1, 0, {
+        key: "Ctrl+J",
         description: t("welcome.tip-insert-newline-alt"),
       });
     }

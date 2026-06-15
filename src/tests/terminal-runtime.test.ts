@@ -55,11 +55,12 @@ test("Windows Terminal — WT_SESSION defined", () => {
   assert.equal(rt.isWindowsTerminal, true);
   assert.equal(rt.isClassicWindowsConsole, false);
   assert.equal(rt.shiftEnterReliability, "configurable");
-  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "configured");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
 });
 
 // 2b. Windows Terminal via WT_PROFILE_ID
@@ -98,11 +99,12 @@ test("VS Code terminal — TERM_PROGRAM=vscode", () => {
   assert.equal(rt.kind, "vscode-terminal");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
-  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "supported");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
 });
 
 // 4. WezTerm via TERM_PROGRAM
@@ -112,10 +114,11 @@ test("WezTerm — TERM_PROGRAM=WezTerm", () => {
   assert.equal(rt.kind, "wezterm");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "configurable");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "configured");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
 });
 
 // 4b. WezTerm via WEZTERM_PANE
@@ -137,10 +140,11 @@ test("Git Bash / MSYS — MSYSTEM=MINGW64 and TERM=xterm-256color", () => {
   assert.equal(rt.isMinttyLike, true);
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
   assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "supported");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 5b. mintty via MINGW_PREFIX
@@ -169,10 +173,12 @@ test("ConEmu — ConEmuANSI defined", () => {
   assert.equal(rt.kind, "conemu");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
+  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "supported");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
 });
 
 // 7. Cmder
@@ -181,10 +187,12 @@ test("Cmder — CmderRoot defined", () => {
 
   assert.equal(rt.kind, "cmder");
   assert.equal(rt.confidence, "high");
+  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "supported");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
 });
 
 // 8. Unknown terminal (non-Windows, no recognized env vars)
@@ -197,11 +205,12 @@ test("Unknown — non-Windows platform without recognized env vars", () => {
   assert.equal(rt.isClassicWindowsConsole, false);
   assert.equal(rt.isWindowsTerminal, false);
   assert.equal(rt.shiftEnterReliability, "unknown");
-  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, true);
   assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "Shift+Enter");
-  assertFooterContains(rt, "supported");
+  assertFooterContains(rt, "Ctrl+J");
+  assertFooterContains(rt, "fallback");
   assert.ok(
     rt.diagnosticMessage.includes("Unknown terminal"),
     `diagnosticMessage should mention unknown: "${rt.diagnosticMessage}"`
@@ -250,8 +259,8 @@ test("helpNewlineHint for classic Windows console recommends Ctrl+J", () => {
   );
 });
 
-// 13. All profiles have Ctrl+J as primary shortcut
-test("All terminal profiles use Ctrl+J as primary newline shortcut", () => {
+// 13. All profiles show at least one newline shortcut in the footer
+test("All terminal profiles show a newline shortcut in the footer", () => {
   const profiles = [
     detectTerminalRuntime({}, "win32", true, true),
     detectTerminalRuntime({ WT_SESSION: "abc" }, "win32", true, true),
@@ -264,20 +273,26 @@ test("All terminal profiles use Ctrl+J as primary newline shortcut", () => {
   ];
 
   for (const rt of profiles) {
-    assert.equal(
-      rt.newlinePrimaryShortcut,
-      "Ctrl+J",
-      `Profile kind=${rt.kind} should have newlinePrimaryShortcut=Ctrl+J`
-    );
+    // Every profile must mention at least one newline shortcut
+    const hasCtrlJ = rt.footerNewlineHint.includes("Ctrl+J") || rt.footerNewlineHint.includes("ctrl+j");
+    const hasShiftEnter = rt.footerNewlineHint.includes("Shift+Enter") || rt.footerNewlineHint.includes("shift+enter");
+    const hasBackslash = rt.footerNewlineHint.includes("\\ + Enter") || rt.footerNewlineHint.includes("\\ + enter");
     assert.ok(
-      rt.footerNewlineHint.includes("Ctrl+J"),
-      `Profile kind=${rt.kind} footerNewlineHint should mention Ctrl+J: "${rt.footerNewlineHint}"`
+      hasCtrlJ || hasShiftEnter || hasBackslash,
+      `Profile kind=${rt.kind} footerNewlineHint should mention a newline shortcut: "${rt.footerNewlineHint}"`
     );
+    // shiftEnterCapable must be consistent: true → footer shows Shift+Enter
+    if (rt.shiftEnterCapable) {
+      assert.ok(
+        hasShiftEnter,
+        `Profile kind=${rt.kind} shiftEnterCapable=true but footer missing Shift+Enter: "${rt.footerNewlineHint}"`
+      );
+    }
   }
 });
 
-// 14. No profile says simply "Shift+Enter newline" without qualifier
-test("No profile has bare Shift+Enter newline without qualifier in footer", () => {
+// 14. Footer newline hints must include a qualifier or fallback mention
+test("Footer newline hints are honest about Shift+Enter reliability", () => {
   const profiles = [
     detectTerminalRuntime({}, "win32", true, true),
     detectTerminalRuntime({ WT_SESSION: "abc" }, "win32", true, true),
@@ -289,12 +304,15 @@ test("No profile has bare Shift+Enter newline without qualifier in footer", () =
 
   for (const rt of profiles) {
     if (rt.footerNewlineHint.includes("Shift+Enter")) {
-      // Must include a qualifier — "if supported", "if configured", or "terminal-dependent"
-      const hasQualifier =
+      // If Shift+Enter is shown, there must be a fallback or qualifier
+      const hasFallback =
+        rt.footerNewlineHint.includes("fallback") ||
         rt.footerNewlineHint.includes("if supported") ||
-        rt.footerNewlineHint.includes("if configured") ||
-        rt.footerNewlineHint.includes("terminal-dependent");
-      assert.ok(hasQualifier, `Profile kind=${rt.kind} shows Shift+Enter without qualifier: "${rt.footerNewlineHint}"`);
+        rt.footerNewlineHint.includes("if configured");
+      assert.ok(
+        hasFallback,
+        `Profile kind=${rt.kind} shows Shift+Enter without fallback/qualifier: "${rt.footerNewlineHint}"`
+      );
     }
   }
 });

@@ -522,3 +522,34 @@ no `budget.md`, incluindo custo de cache e economia real.
 **Auditado em:** 2026-06-15 — 7 call sites, 6 com bug de normalização ausente.
 
 **Delivered by:** Spec 250 (billing-completeness).
+
+---
+
+### V28: Developer Notes & Reminders
+
+Ultra-light note-taking integrated into the terminal workflow. The developer
+registers quick reminders without leaving the keyboard — no context-switching to
+a separate app like Notion, Obsidian, or Jira.
+
+- **`/note-add`** — create a note with optional deadline (`--deadline YYYY-MM-DD`)
+  and tags (`--tag bug`, `--tag todo`). Returns a short ID for reference.
+- **`/note-list`** — list notes filtered by status (`--status open|closed|paused|abandoned`),
+  overdue items (`--overdue`), or linked spec (`--spec <id>`). Open notes first,
+  sorted by deadline proximity. Overdue notes highlighted.
+- **`/note-status <id> <status>`** — change status: `open`, `closed`, `paused`, `abandoned`.
+- **`/note-edit <id> "new text"`** — edit note content in-place.
+- **`/note-deadline <id> [YYYY-MM-DD|--remove]`** — set, change, or remove a deadline.
+- **Spec linking** — notes can optionally reference a spec (`--spec <id>`)
+  for traceability. `/note-list --spec 120` shows only notes for that spec.
+
+**Storage:** `.dscode/notes.json` — a JSON array, one object per note. Simple
+enough to hand-edit, structured enough for programmatic querying.
+
+**Design philosophy:** Not a task manager, not a Jira replacement, not a
+project tracker. Just a way to not forget what can't be done right now.
+If the developer thinks "I should check that later" during a session, they
+type `/note-add` and move on.
+
+**Delivered by:**
+- Spec 260A (notes-mvp) — `/note-add`, `/note-list`, `/note-status`.
+- Spec 260B (notes-refinement) — `/note-edit`, `/note-deadline`, spec linking.

@@ -29,8 +29,8 @@ if (args.includes("--version") || args.includes("-v")) {
 if (args.includes("--help") || args.includes("-h")) {
   const rt = detectTerminalRuntime();
   const newlineHintLine = rt.isClassicWindowsConsole
-    ? "  ctrl+j           Insert a newline (always available; Shift+Enter is not reliable in this terminal)"
-    : "  ctrl+j           Insert a newline (always available)\n  shift+enter      Insert a newline (terminal-dependent)";
+    ? "  ctrl+j           Insert a newline (always available; Shift+Enter is not reliable in this terminal)\n  \\ + enter        Insert a newline (type backslash then Enter)"
+    : `  shift+enter      Insert a newline\n  ctrl+j           Insert a newline (fallback, always available)\n  \\ + enter        Insert a newline (type backslash then Enter)`;
   process.stdout.write(
     [
       "dscode - dscode CLI",

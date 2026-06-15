@@ -477,6 +477,16 @@ export const PromptInput = React.memo(function PromptInput({
         return;
       }
 
+      // \\ + Enter: backslash followed by plain Enter inserts a newline
+      // (removes the trailing backslash). Works in every terminal — no setup needed.
+      if (returnAction === "submit" && buffer.text.endsWith("\\")) {
+        updateBuffer((s) => {
+          const trimmed = { ...s, text: s.text.slice(0, -1), cursor: Math.max(0, s.cursor - 1) };
+          return insertText(trimmed, "\n");
+        });
+        return;
+      }
+
       if (returnAction === "newline") {
         updateBuffer((s) => insertText(s, "\n"));
         return;
@@ -906,7 +916,7 @@ export type PromptReturnKeyAction = "submit" | "newline" | null;
  *
  * Newline when:
  *   a) Shift+Enter or Meta+Enter (key.return && (key.shift || key.meta))
- *   b) Ctrl+J (key.ctrl && input === "j"/"J")
+ *   b) Ctrl+J / Ctrl+Enter (key.ctrl && input === "j"/"J")
  *
  * Submit only for plain Enter (key.return with no modifiers).
  */

@@ -23,7 +23,7 @@ export type TerminalRuntimeKind =
 
 export type ShiftEnterReliability = "reliable" | "configurable" | "terminal-dependent" | "not-reliable" | "unknown";
 
-export type NewlinePrimaryShortcut = "Ctrl+J" | "Shift+Enter";
+export type NewlinePrimaryShortcut = "Shift+Enter" | "Ctrl+J";
 
 export type TerminalRuntimeProfile = {
   kind: TerminalRuntimeKind;
@@ -42,6 +42,8 @@ export type TerminalRuntimeProfile = {
   isMinttyLike: boolean;
   shiftEnterReliability: ShiftEnterReliability;
   newlinePrimaryShortcut: NewlinePrimaryShortcut;
+  /** True when the terminal supports CSI u / modifyOtherKeys for Shift+Enter. */
+  shiftEnterCapable: boolean;
   shouldShowShiftEnterInFooter: boolean;
   footerNewlineHint: string;
   helpNewlineHint: string;
@@ -89,10 +91,11 @@ export function detectTerminalRuntime(
       shell,
       isWindows,
       shiftEnterReliability: "configurable",
-      newlinePrimaryShortcut: "Ctrl+J",
+      newlinePrimaryShortcut: "Shift+Enter",
+      shiftEnterCapable: true,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if configured",
-      helpNewlineHint: "Shift+Enter inserts a newline when configured in Windows Terminal settings.",
+      footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+      helpNewlineHint: "Shift+Enter inserts a newline. Ctrl+J is always available as fallback.",
       diagnosticMessage:
         "Windows Terminal detected. Shift+Enter requires key binding configuration in Windows Terminal settings.",
     });
@@ -111,10 +114,11 @@ export function detectTerminalRuntime(
       shell,
       isWindows,
       shiftEnterReliability: "terminal-dependent",
-      newlinePrimaryShortcut: "Ctrl+J",
+      newlinePrimaryShortcut: "Shift+Enter",
+      shiftEnterCapable: true,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if supported",
-      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal.",
+      footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal. Ctrl+J always works.",
       diagnosticMessage: "VS Code terminal detected. Shift+Enter support depends on the underlying shell/terminal.",
     });
   }
@@ -132,10 +136,11 @@ export function detectTerminalRuntime(
       shell,
       isWindows,
       shiftEnterReliability: "configurable",
-      newlinePrimaryShortcut: "Ctrl+J",
+      newlinePrimaryShortcut: "Shift+Enter",
+      shiftEnterCapable: true,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if configured",
-      helpNewlineHint: "Shift+Enter inserts a newline when configured in WezTerm settings.",
+      footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+      helpNewlineHint: "Shift+Enter inserts a newline when configured in WezTerm settings. Ctrl+J always works.",
       diagnosticMessage: "WezTerm detected. Shift+Enter may require configuration.",
     });
   }
@@ -155,12 +160,13 @@ export function detectTerminalRuntime(
       isMinttyLike: true,
       shiftEnterReliability: "terminal-dependent",
       newlinePrimaryShortcut: "Ctrl+J",
+      shiftEnterCapable: false,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if supported",
+      footerNewlineHint: "Enter send · Ctrl+J newline · \\ + Enter newline",
       helpNewlineHint:
-        "Shift+Enter inserts a newline when supported by the terminal. Run npm run debug:keys to verify.",
+        "Ctrl+J or \\ + Enter inserts a newline. Shift+Enter may not work in this terminal — run npm run debug:keys to verify.",
       diagnosticMessage:
-        "Git Bash / MSYS / mintty-like terminal detected. Shift+Enter may or may not work — run npm run debug:keys to verify byte sequences.",
+        "Git Bash / MSYS / mintty-like terminal detected. Use Ctrl+J or \\ + Enter for newline — Shift+Enter may not work. Run npm run debug:keys to verify byte sequences.",
     });
   }
 
@@ -177,10 +183,11 @@ export function detectTerminalRuntime(
       shell,
       isWindows,
       shiftEnterReliability: "terminal-dependent",
-      newlinePrimaryShortcut: "Ctrl+J",
+      newlinePrimaryShortcut: "Shift+Enter",
+      shiftEnterCapable: true,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if supported",
-      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal.",
+      footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal. Ctrl+J always works.",
       diagnosticMessage: "ConEmu detected. Shift+Enter support depends on configuration.",
     });
   }
@@ -198,10 +205,11 @@ export function detectTerminalRuntime(
       shell,
       isWindows,
       shiftEnterReliability: "terminal-dependent",
-      newlinePrimaryShortcut: "Ctrl+J",
+      newlinePrimaryShortcut: "Shift+Enter",
+      shiftEnterCapable: true,
       shouldShowShiftEnterInFooter: true,
-      footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if supported",
-      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal.",
+      footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+      helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal. Ctrl+J always works.",
       diagnosticMessage: "Cmder detected. Shift+Enter support depends on configuration.",
     });
   }
@@ -228,11 +236,12 @@ export function detectTerminalRuntime(
       isCmdLike,
       shiftEnterReliability: "not-reliable",
       newlinePrimaryShortcut: "Ctrl+J",
+      shiftEnterCapable: false,
       shouldShowShiftEnterInFooter: false,
-      footerNewlineHint: "Enter send · Ctrl+J newline",
-      helpNewlineHint: "Ctrl+J inserts a newline. Shift+Enter is not reliable in this terminal.",
+      footerNewlineHint: "Enter send · Ctrl+J newline · \\ + Enter newline",
+      helpNewlineHint: "Ctrl+J or \\ + Enter inserts a newline. Shift+Enter is not reliable in this terminal.",
       diagnosticMessage:
-        "Classic Windows console detected. Shift+Enter may arrive as plain Enter. Use Ctrl+J for newline.",
+        "Classic Windows console detected. Shift+Enter may arrive as plain Enter. Use Ctrl+J or \\ + Enter for newline.",
     });
   }
 
@@ -253,11 +262,12 @@ export function detectTerminalRuntime(
     isPowerShellLike: isPSLike,
     isCmdLike: isCmd || (!isPSLike && !isWindows),
     shiftEnterReliability: "unknown",
-    newlinePrimaryShortcut: "Ctrl+J",
+    newlinePrimaryShortcut: "Shift+Enter",
+    shiftEnterCapable: true,
     shouldShowShiftEnterInFooter: true,
-    footerNewlineHint: "Enter send · Ctrl+J newline · Shift+Enter if supported",
-    helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal.",
-    diagnosticMessage: "Unknown terminal. Use Ctrl+J for newline if Shift+Enter does not work.",
+    footerNewlineHint: "Enter send · Shift+Enter newline · Ctrl+J fallback",
+    helpNewlineHint: "Shift+Enter inserts a newline when supported by the terminal. Ctrl+J always works.",
+    diagnosticMessage: "Unknown terminal. Use Shift+Enter or Ctrl+J for newline if the default does not work.",
   });
 }
 

@@ -40,6 +40,9 @@
 | 230 | deepseek-native-parser | discarded | V24, V6, V12, ADR-001, ADR-002 — descartada: ganho marginal, tudo relevante já funciona |
 | 240 | auditabilidade | discarded | V26 — descartada: zero impacto no uso diário (SHA256, SBOM, build provenance, privacy policy, threat model são documentação/infra de confiança, não features de produto) |
 | 250 | billing-completeness | audited | V27, V11, V21, ADR-005 |
+| 260 | developer-notes | planned | V28 |
+| 260A | notes-mvp | planned | V28 (child of 260) |
+| 260B | notes-refinement | planned | V28 (child of 260) |
 
 ---
 
@@ -121,6 +124,12 @@ Spec 240 (auditabilidade)
 
 Spec 250 (billing-completeness)
   (standalone — fixes existing bug: normalizeCacheTokens before recordBudgetCost in 6 missing call sites)
+
+Spec 260A (notes-mvp)
+  (standalone — new notes.ts module, notes.json storage, 3 slash commands)
+
+Spec 260B (notes-refinement)
+  └── depends on Spec 260A (needs notes.ts core from notes-mvp)
 ```
 
 ---
