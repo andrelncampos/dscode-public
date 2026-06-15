@@ -72,78 +72,20 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ---
 
-## Comparison
-
-**16 models. 4 providers. Zero vendor lock-in.**
-
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
-|---|---|---|---|---|---|
-| **Works in terminal** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ⚠️ IDE + CLI |
-| **Provider freedom** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + any compatible | ❌ GitHub only | ⚠️ Limited | ⚠️ Anthropic only | ⚠️ Amazon Bedrock only |
-| **Thinking mode per provider** | ✅ max/high/medium/low native | ❌ | ❌ | ⚠️ Claude only | ⚠️ Via Bedrock |
-| **Full MCP** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Partial | ⚠️ Partial | ✅ IDE-based |
-| **Spec-Driven Development** | ✅ Built-in cycle + auto-fix | ❌ | ❌ | ❌ | ✅ IDE-based |
-| **Skills/Powers** | ✅ Markdown, agent mode, MCP per skill | ❌ | ⚠️ Rules only | ⚠️ Hooks | ✅ Powers |
-| **Steering** | ✅ Persistent per-project rules | ❌ | ❌ | ❌ | ✅ Markdown files |
-| **Free to use** | ✅ No cost | ⚠️ Limited free plan | ⚠️ Limited free plan | ⚠️ Credits | ⚠️ Bedrock costs |
-
-> **Amazon Kiro** is DsCode's closest competitor — both have Spec-Driven Development, Steering, MCP, and Skills/Powers. The key difference: DsCode is **terminal-native, multi-provider, and completely free**; Kiro is **IDE-first, locked to Amazon Bedrock, and charges for model usage**.
-
----
-
-## The DsCode triad: Spec + SDD + Agent
-
-DsCode is the **only** AI assistant that combines three capabilities in one integrated cycle:
-
-```mermaid
-flowchart TB
-    subgraph SPEC["📋 Spec-Driven Development"]
-        S1["/spec-new"] --> S2["requirements.md<br/>design.md<br/>task.md"]
-        S2 --> S3["/spec-verify 🔄"]
-        S3 -->|"auto-fixes"| S2
-        S3 -->|"OK"| S4["/spec-implement"]
-    end
-
-    subgraph AGENT["🤖 Agents & Skills"]
-        A1["Skills with MCP"]
-        A2["Isolated subagents"]
-        A3["Steering rules"]
-        A1 --> A4["🧠 Each agent with<br/>its own model, tools<br/>and thinking"]
-        A2 --> A4
-        A3 --> A4
-    end
-
-    subgraph MCP["🔌 MCP — Model Context Protocol"]
-        M1["Databases"]
-        M2["Browsers"]
-        M3["External APIs"]
-        M4["Local servers"]
-    end
-
-    SPEC -->|"agents execute<br/>spec tasks"| AGENT
-    AGENT -->|"agents use<br/>MCP tools"| MCP
-    MCP -->|"real data feeds<br/>spec creation"| SPEC
-```
-
-| Piece | What it does | Why it's unique |
-|---|---|---|
-| **Spec** | Defines what to build: requirements, design, and tasks in versioned documents | Full cycle with auto-fix at 2 checkpoints (verify + audit) |
-| **Agent** | Skills run as isolated subagents with independent model, tools, and thinking | Agents use MCP, follow steering rules, and don't pollute the main context |
-| **MCP** | Connects AI to databases, APIs, browsers, and local servers | Integrated across 3 layers: skills carry MCP, specs declare MCP, TUI inspects MCP |
-
-The result: you define **what** you want (spec), the AI decides **how** to do it (agent) using **real tools** (MCP), with quality guaranteed by automatic checkpoints. **No other product delivers this cycle.**
-
----
-
 ## Installation
 
-### Via npm (recommended)
+Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Requires **[Node.js 24+](https://nodejs.org)**.
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+| Operating System | File |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
 
-Requires [Node.js 24+](https://nodejs.org). After installing, run `dscode` in your terminal.
+Each release includes a `checksums.txt` with **SHA256** hashes to verify download integrity.
+After downloading, extract the archive and run `./dscode` in your terminal.
 
 ## Updates
 
@@ -161,36 +103,16 @@ If a newer version is available, DsCode will ask if you want to install it. Othe
 
 ## Initial setup
 
-DsCode reads configuration from two locations (project takes priority over global):
-
-| Priority | File | Usage |
-|---|---|---|
-| **1st (recommended)** | `.dscode/settings.json` in your project | Project-specific key, model, and preferences |
-| 2nd (fallback) | `~/.dscode/settings.json` in your home | Global default for all projects |
-
-> 💡 **Prefer the project file.** Each project can have its own provider and key — no mixing of costs or contexts.
-
-Environment variables with the `DEEPCODE_` prefix are also recognized.
+DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscode/settings.json` (project). Environment variables with the `DEEPCODE_` prefix are also recognized.
 
 ### Minimum example
-
-Create `.dscode/settings.json` in your project root:
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "sk-your-key-here"
-  },
-  "thinkingEnabled": true,
-  "reasoningEffort": "max"
-}
-```
-
-> 🔐 **Your key is encrypted automatically** on first use with AES-256-GCM. DsCode detects plaintext, generates an encryption key at `~/.dscode/.credential-key` (0600 permissions), and rewrites the key in `settings.json` as encrypted. Fully transparent — you do nothing.
-
-### Where to get your API key
+    "API_KEY": "your-key-here"
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
@@ -224,6 +146,7 @@ Create `.dscode/settings.json` in your project root:
 | `notify` | string | Script executed after each task completes | *(none)* |
 | `engines` | object | Per-provider configuration (e.g., `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Custom model pricing overrides | *(DeepSeek V4 defaults)* |
+| `cacheMode` | string | Cache strategy: `"off"` (default), `"aware"` (optimizes prefix for KV Cache), `"strict"` (aware + hash verification). DeepSeek only | `"off"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Repository visibility. `"public"` adds `/management/` and `/.agents/` to `.gitignore` automatically | `"private"` |
 
 ### Model pricing (`modelPricing`)
@@ -299,36 +222,16 @@ my-project/
 
 ### Step 1: Install
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+Download the binary from the [releases page](https://github.com/andrelncampos/dscode-public-public/releases), extract it, and run `./dscode`. **Requires Node.js 24+.**
 
-### Step 2: Open your project
+### Step 2: Configure your key
+
+Create `~/.dscode/settings.json` with your API key and preferred model (see the Configuration section above).
+
+### Step 3: Open a project folder
 
 ```bash
 cd /path/to/your/project
-```
-
-Any project works: a Git repo, a personal project, even an empty folder.
-
-### Step 3: Add your API key
-
-Paste your key into `.dscode/settings.json` in the project root:
-
-```bash
-mkdir -p .dscode
-echo '{"env":{"MODEL":"deepseek-v4-pro","API_KEY":"sk-your-key"}}' > .dscode/settings.json
-```
-
-Create an account at [platform.deepseek.com](https://platform.deepseek.com) and top up credits (minimum $2)(https://platform.deepseek.com).
-
-> 🔐 Your key will be **encrypted automatically** (AES-256-GCM) on first run. You'll never see the plaintext again.
-
-### Step 4: Start
-
-```bash
-dscode
-```
 ```
 
 It can be any project: a Git repo, a personal project, even an empty folder.
@@ -682,7 +585,7 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 | **Model** | The specific AI model (e.g., `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 models available across 4 providers. | Different models have different quality, speed, and cost. |
 | **Thinking mode** | The AI "thinks" (reasons) before responding, generating internal tokens you may or may not see. | Enable for complex tasks (debugging, architecture). Disable for speed. |
 | **Reasoning effort** | Controls reasoning depth: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"`, or `"none"` (varies by provider). | Use max for hard problems and medium/low for everyday tasks. |
-| **Prompt cache** | DeepSeek caches repeated parts of the context to charge fewer tokens (KV Cache). | Happens automatically. Keep prompts stable to save money. |
+| **Prompt cache** | DeepSeek caches repeated parts of the context to charge fewer tokens (KV Cache). Set `cacheMode` to optimize. | Happens automatically. Keep prompts stable to save money. On exit, DsCode displays cache efficiency (hit rate and USD saved). |
 | **Logs** | Debug files in `~/.dscode/logs/` that record API calls. | Enable `debugLogEnabled` only to diagnose problems. |
 | **Permissions** | Control what the AI can do: read files, write, access network, run commands. | Configure restrictive permissions if you want to review each action before execution. |
 | **Workspace** | The root folder where DsCode is running. The AI only sees files in this folder (unless you authorize external access). | Open DsCode in the root of the project you want to work on. |
@@ -945,7 +848,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## How to get help
 
-If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public/issues).
+If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
 
 When reporting, include:
 
@@ -964,6 +867,17 @@ For security vulnerabilities, follow the instructions in [SECURITY.md](../SECURI
 
 ---
 
+## Contributing
+
+Contributions are welcome! See the full guide in [CONTRIBUTING.md](../CHANGELOG.md).
+
+Quick summary:
+
+1. **Issues** are welcome for bugs, features, and questions.
+2. **Pull requests** pass mandatory CI (typecheck + lint + format + tests + build).
+3. **Security PRs** or changes to sensitive areas undergo stricter review.
+4. Contributors declare they have the right to contribute the submitted code.
+
 ---
 
 ## Security
@@ -980,9 +894,9 @@ See [SECURITY.md](../SECURITY.md) for the full policy.
 
 **DsCode is free to use, but the source code is not public.** The product is made available at no cost for individual and professional use. Redistribution is allowed only of the official binaries.
 
-This project is derived from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originally MIT licensed. The original copyright notice is preserved in [LICENSE](../LICENSE) and [NOTICE](../NOTICE).
+This project is derived from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originally MIT licensed. The original copyright notice is preserved in [LICENSE](../LICENSE) and [NOTICE](../CHANGELOG.md).
 
-Third-party dependencies maintain their own licenses. See [NOTICE](../NOTICE) for the dependency list and licenses.
+Third-party dependencies maintain their own licenses. See [NOTICE](../CHANGELOG.md) for the dependency list and licenses.
 
 ---
 
@@ -991,7 +905,8 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../NOTICE) fo
 | Channel | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
 
 ⚠️ Install DsCode **only** from the official channels above. Do not trust versions published on third-party sites or unverified links.
 
@@ -999,5 +914,5 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../NOTICE) fo
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

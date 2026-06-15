@@ -72,76 +72,20 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 
 ---
 
-## Comparación
-
-**16 modelos. 4 proveedores. Cero dependencia de vendor.**
-
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
-|---|---|---|---|---|---|
-| **Roda en terminal** | ✅ TUI nativa | ❌ Solo IDE | ❌ Solo IDE | ✅ CLI | ⚠️ IDE + CLI |
-| **Libertad de proveedor** | ✅ DeepSeek + OpenAI + Anthropic + Gemini + cualquiera compatible | ❌ Solo GitHub | ⚠️ Limitado | ⚠️ Solo Anthropic | ⚠️ Solo Amazon Bedrock |
-| **Thinking mode por proveedor** | ✅ max/high/medium/low nativo | ❌ | ❌ | ⚠️ Claude only | ⚠️ Via Bedrock |
-| **MCP completo** | ✅ Skills + SDD + TUI | ❌ | ⚠️ Parcial | ⚠️ Parcial | ✅ IDE-based |
-| **Spec-Driven Development** | ✅ Ciclo built-in + auto-corrección | ❌ | ❌ | ❌ | ✅ IDE-based |
-| **Skills/Powers** | ✅ Markdown, modo agente, MCP por skill | ❌ | ⚠️ Solo rules | ⚠️ Hooks | ✅ Powers |
-| **Steering** | ✅ Reglas persistentes por proyecto | ❌ | ❌ | ❌ | ✅ Archivos Markdown |
-| **Gratis para uso** | ✅ Sin costo | ⚠️ Plan gratis limitado | ⚠️ Plan gratis limitado | ⚠️ Créditos | ⚠️ Costo de Bedrock |
-
-> **Amazon Kiro** es el competidor más cercano a DsCode — ambos tienen Spec-Driven Development, Steering, MCP y Skills/Powers. La diferencia fundamental: DsCode es **nativo de terminal, multi-proveedor y completamente gratuito**; Kiro es **IDE-first, atado a Amazon Bedrock y cobra por el uso de modelos**.
-
----
-
-## La tríada DsCode: Spec + SDD + Agent
-
-DsCode es el **único** asistente de IA que combina tres capacidades en un ciclo integrado:
-
-```mermaid
-flowchart TB
-    subgraph SPEC["📋 Spec-Driven Development"]
-        S1["/spec-new"] --> S2["requirements.md<br/>design.md<br/>task.md"]
-        S2 --> S3["/spec-verify 🔄"]
-        S3 -->|"auto-corrige"| S2
-        S3 -->|"OK"| S4["/spec-implement"]
-    end
-
-    subgraph AGENT["🤖 Agents & Skills"]
-        A1["Skills con MCP"]
-        A2["Subagentes aislados"]
-        A3["Reglas de steering"]
-        A1 --> A4["🧠 Cada agente con<br/>su modelo, tools<br/>y thinking propios"]
-        A2 --> A4
-        A3 --> A4
-    end
-
-    subgraph MCP["🔌 MCP — Model Context Protocol"]
-        M1["Bases de datos"]
-        M2["Navegadores"]
-        M3["APIs externas"]
-        M4["Servidores locales"]
-    end
-
-    SPEC -->|"agentes ejecutan<br/>tareas del spec"| AGENT
-    AGENT -->|"agentes usan<br/>herramientas MCP"| MCP
-    MCP -->|"datos reales alimentan<br/>creación de specs"| SPEC
-```
-
-| Pieza | Qué hace | Por qué es único |
-|---|---|---|
-| **Spec** | Define qué construir: requisitos, diseño y tareas en documentos versionados | Ciclo completo con auto-corrección en 2 checkpoints (verify + audit) |
-| **Agent** | Skills ejecutan como subagentes aislados con modelo, tools y thinking independientes | Agentes usan MCP, siguen steering rules y no contaminan el contexto principal |
-| **MCP** | Conecta la IA a bases de datos, APIs, navegadores y servidores locales | Integrado en 3 capas: skills cargan MCP, specs declaran MCP, TUI inspecciona MCP |
-
-El resultado: defines **qué** quieres (spec), la IA decide **cómo** hacerlo (agent) usando **herramientas reales** (MCP), con calidad garantizada por checkpoints automáticos. **Ningún otro producto ofrece este ciclo.**
-
 ## Instalación
 
-### Vía npm (recomendado)
+Descarga el binario para tu sistema operativo desde la **[página de releases](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Requiere **[Node.js 24+](https://nodejs.org)**.
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+| Sistema operativo | Archivo |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
 
-Requiere [Node.js 24+](https://nodejs.org). Después de instalar, ejecuta `dscode` en la terminal.
+Cada release incluye un `checksums.txt` con hashes **SHA256** para verificar la integridad de la descarga.
+Después de descargar, extrae el archivo y ejecuta `./dscode` en la terminal.
 
 ## Actualización
 
@@ -202,6 +146,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | `notify` | string | Script ejecutado al final de cada tarea | *(ninguno)* |
 | `engines` | object | Configuración por proveedor (ej: `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Precios personalizados por modelo | *(precios por defecto DeepSeek V4)* |
+| `cacheMode` | string | Estrategia de caché: `"off"` (defecto), `"aware"` (optimiza prefijo para KV Cache), `"strict"` (aware + verificación hash). Solo DeepSeek | `"off"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Visibilidad del repositorio. `"public"` añade `/management/` y `/.agents/` a `.gitignore` automáticamente | `"private"` |
 
 ### Precios de modelo (`modelPricing`)
@@ -277,9 +222,7 @@ mi-proyecto/
 
 ### Paso 1: Instala
 
-```bash
-npm install -g @andrelncampos/dscode
-```**
+Descarga el binario desde la [página de releases](https://github.com/andrelncampos/dscode-public-public/releases), extráelo y ejecuta `./dscode`. **Requiere Node.js 24+.**
 
 ### Paso 2: Configura tu clave
 
@@ -642,7 +585,7 @@ DsCode funciona de forma **conversacional**: escribes lo que necesitas, la IA re
 | **Modelo** | El modelo específico de IA (ej: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 modelos disponibles entre 4 proveedores. | Diferentes modelos tienen calidad, velocidad y costo diferentes. |
 | **Thinking mode** | La IA "piensa" (razona) antes de responder, generando tokens internos que puedes ver o no. | Actívalo para tareas complejas (debug, arquitectura). Desactívalo para agilidad. |
 | **Reasoning effort** | Controla la profundidad del razonamiento: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` o `"none"` (varía por proveedor). | Usa máximo para problemas difíciles y medio/bajo para el día a día. |
-| **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). | Sucede automáticamente. Mantén los prompts estables para ahorrar. |
+| **Prompt cache** | DeepSeek almacena en caché partes repetidas del contexto para cobrar menos tokens (KV Cache). Configura `cacheMode` para optimizar. | Sucede automáticamente. Mantén los prompts estables para ahorrar. Al salir, DsCode muestra la eficiencia del caché (tasa de acierto y USD ahorrado). |
 | **Logs** | Archivos de depuración en `~/.dscode/logs/` que registran las llamadas de API. | Activa `debugLogEnabled` solo para diagnosticar problemas. |
 | **Permisos** | Control de lo que la IA puede hacer: leer archivos, escribir, acceder a la red, ejecutar comandos. | Configura permisos restrictivos si quieres revisar cada acción antes de ejecutarla. |
 | **Workspace** | La carpeta raíz donde DsCode se está ejecutando. La IA solo ve archivos en esta carpeta (a menos que autorices acceso externo). | Abre DsCode en la raíz del proyecto en el que quieres trabajar. |
@@ -906,7 +849,7 @@ DsCode tiene **soporte nativo para Google Gemini** mediante `GeminiProvider`. Lo
 
 ## Cómo pedir ayuda
 
-Si encuentras un problema, abre una [issue en GitHub](https://github.com/andrelncampos/dscode-public/issues).
+Si encuentras un problema, abre una [issue en GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
 
 Al reportar un problema, incluye:
 
@@ -925,6 +868,17 @@ Para vulnerabilidades de seguridad, sigue las instrucciones en [SECURITY.md](../
 
 ---
 
+## Contribución
+
+¡Las contribuciones son bienvenidas! Consulta la guía completa en [CONTRIBUTING.md](../CHANGELOG.md).
+
+Resumen rápido:
+
+1. **Issues** son bienvenidas para bugs, features y dudas.
+2. **Pull requests** pasan por CI obligatorio (typecheck + lint + format + tests + build).
+3. **PRs de seguridad** o cambios en áreas sensibles pasan por revisión más rigurosa.
+4. Los contribuidores declaran tener el derecho de contribuir el código enviado.
+
 ---
 
 ## Seguridad
@@ -941,9 +895,9 @@ Consulta [SECURITY.md](../SECURITY.md) para la política completa.
 
 **DsCode es gratuito para uso, pero el código fuente no es público.** El producto se ofrece sin costo para uso individual y profesional. La redistribución está permitida solo de los binarios oficiales.
 
-Este proyecto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado bajo MIT. El aviso de copyright original se conserva en [LICENSE](../LICENSE) y en [NOTICE](../NOTICE).
+Este proyecto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado bajo MIT. El aviso de copyright original se conserva en [LICENSE](../LICENSE) y en [NOTICE](../CHANGELOG.md).
 
-Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](../NOTICE) para la lista de dependencias y sus licencias.
+Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](../CHANGELOG.md) para la lista de dependencias y sus licencias.
 
 ---
 
@@ -952,7 +906,8 @@ Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](
 | Canal | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
 
 ⚠️ Instala DsCode **solo** desde los canales oficiales mencionados. No confíes en versiones publicadas en sitios de terceros o enlaces no verificados.
 
@@ -960,5 +915,5 @@ Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

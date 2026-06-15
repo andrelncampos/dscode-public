@@ -1,12 +1,5 @@
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@andrelncampos/dscode?color=%234d6BFE&labelColor=black&style=flat-square)](https://www.npmjs.com/package/@andrelncampos/dscode)
-[![npm downloads](https://img.shields.io/npm/dm/@andrelncampos/dscode?color=%234d6BFE&labelColor=black&style=flat-square)](https://www.npmjs.com/package/@andrelncampos/dscode)
-[![node](https://img.shields.io/badge/node-%3E%3D24-4d6BFE?labelColor=black&style=flat-square)](https://nodejs.org)
-[![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-4d6BFE?labelColor=black&style=flat-square)]()
-
-<br/>
-
 **🌐 Idioma:** Português | [English](docs/i18n/README.en.md) | [Español](docs/i18n/README.es.md) | [简体中文](docs/i18n/README.zh-Hans.md) | [हिन्दी](docs/i18n/README.hi.md)
 
 </div>
@@ -17,15 +10,13 @@
 <br/>
 <br/>
 <p align="center">
-  <img src='media/logo.svg' width='100' alt="DsCode"/>
+  <img src='https://avatars.githubusercontent.com/u/118287711?s=200&v=4' width='100' alt="DsCode"/>
 </p>
 <h1>DsCode</h1>
 
-**Assistente de programação com IA no seu terminal. Grátis. Privado. Poderoso.**
+[![][github-license-shield]][github-license-link]
 
-```
-npm install -g @andrelncampos/dscode && dscode
-```
+**Assistente de programação com IA no seu terminal.**
 
 <br/>
 </div>
@@ -146,13 +137,18 @@ O resultado: você define **o que** quer (spec), a IA decide **como** fazer (age
 
 ## Instalação
 
-### Via npm (recomendado)
+Baixe o binário para o seu sistema operacional na **[página de releases](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Requer **[Node.js 24+](https://nodejs.org)**.
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+| Sistema | Arquivo |
+|---|---|
+| Windows (x64) | `dscode-windows-x64.zip` |
+| Linux (x64) | `dscode-linux-x64.tar.gz` |
+| macOS (Intel x64) | `dscode-macos-x64.tar.gz` |
+| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
 
-Requer [Node.js 24+](https://nodejs.org). Após instalar, execute `dscode` no terminal.
+Cada release inclui `checksums.txt` com hashes **SHA256** para verificar a integridade do download.
+Após baixar, extraia o arquivo e execute `./dscode` no terminal.
 
 ## Atualização
 
@@ -170,34 +166,21 @@ Se houver uma versão mais recente, o DsCode perguntará se você deseja instal�
 
 ## Configuração inicial
 
-O DsCode lê configurações de dois locais (o projeto tem prioridade sobre o global):
-
-| Prioridade | Arquivo | Uso |
-|---|---|---|
-| **1º (recomendado)** | `.dscode/settings.json` no seu projeto | Chave, modelo e preferências específicos do projeto |
-| 2º (fallback) | `~/.dscode/settings.json` no seu home | Padrão global para todos os projetos |
-
-> 💡 **Prefira sempre o arquivo do projeto.** Assim cada projeto pode ter seu próprio provedor e chave — sem misturar custos ou contextos.
-
-Variáveis de ambiente com prefixo `DEEPCODE_` também são reconhecidas.
+O DsCode lê configurações de `~/.dscode/settings.json` (usuário) e `.dscode/settings.json` (projeto). Variáveis de ambiente com prefixo `DEEPCODE_` também são reconhecidas.
 
 ### Exemplo mínimo
-
-Crie `.dscode/settings.json` na raiz do seu projeto:
 
 ```json
 {
   "env": {
     "MODEL": "deepseek-v4-pro",
     "BASE_URL": "https://api.deepseek.com",
-    "API_KEY": "sk-sua-chave-aqui"
+    "API_KEY": "sua-chave-aqui"
   },
   "thinkingEnabled": true,
   "reasoningEffort": "max"
 }
 ```
-
-> 🔐 **Sua chave é criptografada automaticamente** no primeiro uso com AES-256-GCM. O DsCode detecta que a chave está em texto plano, gera uma chave de criptografia em `~/.dscode/.credential-key` (permissões 0600), e sobrescreve a chave no `settings.json` com a versão criptografada. Você não precisa fazer nada — é transparente.
 
 ### Onde conseguir a chave de API
 
@@ -226,6 +209,7 @@ Crie `.dscode/settings.json` na raiz do seu projeto:
 | `notify` | string | Script pós-tarefa | *(nenhum)* |
 | `engines` | object | Configuração por provedor (ex: `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | Preços customizados por modelo | *(preços padrão DeepSeek V4)* |
+| `cacheMode` | string | Estratégia de cache: `"off"` (padrão), `"aware"` (otimiza prefixo para KV Cache), `"strict"` (aware + verificação de hash). Exclusivo para DeepSeek | `"off"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Visibilidade do repositório. `"public"` adiciona `/management/` e `/.agents/` ao `.gitignore` automaticamente | `"private"` |
 
 ### Preços de modelo (`modelPricing`)
@@ -309,11 +293,13 @@ meu-projeto/
 
 ### Passo 1: Instale
 
-```bash
-npm install -g @andrelncampos/dscode
-```
+Baixe o binário na [página de releases](https://github.com/andrelncampos/dscode-public-public/releases), extraia e execute `./dscode`. **Requer Node.js 24+.**
 
-### Passo 2: Abra seu projeto
+### Passo 2: Configure sua chave
+
+Crie `~/.dscode/settings.json` com sua chave de API e modelo preferido (veja a seção de Configuração acima).
+
+### Passo 3: Abra uma pasta de projeto
 
 ```bash
 cd /caminho/do/seu/projeto
@@ -321,28 +307,15 @@ cd /caminho/do/seu/projeto
 
 Pode ser qualquer projeto: um repositório Git, um projeto pessoal, até uma pasta vazia.
 
-### Passo 3: Adicione sua chave de API
-
-Cole sua chave no arquivo `.dscode/settings.json` na raiz do projeto:
-
-```bash
-mkdir -p .dscode
-echo '{"env":{"MODEL":"deepseek-v4-pro","API_KEY":"sk-sua-chave"}}' > .dscode/settings.json
-```
-
-Crie uma conta em [platform.deepseek.com](https://platform.deepseek.com) e recarregue créditos (mínimo $2)(https://platform.deepseek.com).
-
-> 🔐 Sua chave será **criptografada automaticamente** (AES-256-GCM) na primeira execução. Você nunca mais verá o texto plano.
-
-### Passo 4: Inicie
+### Passo 4: Inicie o DsCode
 
 ```bash
 dscode
 ```
 
-Digite `Explique a estrutura deste projeto` e pressione Enter. Pronto.
+Você verá uma tela de boas-vindas com um campo de texto. O assistente está pronto.
 
-**Dica:** Digite `@` para mencionar arquivos, `/` para abrir o menu de comandos.
+**Dica:** Digite `@` para buscar e mencionar arquivos do projeto — a IA pode ler e editar os arquivos que você referenciar.
 
 ### Passo 5: Pergunte algo simples
 
@@ -683,7 +656,7 @@ O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA 
 | **Modelo** | O modelo específico de IA (ex: `deepseek-v4-pro`, `gpt-5.5`, `claude-sonnet-4-6`, `gemini-3.5-flash`). 16 modelos disponíveis entre 4 provedores. | Modelos diferentes têm qualidade, velocidade e custo diferentes. |
 | **Thinking mode** | A IA "pensa" (raciocina) antes de responder, gerando tokens internos que você pode ver ou não. | Ative para tarefas complexas (debug, arquitetura). Desative para agilidade. |
 | **Reasoning effort** | Controla a profundidade do raciocínio: `"xhigh"`, `"high"`, `"medium"`, `"low"`, `"max"` ou `"none"` (varia por provedor). | Use esforço máximo para problemas difíceis e médio/baixo para o dia a dia. |
-| **Prompt cache** | DeepSeek armazena em cache partes repetidas do contexto para cobrar menos tokens (KV Cache). | Acontece automaticamente. Mantenha os prompts estáveis para economizar. |
+| **Prompt cache** | DeepSeek armazena em cache partes repetidas do contexto para cobrar menos tokens (KV Cache). Configure `cacheMode` para otimizar. | Acontece automaticamente. Mantenha os prompts estáveis para economizar. Ao sair, o DsCode exibe a eficiência do cache (hit rate e economia em USD). |
 | **Logs** | Arquivos de depuração em `~/.dscode/logs/` que registram as chamadas de API. | Ative `debugLogEnabled` apenas para diagnosticar problemas. |
 | **Permissões** | Controle do que a IA pode fazer: ler arquivos, escrever, acessar rede, executar comandos. | Configure permissões restritivas se quiser revisar cada ação antes da execução. |
 | **Workspace** | A pasta raiz onde o DsCode está rodando. A IA só vê arquivos nesta pasta (a menos que você autorize acesso externo). | Abra o DsCode na raiz do projeto em que você quer trabalhar. |
@@ -946,7 +919,7 @@ DsCode tem **suporte nativo ao Google Gemini** via `GeminiProvider`. Modelos com
 
 ## Como pedir ajuda
 
-Se encontrar um problema, abra uma [issue no GitHub](https://github.com/andrelncampos/dscode-public/issues).
+Se encontrar um problema, abra uma [issue no GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
 
 Ao reportar um problema, inclua:
 
@@ -965,6 +938,7 @@ Para vulnerabilidades de segurança, siga as instruções em [SECURITY.md](SECUR
 
 ---
 
+
 ## Segurança
 
 Consulte [SECURITY.md](SECURITY.md) para a política completa.
@@ -979,9 +953,9 @@ Consulte [SECURITY.md](SECURITY.md) para a política completa.
 
 **DsCode é gratuito para uso, mas o código-fonte não é público.** O produto é disponibilizado sem custo para uso individual e profissional. A redistribuição é permitida apenas dos binários oficiais.
 
-Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado sob MIT. O aviso de copyright original é preservado em [LICENSE](LICENSE).
+Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado sob MIT. O aviso de copyright original é preservado em [LICENSE](LICENSE) e [NOTICE](NOTICE).
 
-Dependências de terceiros mantêm suas próprias licenças.
+Dependências de terceiros mantêm suas próprias licenças. Consulte [NOTICE](NOTICE) para a lista de dependências e licenças.
 
 ---
 
@@ -990,7 +964,15 @@ Dependências de terceiros mantêm suas próprias licenças.
 | Canal | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **npm** | [npmjs.com/package/@andrelncampos/dscode](https://www.npmjs.com/package/@andrelncampos/dscode) |
-| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
 
 ⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões publicadas em sites de terceiros ou links não verificados.
+
+---
+
+<!-- LINK GROUP -->
+
+[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
+
