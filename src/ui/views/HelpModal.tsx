@@ -10,6 +10,7 @@ import {
 } from "../core/layout-constants";
 import type { TerminalRuntimeProfile } from "../core/terminal-runtime";
 import { detectTerminalRuntime } from "../core/terminal-runtime";
+import { useKittyProtocolActive } from "../hooks";
 
 type HelpModalProps = {
   onClose: () => void;
@@ -57,27 +58,25 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
   const { columns, rows } = useWindowSize();
   const { t } = useLocale();
 
+  const kittyActive = useKittyProtocolActive();
   const shortcuts = useMemo(() => {
     const profile = detectTerminalRuntime();
     const base = buildBaseShortcuts(t, profile);
-    // For terminals that support Shift+Enter, the primary shortcut is already
-    // set by the profile. For terminals that don't, show only Ctrl+J.
-    // Always add Shift+Enter as a secondary option when the terminal may support it
-    // but the primary fallback is Ctrl+J.
-    if (!profile.shiftEnterCapable) {
-      return base;
+    // If Kitty is active, add Shift+Enter as a secondary newline option
+    // after the primary (Ctrl+J) shortcut.
+    if (kittyActive) {
+      const newlineIndex = base.findIndex((s) => s.key === "Ctrl+J");
+      const result = [...base];
+      if (newlineIndex !== -1) {
+        result.splice(newlineIndex + 1, 0, {
+          key: "Shift+Enter",
+          description: t("welcome.tip-insert-newline-alt"),
+        });
+      }
+      return result;
     }
-    // Insert Ctrl+J as a fallback hint after the primary newline shortcut
-    const newlineIndex = base.findIndex((s) => s.key === profile.newlinePrimaryShortcut);
-    const result = [...base];
-    if (newlineIndex !== -1 && profile.newlinePrimaryShortcut !== "Ctrl+J") {
-      result.splice(newlineIndex + 1, 0, {
-        key: "Ctrl+J",
-        description: t("welcome.tip-insert-newline-alt"),
-      });
-    }
-    return result;
-  }, [t]);
+    return base;
+  }, [t, kittyActive]);
 
   useInput((input, key) => {
     if (key.escape) {

@@ -2,6 +2,7 @@ import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
 import type { TerminalRuntimeProfile } from "./terminal-runtime";
 import { getActiveTFunction } from "../../i18n/context";
+import { getKittyProtocolState } from "../hooks/kitty-protocol";
 
 export type CommandContext = {
   buffer: { text: string };
@@ -87,11 +88,12 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       return;
     }
 
-    // Infer keyboard protocol from capability.
-    const protocol = p.shiftEnterCapable ? "CSI u" : "legacy";
-    const shiftStatus = p.shiftEnterCapable ? t("cmd.keys-shift-yes") : t("cmd.keys-shift-no");
-    const shortcutLabel =
-      p.newlinePrimaryShortcut === "Shift+Enter" ? t("cmd.keys-newline-shiftenter") : t("cmd.keys-newline-ctrlj");
+    // Infer keyboard protocol from capability (runtime Kitty state overrides static profile).
+    const kittyState = getKittyProtocolState();
+    const shiftEnterWorks = kittyState.active || p.shiftEnterCapable;
+    const protocol = kittyState.active ? "Kitty (CSI u)" : p.shiftEnterCapable ? "CSI u" : "legacy";
+    const shiftStatus = shiftEnterWorks ? t("cmd.keys-shift-yes") : t("cmd.keys-shift-no");
+    const shortcutLabel = shiftEnterWorks ? t("cmd.keys-newline-shiftenter") : t("cmd.keys-newline-ctrlj");
 
     const msg = `${t("cmd.keys-prefix")}${p.kind} · ${t("cmd.keys-protocol")}${protocol} · ${t("cmd.keys-shift-label")}${shiftStatus} · ${t("cmd.keys-use")}${shortcutLabel}`;
     ctx.setStatusMessage(msg);
@@ -114,19 +116,32 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       return;
     }
 
+    // Runtime Kitty state may override static profile detection.
+    const kittyState = getKittyProtocolState();
+    const shiftEnterWorks = kittyState.active || p.shiftEnterCapable;
+    const protocolLabel = kittyState.active ? "Kitty (CSI u)" : p.shiftEnterCapable ? "CSI u" : "legacy";
+
     lines.push(
       `Detected: ${p.kind}`,
       `Platform: ${p.platform}`,
-      `Shift+Enter: ${p.shiftEnterCapable ? "supported \u2713" : "NOT supported \u2717"} (protocol: ${p.shiftEnterCapable ? "CSI u" : "legacy"})`,
+      `Shift+Enter: ${shiftEnterWorks ? "supported \u2713" : "NOT supported \u2717"} (protocol: ${protocolLabel})`,
       ""
     );
 
-    if (p.shiftEnterCapable) {
-      lines.push(
-        "\x1b[1mShift+Enter should already work in this terminal.\x1b[0m",
-        "If it doesn't, run /keys to diagnose, or use Ctrl+J / \\ + Enter as fallback.",
-        ""
-      );
+    if (shiftEnterWorks) {
+      if (kittyState.active) {
+        lines.push(
+          "\x1b[1mKitty Keyboard Protocol is active!\x1b[0m",
+          "Shift+Enter and all modifier keys should work in this session.",
+          ""
+        );
+      } else {
+        lines.push(
+          "\x1b[1mShift+Enter should already work in this terminal.\x1b[0m",
+          "If it doesn't, run /keys to diagnose, or use Ctrl+J / \\ + Enter as fallback.",
+          ""
+        );
+      }
     } else {
       lines.push("\x1b[1mTo enable Shift+Enter for newline, configure your terminal:\x1b[0m", "");
     }

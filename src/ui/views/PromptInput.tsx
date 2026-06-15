@@ -54,7 +54,8 @@ import {
   usePromptTerminalCursor,
   classifyReturnAction,
 } from "../hooks";
-import type { InputKey, DscodeReturnAction } from "../hooks";
+import type { InputKey } from "../hooks";
+import { useKittyProtocolActive } from "../hooks";
 import {
   useHiddenTerminalCursor,
   useTerminalExtendedKeys,
@@ -213,7 +214,10 @@ export const PromptInput = React.memo(function PromptInput({
         ? " · ctrl+o collapse"
         : "";
   const terminalProfile = React.useMemo(() => detectTerminalRuntime(), []);
-  const newlineHint = terminalProfile.footerNewlineHint;
+  const kittyActive = useKittyProtocolActive();
+  const newlineHint = kittyActive
+    ? "Enter send · Shift+Enter newline · Ctrl+J fallback"
+    : terminalProfile.footerNewlineHint;
   const footerText = (() => {
     if (statusMessage) return statusMessage;
     if (busy) {
