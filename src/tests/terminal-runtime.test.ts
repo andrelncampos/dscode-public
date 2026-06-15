@@ -55,12 +55,12 @@ test("Windows Terminal — WT_SESSION defined", () => {
   assert.equal(rt.isWindowsTerminal, true);
   assert.equal(rt.isClassicWindowsConsole, false);
   assert.equal(rt.shiftEnterReliability, "configurable");
-  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 2b. Windows Terminal via WT_PROFILE_ID
@@ -70,8 +70,8 @@ test("Windows Terminal — WT_PROFILE_ID defined", () => {
 
   assert.equal(rt.kind, "windows-terminal");
   assert.equal(rt.isWindowsTerminal, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 2c. Windows Terminal should override PowerShell/Cmd indicators
@@ -99,12 +99,12 @@ test("VS Code terminal — TERM_PROGRAM=vscode", () => {
   assert.equal(rt.kind, "vscode-terminal");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
-  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 4. WezTerm via TERM_PROGRAM
@@ -114,11 +114,11 @@ test("WezTerm — TERM_PROGRAM=WezTerm", () => {
   assert.equal(rt.kind, "wezterm");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "configurable");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 4b. WezTerm via WEZTERM_PANE
@@ -126,8 +126,8 @@ test("WezTerm — WEZTERM_PANE defined", () => {
   const rt = detectTerminalRuntime({ WEZTERM_PANE: "0" });
 
   assert.equal(rt.kind, "wezterm");
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 5. Git Bash / MSYS / mintty-like
@@ -141,7 +141,7 @@ test("Git Bash / MSYS — MSYSTEM=MINGW64 and TERM=xterm-256color", () => {
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
   assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
   assert.equal(rt.shiftEnterCapable, false);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
   assertFooterContains(rt, "\\ + Enter");
   assertFooterNotContains(rt, "Shift+Enter");
@@ -153,7 +153,7 @@ test("mintty-like — MINGW_PREFIX defined", () => {
 
   assert.equal(rt.kind, "mintty-like");
   assert.equal(rt.isMinttyLike, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
 });
 
 // 5c. MSYS should override classic detection
@@ -163,7 +163,7 @@ test("mintty-like with MSYSTEM — not classic", () => {
 
   assert.equal(rt.kind, "mintty-like");
   assert.equal(rt.isClassicWindowsConsole, false);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
 });
 
 // 6. ConEmu
@@ -173,12 +173,12 @@ test("ConEmu — ConEmuANSI defined", () => {
   assert.equal(rt.kind, "conemu");
   assert.equal(rt.confidence, "high");
   assert.equal(rt.shiftEnterReliability, "terminal-dependent");
-  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 7. Cmder
@@ -187,12 +187,12 @@ test("Cmder — CmderRoot defined", () => {
 
   assert.equal(rt.kind, "cmder");
   assert.equal(rt.confidence, "high");
-  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
 });
 
 // 8. Unknown terminal (non-Windows, no recognized env vars)
@@ -205,12 +205,12 @@ test("Unknown — non-Windows platform without recognized env vars", () => {
   assert.equal(rt.isClassicWindowsConsole, false);
   assert.equal(rt.isWindowsTerminal, false);
   assert.equal(rt.shiftEnterReliability, "unknown");
-  assert.equal(rt.newlinePrimaryShortcut, "Shift+Enter");
-  assert.equal(rt.shiftEnterCapable, true);
-  assert.equal(rt.shouldShowShiftEnterInFooter, true);
-  assertFooterContains(rt, "Shift+Enter");
+  assert.equal(rt.newlinePrimaryShortcut, "Ctrl+J");
+  assert.equal(rt.shiftEnterCapable, false);
+  assert.equal(rt.shouldShowShiftEnterInFooter, false);
   assertFooterContains(rt, "Ctrl+J");
-  assertFooterContains(rt, "fallback");
+  assertFooterContains(rt, "\\ + Enter");
+  assertFooterNotContains(rt, "Shift+Enter");
   assert.ok(
     rt.diagnosticMessage.includes("Unknown terminal"),
     `diagnosticMessage should mention unknown: "${rt.diagnosticMessage}"`
