@@ -111,9 +111,10 @@ These principles MUST be followed by ALL specs and implementations:
 
 **Rules:**
 - Feature specs are numbered in increments of 10 (10, 20, 30, ...).
+- Large specs may be split into child specs with letter suffixes (e.g., 20A, 20B, 20C). The base number (20) becomes an umbrella entry tracking overall progress. Child specs reference the parent in the References column.
 - Fix specs fill the gaps after their related feature spec (e.g., 11, 12 after 10; 21 after 20).
 - Statuses: `planned`, `created`, `verified`, `implemented`, `audited`.
-- References column links to relevant sections in vision.md (value blocks), arch.md, adr.md, lessons.md.
+- References column links to relevant sections in vision.md (value blocks), arch.md, adr.md, lessons.md, and parent specs (for children).
 
 ---
 
