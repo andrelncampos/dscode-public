@@ -10,7 +10,7 @@ import {
 } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
-import { computeCacheSavings } from "./cache-metrics";
+import { computeCacheSavings, normalizeCacheTokens } from "./cache-metrics";
 
 const BUDGET_FILE = "budget.md";
 
@@ -296,4 +296,20 @@ export function recordBudgetCost(
     process.stderr.write(`[budget] Failed to record cost: ${message}\n`);
     return null;
   }
+}
+
+export function recordBudgetCostWithCache(
+  projectRoot: string,
+  model: string,
+  usage: ModelUsage,
+  pricingOverrides?: Record<string, ModelPricing>,
+  limits?: BudgetLimits,
+  meta?: Record<string, string | number>
+): string | null {
+  const cache = normalizeCacheTokens(usage);
+  if (cache) {
+    usage.normalizedCacheHitTokens = cache.hit;
+    usage.normalizedCacheMissTokens = cache.miss;
+  }
+  return recordBudgetCost(projectRoot, model, usage, pricingOverrides, limits, meta);
 }

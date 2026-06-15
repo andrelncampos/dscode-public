@@ -1,7 +1,7 @@
 import type OpenAI from "openai";
 import type { ToolCall, ToolExecutionResult, CreateOpenAIClient, ToolHandler } from "./executor";
 import type { ToolDefinition } from "../prompt";
-import { recordBudgetCost } from "../common/budget-tracker";
+import { recordBudgetCostWithCache } from "../common/budget-tracker";
 import type { ModelUsage } from "../session";
 import type { SkillInfo } from "../session";
 import { getAuxiliaryModel } from "../common/model-catalog";
@@ -234,7 +234,7 @@ export async function runSubagent(opts: SubagentOptions): Promise<string> {
       /* eslint-enable @typescript-eslint/no-explicit-any */
 
       if (response.usage) {
-        recordBudgetCost(opts.projectRoot, opts.model, response.usage as ModelUsage);
+        recordBudgetCostWithCache(opts.projectRoot, opts.model, response.usage as ModelUsage);
       }
 
       const choice = response.choices?.[0];

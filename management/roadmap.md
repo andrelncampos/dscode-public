@@ -39,7 +39,7 @@
 | 220 | pro-first-modes | discarded | V25, V13 — descartada: não agregava valor (atalhos para settings já expostas) |
 | 230 | deepseek-native-parser | discarded | V24, V6, V12, ADR-001, ADR-002 — descartada: ganho marginal, tudo relevante já funciona |
 | 240 | auditabilidade | discarded | V26 — descartada: zero impacto no uso diário (SHA256, SBOM, build provenance, privacy policy, threat model são documentação/infra de confiança, não features de produto) |
-| 250 | billing-completeness | planned | V27, V11, V21, ADR-005 |
+| 250 | billing-completeness | audited | V27, V11, V21, ADR-005 |
 
 ---
 

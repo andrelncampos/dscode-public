@@ -57,6 +57,7 @@ export function computeUsageCost(usage: ModelUsage, pricing: ModelPricing): numb
     0,
     (usage.prompt_tokens_details as { cached_tokens?: number } | undefined)?.cached_tokens ??
       usage.prompt_cache_hit_tokens ??
+      usage.cache_read_input_tokens ??
       0
   );
   const nonCachedInput = Math.max(0, usage.prompt_tokens - cachedTokens);
