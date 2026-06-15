@@ -431,9 +431,15 @@ export function getExtensionRoot(): string {
     return path.resolve(__dirname, "..");
   }
 
-  // Fall back to `import.meta.url` for ESM test environments (tsx --test).
+  // Fall back to `import.meta.url` for ESM environments (bundle + tsx --test).
   const currentFilePath = fileURLToPath(import.meta.url);
-  return path.resolve(path.dirname(currentFilePath), "..");
+  const currentDir = path.dirname(currentFilePath);
+  // Portable package: the bundle lives alongside templates/ (no .. needed).
+  if (fs.existsSync(path.join(currentDir, "templates"))) {
+    return currentDir;
+  }
+  // npm / dev: the bundle is in dist/ or src/, templates/ is in the parent.
+  return path.resolve(currentDir, "..");
 }
 
 export type ToolDefinition = {
