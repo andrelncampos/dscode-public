@@ -137,7 +137,7 @@ O resultado: você define **o que** quer (spec), a IA decide **como** fazer (age
 
 ## Instalação
 
-Baixe o binário para o seu sistema operacional na **[página de releases](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Baixe o binário para o seu sistema operacional na **[página de releases](https://github.com/andrelncampos/dscode-public/releases)**.  
 Requer **[Node.js 24+](https://nodejs.org)**.
 
 | Sistema | Arquivo |
@@ -293,7 +293,7 @@ meu-projeto/
 
 ### Passo 1: Instale
 
-Baixe o binário na [página de releases](https://github.com/andrelncampos/dscode-public-public/releases), extraia e execute `./dscode`. **Requer Node.js 24+.**
+Baixe o binário na [página de releases](https://github.com/andrelncampos/dscode-public/releases), extraia e execute `./dscode`. **Requer Node.js 24+.**
 
 ### Passo 2: Configure sua chave
 
@@ -919,7 +919,7 @@ DsCode tem **suporte nativo ao Google Gemini** via `GeminiProvider`. Modelos com
 
 ## Como pedir ajuda
 
-Se encontrar um problema, abra uma [issue no GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
+Se encontrar um problema, abra uma [issue no GitHub](https://github.com/andrelncampos/dscode-public/issues).
 
 Ao reportar um problema, inclua:
 
@@ -964,8 +964,8 @@ Dependências de terceiros mantêm suas próprias licenças. Consulte [NOTICE](N
 | Canal | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões publicadas em sites de terceiros ou links não verificados.
 
@@ -973,6 +973,6 @@ Dependências de terceiros mantêm suas próprias licenças. Consulte [NOTICE](N
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
 
