@@ -54,6 +54,32 @@ jobs:
       - name: Validate binary
         run: npm run validate:binary
 
+      - name: Validate asset names match tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "Tag: $TAG  Version: $VERSION"
+          BAD=0
+          for f in release/packages/*; do
+            echo "  Checking $f..."
+            if [[ "$f" != *"$VERSION"* ]]; then
+              echo "::error::Asset $f does not contain version $VERSION (from tag $TAG)"
+              BAD=1
+            fi
+          done
+          for f in release/checksums/checksums.txt; do
+            if grep -qv "$VERSION" "$f"; then
+              echo "::error::checksums.txt references wrong version"
+              BAD=1
+            fi
+          done
+          if [ "$BAD" -ne 0 ]; then
+            echo "::error::Asset name validation FAILED. Aborting before upload."
+            exit 1
+          fi
+          echo "All asset names match tag $TAG"
+
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
@@ -100,6 +126,27 @@ jobs:
 
       - name: Validate binary
         run: npm run validate:binary
+
+      - name: Validate asset names match tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          BAD=0
+          for f in release/packages/*; do
+            if [[ "$f" != *"$VERSION"* ]]; then
+              echo "::error::Asset $f missing version $VERSION"
+              BAD=1
+            fi
+          done
+          for f in release/checksums/checksums.txt; do
+            if grep -qv "$VERSION" "$f"; then
+              echo "::error::checksums.txt references wrong version"
+              BAD=1
+            fi
+          done
+          if [ "$BAD" -ne 0 ]; then exit 1; fi
+          echo "All asset names match tag $TAG"
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4

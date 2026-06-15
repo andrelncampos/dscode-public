@@ -7,7 +7,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-const version = pkg.version;
+const version = (() => {
+  const tag = process.env.GITHUB_REF_NAME;
+  if (tag && tag.startsWith("v")) return tag.slice(1);
+  return pkg.version;
+})();
 const name = pkg.name;
 
 const OUT_DIR = resolve(root, "release", "bundle");

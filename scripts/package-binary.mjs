@@ -1,7 +1,4 @@
-import {
-  readFileSync, writeFileSync, mkdirSync, existsSync,
-  readdirSync, copyFileSync
-} from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -11,7 +8,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-const version = pkg.version;
+// Tag is the source of truth for release assets (e.g., v1.0.33 → 1.0.33).
+// Fall back to package.json version for local builds.
+const version = (() => {
+  const tag = process.env.GITHUB_REF_NAME;
+  if (tag && tag.startsWith("v")) return tag.slice(1);
+  return pkg.version;
+})();
 
 const platform = process.platform;
 const arch = process.arch;
@@ -36,11 +39,8 @@ const binName = platform === "win32" ? "dscode.exe" : "dscode";
 const binPath = resolve(BIN_DIR, binName);
 
 // Look for either SEA binary or launcher-based fallback
-const altBin = platform === "win32"
-  ? resolve(BIN_DIR, "dscode.cmd")
-  : resolve(BIN_DIR, "dscode");
-const actualBin = existsSync(binPath) ? binPath
-  : existsSync(altBin) ? altBin : null;
+const altBin = platform === "win32" ? resolve(BIN_DIR, "dscode.cmd") : resolve(BIN_DIR, "dscode");
+const actualBin = existsSync(binPath) ? binPath : existsSync(altBin) ? altBin : null;
 
 if (!actualBin) {
   console.error(`[package] ERROR: No binary found in ${BIN_DIR}. Run build:binary first.`);
@@ -51,9 +51,15 @@ console.log(`[package] Using: ${actualBin}`);
 
 // ── Sensitive file blacklist ─────────────────────────────────────
 const SENSITIVE_PATTERNS = [
-  /\.env$/i, /\.env\./i,
-  /\.pem$/, /\.key$/, /\.p12$/, /\.pfx$/, /\.crt$/,
-  /id_rsa/, /id_ed25519/,
+  /\.env$/i,
+  /\.env\./i,
+  /\.pem$/,
+  /\.key$/,
+  /\.p12$/,
+  /\.pfx$/,
+  /\.crt$/,
+  /id_rsa/,
+  /id_ed25519/,
   /\.log$/,
   /node_modules\//,
   /\.git\//,
@@ -78,14 +84,14 @@ const README_FILE = resolve(root, "README.md");
 
 // Include all files from bin/ directory (SEA binary or launcher + bundle)
 const binEntries = readdirSync(BIN_DIR);
-const binFiles = binEntries.map(f => resolve(BIN_DIR, f));
+const binFiles = binEntries.map((f) => resolve(BIN_DIR, f));
 
 const filesToPack = [...binFiles];
 if (existsSync(LIC_FILE)) filesToPack.push(LIC_FILE);
 if (existsSync(NOTICE_FILE)) filesToPack.push(NOTICE_FILE);
 if (existsSync(README_FILE)) filesToPack.push(README_FILE);
 
-console.log(`[package] Files to pack: ${filesToPack.map(f => basename(f)).join(", ")}`);
+console.log(`[package] Files to pack: ${filesToPack.map((f) => basename(f)).join(", ")}`);
 
 // Validate no sensitive files
 for (const f of filesToPack) {
@@ -120,10 +126,7 @@ if (platform === "win32") {
     { stdio: "inherit" }
   );
 } else {
-  execSync(
-    `tar -czf "${pkgPath}" -C "${tmpPkgDir}" .`,
-    { stdio: "inherit" }
-  );
+  execSync(`tar -czf "${pkgPath}" -C "${tmpPkgDir}" .`, { stdio: "inherit" });
 }
 
 console.log(`[package] Package created → ${pkgPath}`);
