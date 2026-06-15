@@ -123,3 +123,9 @@ return path.resolve(currentDir, "..");  // modo dev
 3. **UI adaptativa por perfil:** `TerminalRuntimeProfile.shiftEnterCapable` indica se o terminal suporta CSI u. Se sim, o footer mostra "Shift+Enter newline". Se não, mostra "Ctrl+J newline · \\ + Enter newline". Oito perfis de detecção cobrem todos os terminais comuns.
 
 **Arquitetura correta:** Parse os bytes crus primeiro (`stdin.on('data')`), não confie no `key.shift` do Ink/Node. Se chegar `\x1b[13;2u`, é Shift+Enter. Se chegar `\r` puro, é Enter (nunca invente que é Shift+Enter).
+
+**Diagnóstico obrigatório:** Sem um comando `/keys` que exiba os bytes hex crus e a decisão do parser, você discutirá terminal por teoria para sempre. O `/terminal-setup` complementa gerando keybindings específicos (Windows Terminal, VS Code, tmux, WezTerm).
+
+**Kitty Keyboard Protocol (futuro):** O Ink v7.0.4 já exporta `kittyFlags` e `kittyModifiers` e faz query `CSI ? u` com timeout. A flag 8 (`reportAllKeysAsEscapeCodes`) é necessária para receber Shift+Enter como evento inequívoco. Ativar com push/pop de flags (CSI > 25u / CSI < u) com restore em SIGINT/SIGTERM.
+
+**Commit:** `5f17705b` (Shift+Enter), `f44c1cf9` (/keys), `/terminal-setup`

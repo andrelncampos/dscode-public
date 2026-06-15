@@ -44,6 +44,8 @@ const ptDictionary = {
   "cmd.keys-newline-shiftenter": "Shift+Enter ou Ctrl+J",
   "cmd.keys-newline-ctrlj": "Ctrl+J ou \\ + Enter",
   "cmd.keys-use": "Usar: ",
+  "cmd.terminal-setup":
+    "Mostrar configura\u00e7\u00e3o de keybinding espec\u00edfica do terminal para habilitar Shift+Enter",
   "cmd.no-description": "(sem descri\u00e7\u00e3o)",
 
   // Welcome screen

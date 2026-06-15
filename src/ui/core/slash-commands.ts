@@ -224,6 +224,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/keys",
     description: "cmd.keys",
   },
+  {
+    kind: "terminal-setup",
+    name: "terminal-setup",
+    label: "/terminal-setup",
+    description: "cmd.terminal-setup",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

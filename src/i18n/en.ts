@@ -42,6 +42,7 @@ const enDictionary = {
   "cmd.keys-newline-shiftenter": "Shift+Enter or Ctrl+J",
   "cmd.keys-newline-ctrlj": "Ctrl+J or \\ + Enter",
   "cmd.keys-use": "Use: ",
+  "cmd.terminal-setup": "Show terminal-specific keybinding setup to enable Shift+Enter for newline",
   "cmd.no-description": "(no description)",
 
   // Welcome screen (11 keys)
