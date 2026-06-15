@@ -24,48 +24,6 @@ export type InputKey = {
   paste: boolean;
 };
 
-/**
- * Semantic return-key action.
- *
- * Instead of leaking raw terminal details (Ctrl+J vs Shift+Enter vs `\`+Enter)
- * into every key handler, the parser classifies the intent into a simple union.
- */
-export type DscodeReturnAction =
-  | { kind: "submit" }
-  | { kind: "newline"; source: "ctrl-j" | "shift-enter" | "ctrl-enter" | "meta-enter" | "backslash-enter" };
-
-/**
- * Single entry point for classifying a return-related key event.
- *
- * @param input  The `input` field from parseTerminalInput.
- * @param key    The `key` field from parseTerminalInput.
- * @param bufferEndsWithBackslash  Whether the prompt buffer currently ends with `\`.
- */
-export function classifyReturnAction(
-  input: string,
-  key: Pick<InputKey, "return" | "shift" | "meta" | "ctrl">,
-  bufferEndsWithBackslash: boolean
-): DscodeReturnAction | null {
-  // Ctrl+J (or Ctrl+Enter, which terminals map to the same LF byte).
-  if (key.ctrl && (input === "j" || input === "J")) {
-    return { kind: "newline", source: "ctrl-j" };
-  }
-
-  if (!key.return) return null;
-
-  // Shift+Enter — only set when the terminal sent a distinguishable CSI sequence.
-  if (key.shift) return { kind: "newline", source: "shift-enter" };
-
-  // Meta+Enter (Alt+Enter on Windows/Linux, Option+Enter on macOS).
-  if (key.meta) return { kind: "newline", source: "meta-enter" };
-
-  // Universal fallback: `\` + Enter inserts newline in every terminal.
-  if (bufferEndsWithBackslash) return { kind: "newline", source: "backslash-enter" };
-
-  // Plain Enter → submit.
-  return { kind: "submit" };
-}
-
 const BACKSPACE_BYTES = new Set(["\u007F", "\b"]);
 const FORWARD_DELETE_SEQUENCES = new Set(["\u001B[3~", "\u001B[P"]);
 const HOME_SEQUENCES = new Set(["\u001B[H", "\u001B[1~", "\u001B[7~", "\u001BOH"]);

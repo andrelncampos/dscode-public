@@ -1,13 +1,5 @@
-export { useTerminalInput, parseTerminalInput, dispatchTerminalInput, classifyReturnAction } from "./useTerminalInput";
-export type { InputKey, DscodeReturnAction } from "./useTerminalInput";
-
-export {
-  enableKittyProtocol,
-  getKittyProtocolState,
-  buildKittyPushSequence,
-  buildKittyPopSequence,
-} from "./kitty-protocol";
-export type { KittyProtocolMode, KittyProtocolState } from "./kitty-protocol";
+export { useTerminalInput, parseTerminalInput, dispatchTerminalInput } from "./useTerminalInput";
+export type { InputKey } from "./useTerminalInput";
 
 export {
   useHiddenTerminalCursor,
