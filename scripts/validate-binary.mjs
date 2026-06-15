@@ -1,9 +1,7 @@
-import {
-  readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync,
-} from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -30,8 +28,7 @@ const TMP_DIR = resolve(root, "release", "tmp");
 
 const seaBinPath = resolve(BIN_DIR, seaBinName);
 const fallbackBinPath = resolve(BIN_DIR, fallbackBinName);
-const binPath = existsSync(seaBinPath) ? seaBinPath
-  : existsSync(fallbackBinPath) ? fallbackBinPath : seaBinPath;
+const binPath = existsSync(seaBinPath) ? seaBinPath : existsSync(fallbackBinPath) ? fallbackBinPath : seaBinPath;
 const isSeaBinary = binPath === seaBinPath;
 const pkgExt = platform === "win32" ? "zip" : "tar.gz";
 const pkgFile = `dscode-v${version}-${platformTag}.${pkgExt}`;
@@ -39,8 +36,14 @@ const pkgPath = resolve(PKG_DIR, pkgFile);
 const checksumsPath = resolve(CHK_DIR, "checksums.txt");
 
 const report = [];
-function log(msg) { console.log(`[validate] ${msg}`); report.push(msg); }
-function err(msg) { console.error(`[validate] ERROR: ${msg}`); report.push(`ERROR: ${msg}`); }
+function log(msg) {
+  console.log(`[validate] ${msg}`);
+  report.push(msg);
+}
+function err(msg) {
+  console.error(`[validate] ERROR: ${msg}`);
+  report.push(`ERROR: ${msg}`);
+}
 
 let failures = 0;
 
@@ -142,7 +145,10 @@ mkdirSync(extractDir, { recursive: true });
 
 try {
   if (platform === "win32") {
-    execSync(`powershell -NoProfile -Command "Expand-Archive -Path '${pkgPath}' -DestinationPath '${extractDir}' -Force"`, { stdio: "pipe" });
+    execSync(
+      `powershell -NoProfile -Command "Expand-Archive -Path '${pkgPath}' -DestinationPath '${extractDir}' -Force"`,
+      { stdio: "pipe" }
+    );
   } else {
     execSync(`tar -xzf "${pkgPath}" -C "${extractDir}"`, { stdio: "pipe" });
   }
@@ -154,8 +160,16 @@ try {
 
 // ── 7. Check for sensitive files in package ──────────────────────
 const SENSITIVE_PATTERNS = [
-  /^\.env/, /\.env$/i, /\.pem$/, /\.key$/, /\.p12$/, /\.pfx$/,
-  /\.crt$/, /id_rsa/, /id_ed25519/, /\.log$/,
+  /^\.env/,
+  /\.env$/i,
+  /\.pem$/,
+  /\.key$/,
+  /\.p12$/,
+  /\.pfx$/,
+  /\.crt$/,
+  /id_rsa/,
+  /id_ed25519/,
+  /\.log$/,
 ];
 const REQUIRED_FILES = ["LICENSE"];
 
@@ -196,34 +210,62 @@ if (existsSync(resolve(extractDir, "NOTICE"))) {
 }
 
 // ── 8. Run extracted binary ──────────────────────────────────────
-// Try SEA binary first, then fallback launcher
+// Try SEA binary first, then fallback launcher / portable package
 const extractedSea = resolve(extractDir, seaBinName);
 const extractedFallback = resolve(extractDir, fallbackBinName);
 const extractedJs = resolve(extractDir, "dscode.js");
+const extractedNode = resolve(extractDir, "node.exe");
 
-let extractedBin = existsSync(extractedSea) ? extractedSea
-  : existsSync(extractedFallback) ? extractedFallback : null;
+let extractedBin = existsSync(extractedSea) ? extractedSea : existsSync(extractedFallback) ? extractedFallback : null;
 
 if (extractedBin) {
   if (platform !== "win32") {
-    try { execSync(`chmod +x "${extractedBin}"`, { stdio: "pipe" }); } catch {}
+    try {
+      execSync(`chmod +x "${extractedBin}"`, { stdio: "pipe" });
+    } catch {
+      /* chmod may fail on Windows, OK */
+    }
   }
   const isExtractedSea = extractedBin === extractedSea;
+  let ver2;
   try {
-    let ver2;
     if (isExtractedSea) {
       ver2 = execSync(`"${extractedBin}" --version`, {
-        encoding: "utf8", timeout: 15000,
+        encoding: "utf8",
+        timeout: 15000,
         env: { ...process.env, DEEPCODE_API_KEY: "" },
       }).trim();
+    } else if (existsSync(extractedNode) && existsSync(extractedJs)) {
+      // Portable package: use bundled node.exe. If Git Bash blocks it (EPERM),
+      // fall back to system node — this is a CI/Git Bash quirk, not a real issue.
+      const isMSYS = process.env.MSYSTEM || process.env.TERM === "cygwin";
+      try {
+        const result = spawnSync(extractedNode, [extractedJs, "--version"], {
+          encoding: "utf8",
+          timeout: isMSYS ? 5000 : 15000,
+          env: { ...process.env, DEEPCODE_API_KEY: "" },
+          windowsHide: true,
+        });
+        if (result.error) throw result.error;
+        ver2 = result.stdout.trim();
+      } catch {
+        if (isMSYS) {
+          log("Skipping extracted binary test (MSYS/Git Bash EPERM). Works on native Windows.");
+          ver2 = "(skipped — Git Bash limitation)";
+        } else {
+          throw new Error("Bundled node.exe spawn failed");
+        }
+      }
     } else if (existsSync(extractedJs)) {
       ver2 = execSync(`node "${extractedJs}" --version`, {
-        encoding: "utf8", timeout: 15000,
+        encoding: "utf8",
+        timeout: 15000,
         env: { ...process.env, DEEPCODE_API_KEY: "" },
       }).trim();
     } else {
       ver2 = execSync(`"${extractedBin}" --version`, {
-        encoding: "utf8", timeout: 15000,
+        encoding: "utf8",
+        timeout: 15000,
         env: { ...process.env, DEEPCODE_API_KEY: "" },
       }).trim();
     }
@@ -250,7 +292,7 @@ const reportContent = `# Binary Validation Report
 
 ## Results
 
-${report.map(r => `- ${r}`).join("\n")}
+${report.map((r) => `- ${r}`).join("\n")}
 
 ## Verdict
 

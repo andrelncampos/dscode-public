@@ -36,9 +36,9 @@
 | 190 | tool-call-repair | audited | V23, ADR-002 |
 | 200 | cache-aware-prompt | audited | V22, V6, ADR-001, ADR-002, ADR-200-001, ADR-200-002, ADR-200-003 |
 | 210 | cache-aware-compaction | audited | V22, V8, ADR-005 |
-| 220 | pro-first-modes | planned | V25, V13 |
-| 230 | deepseek-native-parser | planned | V24, V6, V12, ADR-001, ADR-002 |
-| 240 | auditabilidade | planned | V26 |
+| 220 | pro-first-modes | discarded | V25, V13 — descartada: não agregava valor (atalhos para settings já expostas) |
+| 230 | deepseek-native-parser | discarded | V24, V6, V12, ADR-001, ADR-002 — descartada: ganho marginal, tudo relevante já funciona |
+| 240 | auditabilidade | discarded | V26 — descartada: zero impacto no uso diário (SHA256, SBOM, build provenance, privacy policy, threat model são documentação/infra de confiança, não features de produto) |
 
 ---
 

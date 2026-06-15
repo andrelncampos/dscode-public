@@ -152,7 +152,7 @@ DsCode अपनी कॉन्फ़िगरेशन `~/.dscode/settings.jso
 | `notify` | string | प्रत्येक कार्य पूरा होने के बाद निष्पादित स्क्रिप्ट | *(कोई नहीं)* |
 | `engines` | object | प्रति-प्रदाता कॉन्फ़िगरेशन (जैसे `engines.openai.apiKey`) | `{}` |
 | `modelPricing` | object | कस्टम मॉडल प्राइसिंग ओवरराइड | *(DeepSeek V4 डिफ़ॉल्ट)* |
-| `cacheMode` | string | कैश रणनीति: `"off"` (डिफ़ॉल्ट), `"aware"` (KV Cache के लिए प्रीफ़िक्स अनुकूलित), `"strict"` (aware + हैश सत्यापन)। केवल DeepSeek | `"off"` |
+| `cacheMode` | string | कैश रणनीति: `"aware"` (डिफ़ॉल्ट, KV Cache के लिए प्रीफ़िक्स अनुकूलित), `"strict"` (aware + हैश सत्यापन), `"off"` (अक्षम)। केवल DeepSeek | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | रिपॉजिटरी दृश्यता। `"public"` होने पर `/management/` और `/.agents/` को `.gitignore` में स्वतः जोड़ता है | `"private"` |
 
 ### मॉडल प्राइसिंग (`modelPricing`)

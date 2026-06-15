@@ -144,11 +144,11 @@ function resolveReasoningEffort(value: unknown): ThinkingEffort | undefined {
 }
 
 function resolveCacheMode(raw: unknown): "off" | "aware" | "strict" {
-  if (typeof raw !== "string") return "off";
+  if (typeof raw !== "string") return "aware";
   const valid = new Set(["off", "aware", "strict"]);
   if (!valid.has(raw)) {
-    process.stderr.write(`[cache-aware] Invalid cacheMode ${JSON.stringify(raw)} — defaulting to 'off'\n`);
-    return "off";
+    process.stderr.write(`[cache-aware] Invalid cacheMode ${JSON.stringify(raw)} — defaulting to 'aware'\n`);
+    return "aware";
   }
   return raw as "off" | "aware" | "strict";
 }

@@ -22,7 +22,7 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  target: "node24",
+  target: "node22",
   outfile: OUT_FILE,
   jsx: "automatic",
   jsxImportSource: "react",
