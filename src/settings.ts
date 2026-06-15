@@ -645,6 +645,7 @@ export const DEFAULT_SETTINGS: DeepcodingSettings = {
   terminalTitleTemplate: "DsCode - {{cwd}}",
   repositoryVisibility: "private",
   thinkingBudgets: {},
+  cacheMode: "aware",
 };
 
 // ---------------------------------------------------------------------------
