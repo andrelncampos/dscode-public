@@ -308,11 +308,12 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ### Task 13: Update Roadmap Status
 
-**Objective:** Mark spec 260 as `created` in the roadmap.
+**Objective:** Mark spec 260 as `in-progress` when implementation starts, then `done` when complete.
 
 **Actions:**
 1. Open `management/roadmap.md`.
-2. Change line: `| 260 | developer-notes | planned | V28 |` → `| 260 | developer-notes | created | V28 |`.
+2. At start of implementation: change `| 260 | developer-notes | verified | V28 |` → `| 260 | developer-notes | in-progress | V28 |`.
+3. After all tasks complete and tests pass: change `in-progress` → `done`.
 
 **Validation:** Roadmap line updated. `git diff` confirms only status changed.
 
