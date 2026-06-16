@@ -49,7 +49,7 @@
 | 260B | notes-refinement | audited | V28 (child of 260) |
 | 270 | code-quality-cleanup | planned | V30 |
 | 280 | error-handling-hardening | planned | V29, L7 |
-| 290 | test-infra-error-visibility | planned | V29, L7 |
+| 290 | test-infra-error-visibility | implemented | V29, L7 |
 | 300 | dynamic-help-modal | planned | V30, V1 |
 | 320 | session-module-split | planned | V31, L1 |
 
