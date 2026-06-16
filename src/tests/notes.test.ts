@@ -126,26 +126,22 @@ test("writeNotes persists notes and readNotes reads them back — round-trip", (
 // FR-003: ID Generation
 // ---------------------------------------------------------------------------
 
-test("generateNoteId returns 4-char hex", () => {
+test("generateNoteId starts at 1 with empty set", () => {
   const id = generateNoteId(new Set());
-  assert.match(id, /^[0-9a-f]{4}$/);
+  assert.equal(id, "1");
 });
 
-test("generateNoteId avoids collision with existing", () => {
-  const existing = new Set(["abcd"]);
-  // This might fail if we get "abcd" on first try, but with 100 retries it's virtually impossible
+test("generateNoteId returns next number after max", () => {
+  const existing = new Set(["1", "3", "2"]);
   const id = generateNoteId(existing);
-  assert.notEqual(id, "abcd");
+  assert.equal(id, "4");
 });
 
-test("generateNoteId throws after 100 collision attempts", () => {
-  // Fill all possible IDs (in practice impossible, but we test the throw path)
-  // Since we can't fill 65536 IDs, we test by mocking: the function retries up to 100
-  // times. If we give it a set containing all IDs, it will exhaust retries.
-  // But that's impractical. Instead, we verify it returns valid IDs under normal conditions.
-  // The throw condition is document-level spec; tested implicitly by code review.
-  const id = generateNoteId(new Set());
-  assert.ok(id.length === 4);
+test("generateNoteId skips non-numeric existing IDs", () => {
+  // Old hex IDs are ignored; only numeric IDs affect the counter
+  const existing = new Set(["a1f3", "dead", "5", "beef"]);
+  const id = generateNoteId(existing);
+  assert.equal(id, "6");
 });
 
 // ---------------------------------------------------------------------------
@@ -158,7 +154,7 @@ test("createNote adds note with correct defaults", () => {
     const note = createNote("hello world", {});
     assert.equal(note.text, "hello world");
     assert.equal(note.status, "open");
-    assert.match(note.id, /^[0-9a-f]{4}$/);
+    assert.match(note.id, /^\d+$/);
     assert.ok(note.createdAt.length > 0);
     assert.ok(note.updatedAt.length > 0);
     // verify persisted

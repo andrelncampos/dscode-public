@@ -1,6 +1,5 @@
 import path from "node:path";
 import fs from "node:fs";
-import crypto from "node:crypto";
 
 import { resolveSpecName } from "./spec-names";
 
@@ -79,11 +78,12 @@ export function writeNotes(notes: Note[]): void {
 // ---------------------------------------------------------------------------
 
 export function generateNoteId(existingIds: Set<string>): string {
-  for (let i = 0; i < 100; i++) {
-    const id = crypto.randomBytes(2).toString("hex");
-    if (!existingIds.has(id)) return id;
+  let max = 0;
+  for (const id of existingIds) {
+    const n = Number(id);
+    if (Number.isFinite(n) && n > max) max = n;
   }
-  throw new Error("note ID generation exhausted after 100 attempts");
+  return String(max + 1);
 }
 
 // ---------------------------------------------------------------------------
