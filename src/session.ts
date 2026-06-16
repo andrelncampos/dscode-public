@@ -45,6 +45,7 @@ import { resolveApiTimeoutMs } from "./common/api-timeout";
 import { logApiError, classifyApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
+import { SessionSkills } from "./session/skills";
 import { GitFileHistory, type FileHistoryCheckpointResult } from "./common/file-history";
 import { clearSessionState, getSnippet, rebuildSessionStateFromHistory } from "./common/state";
 import {
@@ -396,6 +397,7 @@ export class SessionManager {
   private readonly mcpPolicy: McpPolicy;
   private readonly mcpScopeResolver: McpScopeResolver;
   private mcpToolDefinitions: ToolDefinition[] = [];
+  private readonly skills: SessionSkills;
   private skillsCache: SkillInfo[] = [];
   private readonly skillMcpMap = new Map<string, Record<string, McpServerConfig>>();
   private readonly messageConverter: OpenAIMessageConverter;
@@ -460,6 +462,14 @@ export class SessionManager {
     };
     this.converterOptions = converterOptions;
     this.messageConverter = new OpenAIMessageConverter(converterOptions);
+    this.skills = new SessionSkills({
+      projectRoot: this.projectRoot,
+      getResolvedSettings: this.getResolvedSettings.bind(this),
+      loadSessionsIndex: this.loadSessionsIndex.bind(this),
+      getSession: this.getSession.bind(this),
+      listSessionMessages: this.listSessionMessages.bind(this),
+      mcpManager: this.mcpManager,
+    });
   }
 
   /** @deprecated Kept for test compatibility. Returns OpenAI-format messages as unknown[]. */
