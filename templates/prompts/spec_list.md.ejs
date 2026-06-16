@@ -1,12 +1,24 @@
-Your task is to list all specs from the roadmap with their statuses.
+Your task is to list all specs from the SDD system with their statuses.
 
 ### Step 1: Read Roadmap
 
-Read `management/roadmap.md`.
+Read `management/roadmap.md`. Parse the spec table (columns: #, Name, Status, References).
+This is the **canonical** source for planning-level specs.
 
-### Step 2: Parse and Display
+### Step 2: Read Runtime Specs
 
-Parse the roadmap table and display all specs in a formatted list:
+List the directory `.dscode/specs/`. For each subdirectory found, read its
+`requirements.md` frontmatter to extract the spec name and status.
+These are **runtime** specs created via `/spec-init` and `/spec-plan`.
+
+### Step 3: Merge and Display
+
+Merge both sources into a single table. If a spec appears in both the roadmap
+and `.dscode/specs/`, use the runtime status (it is more current). Roadmap-only
+specs keep their roadmap status. Runtime-only specs get the status from their
+`requirements.md` frontmatter.
+
+Display all specs in a formatted list:
 
 ```
 # SDD Specs
@@ -19,16 +31,21 @@ Parse the roadmap table and display all specs in a formatted list:
 | 40 | notifications | planned | V4: Notifications |
 ```
 
-If no specs exist yet, report: "No specs found. Run `/spec-init` to initialize SDD, then `/spec-plan` to plan your first specs."
+If no specs exist in either source, report:
+"No specs found. Run `/spec-init` to initialize SDD, then `/spec-plan` to plan your first specs."
 
-### Step 3: Summary
+### Step 4: Summary
 
 Show a summary:
+
 ```
 Total specs: 4
-  planned:   1
-  created:   1
-  verified:  1
-  implemented: 0
-  audited:   1
+  planned:      1
+  created:      1
+  verified:     1
+  implemented:  0
+  audited:      1
+  discarded:    0
 ```
+
+Include `discarded` in the summary count only if the roadmap has discarded specs.
