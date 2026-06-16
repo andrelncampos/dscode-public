@@ -149,7 +149,7 @@ export const PromptInput = React.memo(function PromptInput({
   providerKeys,
 }: Props): React.ReactElement {
   const { exit } = useApp();
-  const { stdout } = useStdout();
+  const { stdout, write } = useStdout();
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<SkillInfo[]>([]);
@@ -168,6 +168,8 @@ export const PromptInput = React.memo(function PromptInput({
   const wasBusyRef = React.useRef(busy);
   const hadFileMentionTokenRef = React.useRef(false);
   const appliedDraftNonceRef = React.useRef<number | null>(null);
+  const writeRef = React.useRef(write);
+  writeRef.current = write;
 
   const { historyCursor, navigateHistory, exitHistoryBrowsing } = useHistoryNavigation(
     buffer,
@@ -696,6 +698,7 @@ export const PromptInput = React.memo(function PromptInput({
       setShowModelDropdown,
       setOpenRawModelDropdown,
       setStatusMessage,
+      writeOutput: (text: string) => writeRef.current(text),
     };
     executeSlashCommand(item, ctx);
   }

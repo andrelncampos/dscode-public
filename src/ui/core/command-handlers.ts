@@ -29,6 +29,8 @@ export type CommandContext = {
   setShowModelDropdown: (show: boolean) => void;
   setOpenRawModelDropdown: (show: boolean) => void;
   setStatusMessage: (msg: string) => void;
+  /** Write output below Ink's render area so it persists across renders. */
+  writeOutput: (text: string) => void;
 };
 
 type CommandHandler = (item: SlashCommandItem, ctx: CommandContext) => void;
@@ -110,25 +112,25 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const t = getActiveTFunction();
     const input = ctx.buffer.text.replace(/^\/note-add\s*/, "").trim();
     if (!input) {
-      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-add-usage") + "\n");
       return;
     }
     const args = parseNoteArgs(input);
     const text = args.positional.join(" ");
     if (!text) {
-      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-add-usage") + "\n");
       return;
     }
     const deadline = typeof args.flags.deadline === "string" ? args.flags.deadline : undefined;
     if (deadline && !isValidDate(deadline)) {
-      process.stdout.write(t("cmd.note-invalid-date") + "\n");
+      ctx.writeOutput(t("cmd.note-invalid-date") + "\n");
       return;
     }
     // FR-A02: extract --spec
     const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
     if (args.flags.spec !== undefined && specId === undefined) {
       // --spec was provided but value is not a string (true or array)
-      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-add-usage") + "\n");
       return;
     }
     // FR-A03: handle multiple --tag flags
@@ -145,7 +147,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       if (tags.length === 0) tags = undefined;
     }
     const note = createNote(text, { deadline, tags, specId });
-    process.stdout.write(formatNote(note) + "\n");
+    ctx.writeOutput(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },
   "note-list": (_item, ctx) => {
@@ -160,16 +162,16 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
           : undefined
         : undefined;
     if (args.flags.status && !status) {
-      process.stdout.write(t("cmd.note-invalid-status") + "\n");
+      ctx.writeOutput(t("cmd.note-invalid-status") + "\n");
       return;
     }
     const overdue = args.flags.overdue === true;
     const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
     const notes = listNotes({ status, overdue, specId });
     if (notes.length === 0) {
-      process.stdout.write(t("cmd.note-list-empty") + "\n");
+      ctx.writeOutput(t("cmd.note-list-empty") + "\n");
     } else {
-      process.stdout.write(formatNoteList(notes, { status, overdue, specId }) + "\n");
+      ctx.writeOutput(formatNoteList(notes, { status, overdue, specId }) + "\n");
     }
     ctx.resetPromptInput();
   },
@@ -181,11 +183,11 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const id = parts[0];
     const status = parts[1];
     if (!id || !status) {
-      process.stdout.write(t("cmd.note-status-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-status-usage") + "\n");
       return;
     }
     if (!isValidStatus(status)) {
-      process.stdout.write(t("cmd.note-invalid-status") + "\n");
+      ctx.writeOutput(t("cmd.note-invalid-status") + "\n");
       return;
     }
     // Read old status before update for confirmation
@@ -193,11 +195,11 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const oldNote = notes.find((n) => n.id === id);
     const note = updateNoteStatus(id, status as NoteStatus);
     if (!note) {
-      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      ctx.writeOutput(t("cmd.note-not-found", { id }) + "\n");
       return;
     }
-    process.stdout.write(t("cmd.note-status-changed", { id, from: oldNote?.status ?? "?", to: status }) + "\n");
-    process.stdout.write(formatNote(note) + "\n");
+    ctx.writeOutput(t("cmd.note-status-changed", { id, from: oldNote?.status ?? "?", to: status }) + "\n");
+    ctx.writeOutput(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },
   "note-edit": (_item, ctx) => {
@@ -208,7 +210,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const id = args.positional[0];
     const text = args.positional.slice(1).join(" ") || undefined;
     if (!id) {
-      process.stdout.write(t("cmd.note-edit-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-edit-usage") + "\n");
       return;
     }
     // Resolve spec change
@@ -229,19 +231,19 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     // Resolve deadline
     const deadline = typeof args.flags.deadline === "string" ? args.flags.deadline : undefined;
     if (deadline && !isValidDate(deadline)) {
-      process.stdout.write(t("cmd.note-invalid-date") + "\n");
+      ctx.writeOutput(t("cmd.note-invalid-date") + "\n");
       return;
     }
     // Must have at least one change
     if (!text && specId === undefined && !specRemove && tags === undefined && !deadline) {
-      process.stdout.write(t("cmd.note-edit-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-edit-usage") + "\n");
       return;
     }
     // Apply changes
     const notes = readNotes();
     const idx = notes.findIndex((n) => n.id === id);
     if (idx === -1) {
-      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      ctx.writeOutput(t("cmd.note-not-found", { id }) + "\n");
       return;
     }
     const note = notes[idx];
@@ -265,8 +267,8 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     }
     note.updatedAt = now();
     writeNotes(notes);
-    process.stdout.write(t("cmd.note-updated", { id }) + "\n");
-    process.stdout.write(formatNote(note) + "\n");
+    ctx.writeOutput(t("cmd.note-updated", { id }) + "\n");
+    ctx.writeOutput(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },
   "note-deadline": (_item, ctx) => {
@@ -276,27 +278,27 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const args = parseNoteArgs(input);
     const id = args.positional[0];
     if (!id) {
-      process.stdout.write(t("cmd.note-deadline-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-deadline-usage") + "\n");
       return;
     }
     const remove = args.flags.remove === true;
     const deadline = remove ? null : (args.positional[1] ?? null);
     if (!remove && !deadline) {
-      process.stdout.write(t("cmd.note-deadline-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-deadline-usage") + "\n");
       return;
     }
     if (deadline && typeof deadline === "string" && !isValidDate(deadline)) {
-      process.stdout.write(t("cmd.note-invalid-date") + "\n");
+      ctx.writeOutput(t("cmd.note-invalid-date") + "\n");
       return;
     }
     const note = updateNoteDeadline(id, deadline as string | null);
     if (!note) {
-      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      ctx.writeOutput(t("cmd.note-not-found", { id }) + "\n");
       return;
     }
     const msg = remove ? t("cmd.note-deadline-removed", { id }) : t("cmd.note-deadline-set", { id });
-    process.stdout.write(msg + "\n");
-    process.stdout.write(formatNote(note) + "\n");
+    ctx.writeOutput(msg + "\n");
+    ctx.writeOutput(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },
   "note-delete": (_item, ctx) => {
@@ -304,19 +306,19 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const t = getActiveTFunction();
     const input = ctx.buffer.text.replace(/^\/note-delete\s*/, "").trim();
     if (!input) {
-      process.stdout.write(t("cmd.note-delete-usage") + "\n");
+      ctx.writeOutput(t("cmd.note-delete-usage") + "\n");
       return;
     }
     const id = input.split(/\s+/)[0];
     const notes = readNotes();
     const idx = notes.findIndex((n) => n.id === id);
     if (idx === -1) {
-      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      ctx.writeOutput(t("cmd.note-not-found", { id }) + "\n");
       return;
     }
     notes.splice(idx, 1);
     writeNotes(notes);
-    process.stdout.write(t("cmd.note-deleted", { id }) + "\n");
+    ctx.writeOutput(t("cmd.note-deleted", { id }) + "\n");
     ctx.resetPromptInput();
   },
 };
