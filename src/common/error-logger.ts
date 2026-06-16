@@ -28,9 +28,63 @@ export type ApiErrorLogEntry = {
     message: string;
     stack?: string;
   };
+  category?: string;
   request: Record<string, unknown>;
   response?: unknown;
 };
+
+/** Inspect a caught API error and return a user-friendly category string. */
+export function classifyApiError(err: unknown): string {
+  let status: number | undefined;
+  let message: string;
+  let code: string | undefined;
+
+  if (err instanceof Error) {
+    message = err.message;
+    code = (err as NodeJS.ErrnoException).code;
+    status = (err as unknown as Record<string, unknown>).status as number | undefined;
+    if (status === undefined) {
+      const resp = (err as unknown as Record<string, unknown>).response as Record<string, unknown> | undefined;
+      status = resp?.status as number | undefined;
+    }
+  } else if (typeof err === "object" && err !== null) {
+    const e = err as Record<string, unknown>;
+    message = typeof e.message === "string" ? e.message : String(err);
+    status = typeof e.status === "number" ? e.status : undefined;
+    code = typeof e.code === "string" ? e.code : undefined;
+    if (status === undefined) {
+      const resp = e.response as Record<string, unknown> | undefined;
+      status = resp?.status as number | undefined;
+    }
+  } else if (typeof err === "string") {
+    message = err;
+  } else {
+    return "Unknown error: (no details)";
+  }
+
+  // Network errors (no HTTP status)
+  if (status === undefined && code !== undefined) {
+    if (code === "ECONNREFUSED" || code === "ETIMEDOUT" || code === "ENOTFOUND" || code === "ECONNRESET") {
+      return "Network error — check your connection";
+    }
+  }
+
+  // HTTP status-based classification
+  if (status !== undefined) {
+    if (status === 401) return "Authentication failed — check your API key";
+    if (status === 403) return "Access denied — your account may lack access to this model";
+    if (status === 404) return "Model not found — the model name may be incorrect or unavailable in your region";
+    if (status === 429) return "Rate limit exceeded — wait and retry";
+    if (status === 413) return "Request too large — reduce input size";
+    if (status === 400 && /context|length/i.test(message)) {
+      return "Context length exceeded — reduce conversation size";
+    }
+    if (status >= 400 && status < 500) return `Client error (HTTP ${status}): ${message}`;
+    if (status >= 500) return `Provider server error (HTTP ${status}) — the API may be down`;
+  }
+
+  return `Unknown error: ${message}`;
+}
 
 /**
  * Write an API error log entry to ~/.dscode/logs/error.log.
@@ -52,6 +106,7 @@ export function logApiError(entry: ApiErrorLogEntry): void {
         stack: entry.error.stack ? maskSensitiveString(entry.error.stack) : undefined,
       },
       request: truncateStrings(maskSensitive(entry.request), MAX_STRING_LENGTH),
+      category: entry.category,
     };
 
     if (entry.response !== undefined) {
@@ -75,7 +130,12 @@ export function logApiError(entry: ApiErrorLogEntry): void {
     }
 
     ensureRestrictivePermissions(ERROR_LOG_PATH);
-  } catch {
-    // Silently ignore logging failures to avoid disrupting the main flow
+  } catch (logErr: unknown) {
+    try {
+      const msg = logErr instanceof Error ? logErr.message : String(logErr);
+      process.stderr.write(`[dscode] Failed to write to error log: ${msg}\n`);
+    } catch {
+      // Last resort: even stderr failed. Nothing more we can do.
+    }
   }
 }

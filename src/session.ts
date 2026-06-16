@@ -42,7 +42,7 @@ import { RuntimeReasoningEffortManager } from "./common/reasoning-effort-manager
 import type { BudgetSettings, McpServerConfig, PermissionScope, PermissionSettings, ReasoningEffort } from "./settings";
 import { clearSettingsCache, getEffectiveCacheMode } from "./settings";
 import { resolveApiTimeoutMs } from "./common/api-timeout";
-import { logApiError } from "./common/error-logger";
+import { logApiError, classifyApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
 import { GitFileHistory, type FileHistoryCheckpointResult } from "./common/file-history";
@@ -701,6 +701,7 @@ export class SessionManager {
       try {
         entries = fs.readdirSync(root, { withFileTypes: true });
       } catch {
+        // intentional: best-effort — error is non-critical
         return [];
       }
 
@@ -1568,6 +1569,7 @@ export class SessionManager {
             }
           });
         } catch (error) {
+          const category = classifyApiError(error);
           logApiError({
             timestamp: new Date().toISOString(),
             location: "SessionManager.activateSession:stream",
@@ -1575,6 +1577,7 @@ export class SessionManager {
             sessionId,
             model,
             request: {},
+            category,
             error: {
               name: error instanceof Error ? error.name : "UnknownError",
               message: error instanceof Error ? error.message : String(error),
@@ -1738,6 +1741,7 @@ export class SessionManager {
       );
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : String(error);
+      const category = classifyApiError(error);
       const aborted = this.isAbortLikeError(error) || sessionController.signal.aborted;
       const timedOut = this.isTimeoutError(error);
 
@@ -1757,7 +1761,7 @@ export class SessionManager {
       if (!aborted) {
         const userMessage = timedOut
           ? `Request timed out after ${Math.round(resolveApiTimeoutMs() / 1000)} seconds. You can retry by sending another message.`
-          : `Request failed: ${errMessage}`;
+          : `API error: ${category}`;
         this.onAssistantMessage(this.buildAssistantMessage(sessionId, userMessage, null), false);
       }
     } finally {
@@ -2767,6 +2771,7 @@ export class SessionManager {
         originalPath: parsed.originalPath || this.projectRoot,
       };
     } catch {
+      // intentional: return empty state on parse failure
       return { version: 1, entries: [], originalPath: this.projectRoot };
     }
   }
@@ -3716,6 +3721,7 @@ export class SessionManager {
         truncated: content.length > maxChars,
       };
     } catch {
+      // intentional: return null on snapshot read failure
       return null;
     }
   }

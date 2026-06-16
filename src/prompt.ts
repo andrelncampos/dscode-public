@@ -140,6 +140,7 @@ function readDefaultSkillDocs(extensionRoot: string): Array<{ name: string; cont
         content: fs.readFileSync(fullPath, "utf8").trim(),
       };
     } catch {
+      // intentional: best-effort non-critical operation
       return null;
     }
   }).filter((skill): skill is { name: string; content: string } => Boolean(skill?.content));

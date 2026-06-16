@@ -742,6 +742,7 @@ function readSettingsAndEnsureDefaults(settingsPath: string): DeepcodingSettings
       try {
         atomicWriteJsonFileSync(settingsPath, enriched);
       } catch {
+        // intentional: best-effort non-critical operation
         // Non-fatal — the in-memory enriched settings will be used regardless.
       }
     }
