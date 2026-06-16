@@ -41,7 +41,7 @@
 | 240 | auditabilidade | discarded | V26 — descartada: zero impacto no uso diário (SHA256, SBOM, build provenance, privacy policy, threat model são documentação/infra de confiança, não features de produto) |
 | 250 | billing-completeness | audited | V27, V11, V21, ADR-005 |
 | 260 | developer-notes | audited | V28 |
-| 260A | notes-mvp | planned | V28 (child of 260) |
+| 260A | notes-mvp | created | V28 (child of 260) |
 | 260B | notes-refinement | planned | V28 (child of 260) |
 
 ---
