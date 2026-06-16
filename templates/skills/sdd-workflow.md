@@ -10,10 +10,10 @@ description: DsCode SDD workflow and spec status lifecycle. Use when working wit
 The DsCode SDD workflow has exactly 4 steps in strict order:
 
 ```
-1. /spec-new     → creates requirements.md, design.md, task.md; status = "planned"
-2. /spec-verify  → validates implementation against requirements; status = "in-progress"
+1. /spec-new      → creates requirements.md, design.md, task.md; status = "planned"
+2. /spec-verify   → validates requirements against implementation; status = "verified"
 3. /spec-implement → writes the actual code; status = "done"
-4. /spec-audit   → final review; status = "audited"
+4. /spec-audit    → final review; status = "audited"
 ```
 
 ## Status Meanings
@@ -22,9 +22,11 @@ The DsCode SDD workflow has exactly 4 steps in strict order:
 |--------|---------|----------|
 | `proposed` | Idea stage, no spec written yet | Before step 1 |
 | `planned` | Spec documents created, not implemented | After step 1 |
-| `in-progress` | Under active development | During steps 2-3 |
-| `done` | Implementation complete | After step 3 |
+| `verified` | Requirements verified against implementation | After step 2 |
+| `in-progress` | Code being written on a feature branch | During step 3 |
+| `done` | Implementation complete, merged to main | After step 3 |
 | `audited` | **Final stage.** Spec was implemented AND audited. Feature is live. | After step 4 |
+| `discarded` | Intentionally abandoned | N/A |
 
 ## Critical Rule
 
@@ -43,6 +45,7 @@ not as incomplete work on the existing one.
 
 When analyzing the roadmap (`management/roadmap.md`):
 - `done` + `audited` = feature is complete and live
+- `verified` = requirements checked, ready for implementation
 - `planned` = spec exists but not yet implemented
 - `in-progress` = currently being worked on
 - `proposed` = idea only, no spec documents
