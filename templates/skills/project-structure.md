@@ -43,7 +43,7 @@ This directory is the **canonical SDD root**. All planning, architecture, and sp
 
 ### `roadmap.md`
 **Master spec index.** Contains the spec table (columns: #, Name, Status, References) and dependency graphs.
-Statuses: `done`, `in-progress`, `planned`, `proposed`, `discarded`.
+Statuses: `planned`, `created`, `verified`, `implemented`, `audited`, `in-progress`, `proposed`, `discarded`.
 When asked "what specs exist?", read this file first. It is the single source of truth for spec status.
 
 ### `vision.md`

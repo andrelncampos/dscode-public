@@ -464,7 +464,7 @@ flowchart TD
 |---|---|
 | `vision.md` | Visão do produto, público-alvo, proposta de valor |
 | `arch.md` | Decisões de arquitetura, stack, padrões |
-| `roadmap.md` | Lista de specs com status (planned/in-progress/done) |
+| `roadmap.md` | Lista de specs com status (planned/created/verified/implemented/audited) |
 | `adr.md` | Architecture Decision Records |
 | `lessons.md` | Lições aprendidas ao longo do desenvolvimento |
 
