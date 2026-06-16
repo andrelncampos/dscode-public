@@ -313,13 +313,6 @@ export function updateNoteDeadline(id: string, deadline: string | null): Note | 
 // Formatting
 // ---------------------------------------------------------------------------
 
-const STATUS_COLORS: Record<NoteStatus, string> = {
-  open: "\x1b[33m",
-  closed: "\x1b[32m",
-  paused: "\x1b[2m",
-  abandoned: "\x1b[31m",
-};
-
 export function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const slice = text.slice(0, maxLen);
@@ -333,9 +326,7 @@ export function truncateText(text: string, maxLen: number): string {
 }
 
 export function formatNote(note: Note): string {
-  const RESET = "\x1b[0m";
-  const color = STATUS_COLORS[note.status] ?? "";
-  const parts: string[] = [`[${note.id}]`, `${color}${note.status.toUpperCase()}${RESET}`, truncateText(note.text, 80)];
+  const parts: string[] = [`[${note.id}]`, note.status.toUpperCase(), truncateText(note.text, 80)];
   if (note.deadline) {
     parts.push(`(deadline: ${note.deadline})`);
   }
@@ -354,7 +345,7 @@ export function formatNoteList(
   notes: Note[],
   filters: { status?: NoteStatus; overdue?: boolean; specId?: string }
 ): string {
-  const filterParts: string[] = ["\x1b[1m═══ NOTES ═══\x1b[0m"];
+  const filterParts: string[] = ["═══ NOTES ═══"];
   if (filters.status) filterParts.push(`status: ${filters.status}`);
   if (filters.overdue) filterParts.push("overdue");
   if (filters.specId) {
@@ -372,7 +363,7 @@ export function formatNoteList(
       const deadlineDate = new Date(note.deadline + "T00:00:00Z");
       const todayDate = new Date(today() + "T00:00:00Z");
       const days = Math.floor((todayDate.getTime() - deadlineDate.getTime()) / 86400000);
-      prefix = `\x1b[1;31mOVERDUE (${days}d)\x1b[0m `;
+      prefix = `OVERDUE (${days}d) `;
     }
     lines.push(prefix + formatNote(note));
   }

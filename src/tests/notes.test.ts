@@ -364,7 +364,7 @@ test("formatNote omits absent optional fields", () => {
   assert.equal(output.includes("(spec:"), false);
 });
 
-test("formatNote color-codes status", () => {
+test("formatNote includes status as plain text (no ANSI)", () => {
   const note: Note = {
     id: "abcd",
     text: "x",
@@ -373,8 +373,8 @@ test("formatNote color-codes status", () => {
     updatedAt: "2026-01-01T00:00:00",
   };
   const output = formatNote(note);
-  // Green for closed
-  assert.ok(output.includes("\x1b[32m"));
+  assert.ok(output.includes("CLOSED"));
+  assert.ok(!output.includes("\x1b"));
 });
 
 test("formatNoteList shows header and lines", () => {
