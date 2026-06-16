@@ -55,6 +55,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    - `writeFileSync(NOTES_TMP, json, "utf8")`.
    - `renameSync(NOTES_TMP, NOTES_PATH)`.
    - `fsyncSync` on file fd to flush write cache (use try/finally for close).
+4. Create `.dscode/.gitignore` with content `notes.json` (via `writeFileSync` if file does not exist).
 
 **Validation:** Manual test: call `writeNotes([...])` then `readNotes()` and verify round-trip. Delete file and verify `readNotes()` returns `[]`. Corrupt JSON and verify returns `[]`.
 
