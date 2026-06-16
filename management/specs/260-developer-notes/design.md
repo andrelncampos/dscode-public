@@ -106,7 +106,7 @@ export function writeNotes(notes: Note[]): void
 2. Serialize: `JSON.stringify(notes, null, 2)` for human readability.
 3. Write to temp: `fs.writeFileSync(NOTES_TMP, json, "utf8")`.
 4. Atomically replace: `fs.renameSync(NOTES_TMP, NOTES_PATH)`.
-5. Sync directory: `fs.openSync(dirname(NOTES_PATH), "r"); fs.fsyncSync(fd); fs.closeSync(fd)` — ensures rename is persisted to disk.
+5. Sync to disk: `const fd = fs.openSync(NOTES_PATH, "r"); try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }`. This syncs the file data itself to disk. On Windows, `fsyncSync` on the file handle flushes the write cache. Directory sync is not needed — `renameSync` is atomic on NTFS.
 
 **Error Handling:** Let errors propagate. If the disk is full, the handler catches and displays a status message.
 
@@ -152,7 +152,7 @@ export function createNote(
 **Internal Logic:**
 1. `const notes = readNotes()`.
 2. `const id = generateNoteId(new Set(notes.map(n => n.id)))`.
-3. `const now = new Date().toISOString().replace("T", " ").replace(/\..+/, "")` → `"2026-06-16T13:00:00"`.
+3. `const now = new Date().toISOString().replace(/\..+/, "")` → `"2026-06-16T13:00:00"`.
 4. `const note: Note = { id, text, status: "open", createdAt: now, updatedAt: now, ...options }`.
 5. If `tags` present, deduplicate with `[...new Set(tags.map(t => t.toLowerCase().trim()))]`.
 6. If tags array empty after dedup, delete `tags` key.
@@ -247,10 +247,10 @@ export function formatNoteList(
 ```
 
 **Internal Logic:**
-1. If `notes.length === 0`: return `"No notes found. Use /note-add <text> to create one."` (i18n key `cmd.note-list-empty`).
-2. Header: `\x1b[1m═══ NOTES ═══\x1b[0m` with filter description.
-3. Map each note to formatted line. Prepend `\x1b[1;31mOVERDUE\x1b[0m ` if overdue.
-4. Join with `\n`.
+1. Header: `\x1b[1m═══ NOTES ═══\x1b[0m` with filter description.
+2. Map each note to formatted line. Prepend `\x1b[1;31mOVERDUE\x1b[0m ` if overdue.
+3. Join with `\n`.
+4. Caller is responsible for checking `notes.length === 0` and showing the localized empty message via `t("cmd.note-list-empty")` before calling this function. This function assumes non-empty input.
 
 ### Component: `src/ui/core/notes.ts` — Validation
 
@@ -317,7 +317,11 @@ Five new handlers registered in `COMMAND_HANDLERS`:
   const overdue = args.flags.overdue === true;
   const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
   const notes = listNotes({ status, overdue, specId });
-  process.stdout.write(formatNoteList(notes, { status, overdue, specId }) + "\n");
+  if (notes.length === 0) {
+    process.stdout.write(t("cmd.note-list-empty") + "\n");
+  } else {
+    process.stdout.write(formatNoteList(notes, { status, overdue, specId }) + "\n");
+  }
   ctx.resetPromptInput();
 },
 

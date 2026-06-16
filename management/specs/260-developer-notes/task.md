@@ -8,7 +8,7 @@ references: V28
 
 ## Task Order
 
-Tasks MUST be executed sequentially in numerical order. Each task depends on the completion of all preceding tasks. This spec covers **only** the parent infrastructure (data model, storage, arg parsing, formatting, command registration). The child specs 260A and 260B define their own tasks for the actual command implementations.
+Tasks MUST be executed sequentially in numerical order. Each task depends on the completion of all preceding tasks. This spec implements ALL 5 commands plus shared infrastructure. Spec 260A and 260B are refinement specs that add polish, additional edge case handling, and spec-linking features on top of this foundation.
 
 ## Tasks
 
@@ -54,7 +54,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    - `JSON.stringify(notes, null, 2)`.
    - `writeFileSync(NOTES_TMP, json, "utf8")`.
    - `renameSync(NOTES_TMP, NOTES_PATH)`.
-   - `fsyncSync` on directory fd.
+   - `fsyncSync` on file fd to flush write cache (use try/finally for close).
 
 **Validation:** Manual test: call `writeNotes([...])` then `readNotes()` and verify round-trip. Delete file and verify `readNotes()` returns `[]`. Corrupt JSON and verify returns `[]`.
 
@@ -144,7 +144,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 **Design References:** Component "src/ui/core/notes.ts — CRUD Operations".
 
 **Actions:**
-1. Implement helper: `now(): string` → `new Date().toISOString()` formatted as `"YYYY-MM-DDTHH:mm:ss"` (replace `T` with space, strip milliseconds).
+1. Implement helper: `now(): string` → `new Date().toISOString().replace(/\..+/, "")` producing `"YYYY-MM-DDTHH:mm:ss"`.
 2. Implement helper: `today(): string` → `new Date().toISOString().slice(0, 10)` for overdue comparison.
 3. Implement `createNote(text, options)`:
    - `readNotes()`, generate ID, build note, push, `writeNotes()`.
