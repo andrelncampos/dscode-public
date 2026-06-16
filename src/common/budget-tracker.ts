@@ -10,14 +10,14 @@ import {
 } from "./model-capabilities";
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
-import { computeCacheSavings, normalizeCacheTokens } from "./cache-metrics";
+import { normalizeCacheTokens } from "./cache-metrics";
 
 const BUDGET_FILE = "budget.md";
 
 type DailyCost = {
   date: string; // YYYY-MM-DD
   cost: number;
-  cacheSaved: number;
+  cacheCost: number;
   cacheHitTokens: number;
   cacheMissTokens: number;
   sessionCount: number;
@@ -57,12 +57,12 @@ function parseBudgetFile(content: string): DailyCost[] {
       const sessions = parseInt(match5[2], 10);
       const tokens = parseTokenCount(match5[3]);
       const cost = parseFloat(match5[4]);
-      const cacheSaved = parseFloat(match5[5]);
+      const cacheCost = parseFloat(match5[5]);
       if (date && Number.isFinite(cost)) {
         costs.push({
           date,
           cost,
-          cacheSaved: Number.isFinite(cacheSaved) ? cacheSaved : 0,
+          cacheCost: Number.isFinite(cacheCost) ? cacheCost : 0,
           cacheHitTokens: 0,
           cacheMissTokens: 0,
           sessionCount: Number.isFinite(sessions) ? sessions : 0,
@@ -79,12 +79,12 @@ function parseBudgetFile(content: string): DailyCost[] {
     if (match4) {
       const date = match4[1];
       const cost = parseFloat(match4[2]);
-      const cacheSaved = parseFloat(match4[3]);
+      const cacheCost = parseFloat(match4[3]);
       if (date && Number.isFinite(cost)) {
         costs.push({
           date,
           cost,
-          cacheSaved: Number.isFinite(cacheSaved) ? cacheSaved : 0,
+          cacheCost: Number.isFinite(cacheCost) ? cacheCost : 0,
           cacheHitTokens: 0,
           cacheMissTokens: 0,
           sessionCount: 0,
@@ -103,7 +103,7 @@ function parseBudgetFile(content: string): DailyCost[] {
         costs.push({
           date,
           cost,
-          cacheSaved: 0,
+          cacheCost: 0,
           cacheHitTokens: 0,
           cacheMissTokens: 0,
           sessionCount: 0,
@@ -123,33 +123,33 @@ function parseTokenCount(raw: string): number {
   return Math.round(num);
 }
 
-/** Format savings cost with exactly 3 decimal places (savings are typically sub-cent). */
-function formatSavings(value: number): string {
-  return `$${value.toFixed(3)}`;
+/** Format cache cost with exactly 4 decimal places (cache reads are typically sub-cent). */
+function formatCacheCost(value: number): string {
+  return `$${value.toFixed(4)}`;
 }
 
 export function buildBudgetMarkdown(costs: DailyCost[]): string {
   const sorted = [...costs].sort((a, b) => b.date.localeCompare(a.date));
   const totalCost = sorted.reduce((sum, e) => sum + e.cost, 0);
-  const totalCacheSaved = sorted.reduce((sum, e) => sum + e.cacheSaved, 0);
+  const totalCacheCost = sorted.reduce((sum, e) => sum + e.cacheCost, 0);
   const totalSessions = sorted.reduce((sum, e) => sum + e.sessionCount, 0);
   const totalTokens = sorted.reduce((sum, e) => sum + e.totalTokens, 0);
 
   const lines: string[] = [
     "# Budget — Custo acumulado do projeto",
     "",
-    "| Data | Chamadas | Tokens | Custo (USD) | Economia (USD) |",
-    "|------|----------|--------|-------------|----------------|",
+    "| Data | Chamadas | Tokens | Custo (USD) | Cache (USD) |",
+    "|------|----------|--------|-------------|-------------|",
   ];
 
   for (const entry of sorted) {
     lines.push(
-      `| ${entry.date} | ${entry.sessionCount} | ${formatTokenCount(entry.totalTokens)} | ${formatCost(entry.cost)} | ${formatSavings(entry.cacheSaved)} |`
+      `| ${entry.date} | ${entry.sessionCount} | ${formatTokenCount(entry.totalTokens)} | ${formatCost(entry.cost)} | ${formatCacheCost(entry.cacheCost)} |`
     );
   }
 
   lines.push(
-    `| **Total** | **${totalSessions}** | **${formatTokenCount(totalTokens)}** | **${formatCost(totalCost)}** | **${formatSavings(totalCacheSaved)}** |`
+    `| **Total** | **${totalSessions}** | **${formatTokenCount(totalTokens)}** | **${formatCost(totalCost)}** | **${formatCacheCost(totalCacheCost)}** |`
   );
 
   return lines.join("\n") + "\n";
@@ -247,7 +247,7 @@ export function recordBudgetCost(
       if (typeof usage.normalizedCacheHitTokens === "number") {
         existing.cacheHitTokens += usage.normalizedCacheHitTokens;
         existing.cacheMissTokens += usage.normalizedCacheMissTokens ?? 0;
-        existing.cacheSaved += computeCacheSavings(usage.normalizedCacheHitTokens, pricing);
+        existing.cacheCost += (usage.normalizedCacheHitTokens / 1_000_000) * pricing.cacheReadPrice;
       }
       if (meta) {
         existing.meta = { ...existing.meta, ...meta };
@@ -255,11 +255,11 @@ export function recordBudgetCost(
     } else {
       const cacheHit = typeof usage.normalizedCacheHitTokens === "number" ? usage.normalizedCacheHitTokens : 0;
       const cacheMiss = typeof usage.normalizedCacheMissTokens === "number" ? usage.normalizedCacheMissTokens : 0;
-      const cacheSaved = cacheHit > 0 ? computeCacheSavings(cacheHit, pricing) : 0;
+      const cacheCost = cacheHit > 0 ? (cacheHit / 1_000_000) * pricing.cacheReadPrice : 0;
       costs.push({
         date: today,
         cost,
-        cacheSaved,
+        cacheCost,
         cacheHitTokens: cacheHit,
         cacheMissTokens: cacheMiss,
         sessionCount: 1,

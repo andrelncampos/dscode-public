@@ -185,7 +185,7 @@ test("buildBudgetMarkdown produces 5-column format", () => {
 
   assert.match(content, /Chamadas/);
   assert.match(content, /Tokens/);
-  assert.match(content, /Economia/);
+  assert.match(content, /Cache/);
 
   const today = new Date().toISOString().slice(0, 10);
   // Session count should be 1
@@ -262,14 +262,14 @@ test("budget round-trip preserves cost and session count", () => {
 
   const content = fs.readFileSync(budgetPath, "utf8");
   assert.match(content, /Chamadas/);
-  assert.match(content, /Economia/);
+  assert.match(content, /Cache/);
 
   const { todayCost, projectTotal } = getBudgetCosts(projectRoot);
   assert.ok(todayCost > 0);
   assert.equal(projectTotal, todayCost);
 });
 
-test("recordBudgetCostWithCache records cacheSaved > 0 with DeepSeek cache tokens", () => {
+test("recordBudgetCostWithCache records cacheCost > 0 with DeepSeek cache tokens", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const usage = makeUsage({
     prompt_tokens: 1_000_000,
@@ -280,16 +280,16 @@ test("recordBudgetCostWithCache records cacheSaved > 0 with DeepSeek cache token
   recordBudgetCostWithCache(projectRoot, "deepseek-v4-pro", usage);
   const budgetPath = path.join(projectRoot, ".dscode", "budget.md");
   const content = fs.readFileSync(budgetPath, "utf8");
-  // Parse the savings column (5th column)
+  // Parse the cache cost column (5th column)
   const match = content.match(
     /\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*\d+\s*\|\s*[\d.]+[KM]?\s*\|\s*\$?(\d+\.\d+)\s*\|\s*\$?(\d+\.\d+)\s*\|/
   );
   assert.ok(match, "Budget entry should exist");
-  const cacheSaved = parseFloat(match[2]);
-  assert.ok(cacheSaved > 0, `Expected cacheSaved > 0, got ${cacheSaved}`);
+  const cacheCost = parseFloat(match[2]);
+  assert.ok(cacheCost > 0, `Expected cacheCost > 0, got ${cacheCost}`);
 });
 
-test("recordBudgetCostWithCache records cacheSaved > 0 with OpenAI cache tokens", () => {
+test("recordBudgetCostWithCache records cacheCost > 0 with OpenAI cache tokens", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const usage = makeUsage({
     prompt_tokens: 1_000_000,
@@ -304,11 +304,11 @@ test("recordBudgetCostWithCache records cacheSaved > 0 with OpenAI cache tokens"
     /\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*\d+\s*\|\s*[\d.]+[KM]?\s*\|\s*\$?(\d+\.\d+)\s*\|\s*\$?(\d+\.\d+)\s*\|/
   );
   assert.ok(match);
-  const cacheSaved = parseFloat(match[2]);
-  assert.ok(cacheSaved > 0, `Expected cacheSaved > 0, got ${cacheSaved}`);
+  const cacheCost = parseFloat(match[2]);
+  assert.ok(cacheCost > 0, `Expected cacheCost > 0, got ${cacheCost}`);
 });
 
-test("recordBudgetCostWithCache records cacheSaved > 0 with Anthropic cache tokens", () => {
+test("recordBudgetCostWithCache records cacheCost > 0 with Anthropic cache tokens", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const usage = makeUsage({
     prompt_tokens: 1_000_000,
@@ -323,11 +323,11 @@ test("recordBudgetCostWithCache records cacheSaved > 0 with Anthropic cache toke
     /\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*\d+\s*\|\s*[\d.]+[KM]?\s*\|\s*\$?(\d+\.\d+)\s*\|\s*\$?(\d+\.\d+)\s*\|/
   );
   assert.ok(match);
-  const cacheSaved = parseFloat(match[2]);
-  assert.ok(cacheSaved > 0, `Expected cacheSaved > 0, got ${cacheSaved}`);
+  const cacheCost = parseFloat(match[2]);
+  assert.ok(cacheCost > 0, `Expected cacheCost > 0, got ${cacheCost}`);
 });
 
-test("recordBudgetCostWithCache with zero cache tokens records cacheSaved = 0", () => {
+test("recordBudgetCostWithCache with zero cache tokens records cacheCost = 0", () => {
   const projectRoot = createTempDir("deepcode-budget-test-");
   const usage = makeUsage({
     prompt_tokens: 1_000_000,
@@ -341,8 +341,8 @@ test("recordBudgetCostWithCache with zero cache tokens records cacheSaved = 0", 
     /\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*\d+\s*\|\s*[\d.]+[KM]?\s*\|\s*\$?(\d+\.\d+)\s*\|\s*\$?(\d+\.\d+)\s*\|/
   );
   assert.ok(match);
-  const cacheSaved = parseFloat(match[2]);
-  assert.equal(cacheSaved, 0);
+  const cacheCost = parseFloat(match[2]);
+  assert.equal(cacheCost, 0);
 });
 
 test("normalizeCacheTokens detects Gemini cachedContentTokenCount via prompt_tokens_details", () => {
