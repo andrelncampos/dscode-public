@@ -40,7 +40,7 @@
 | 230 | deepseek-native-parser | discarded | V24, V6, V12, ADR-001, ADR-002 — descartada: ganho marginal, tudo relevante já funciona |
 | 240 | auditabilidade | discarded | V26 — descartada: zero impacto no uso diário (SHA256, SBOM, build provenance, privacy policy, threat model são documentação/infra de confiança, não features de produto) |
 | 250 | billing-completeness | audited | V27, V11, V21, ADR-005 |
-| 260 | developer-notes | done | V28 |
+| 260 | developer-notes | audited | V28 |
 | 260A | notes-mvp | planned | V28 (child of 260) |
 | 260B | notes-refinement | planned | V28 (child of 260) |
 

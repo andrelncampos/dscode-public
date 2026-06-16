@@ -17,7 +17,6 @@ import {
   updateNoteDeadline,
   formatNote,
   formatNoteList,
-  NoteStatus,
 } from "../ui/core/notes";
 
 // ---------------------------------------------------------------------------
