@@ -50,6 +50,22 @@ export function buildSyntheticUserMessage(content: string, imageCount: number): 
   };
 }
 
+export function buildSystemMessage(content: string): SessionMessage {
+  const now = new Date().toISOString();
+  return {
+    id: `sys-${Math.random().toString(36).slice(2)}`,
+    sessionId: "local",
+    role: "system",
+    content,
+    contentParams: null,
+    messageParams: null,
+    compacted: false,
+    visible: true,
+    createTime: now,
+    updateTime: now,
+  };
+}
+
 export function buildPromptDraftFromSessionMessage(message: SessionMessage, nonce: number): PromptDraft {
   return {
     nonce,

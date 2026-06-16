@@ -94,6 +94,8 @@ type Props = PromptStreamState &
     cacheLine?: string | null;
     /** Set of provider names that have configured API keys. */
     providerKeys?: Set<string>;
+    /** Callback to display command output as a system message in the chat flow. */
+    onCommandOutput?: (text: string) => void;
   };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -147,9 +149,10 @@ export const PromptInput = React.memo(function PromptInput({
   sessionContextWindow,
   cacheLine = null,
   providerKeys,
+  onCommandOutput,
 }: Props): React.ReactElement {
   const { exit } = useApp();
-  const { stdout, write } = useStdout();
+  const { stdout } = useStdout();
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<SkillInfo[]>([]);
@@ -168,8 +171,6 @@ export const PromptInput = React.memo(function PromptInput({
   const wasBusyRef = React.useRef(busy);
   const hadFileMentionTokenRef = React.useRef(false);
   const appliedDraftNonceRef = React.useRef<number | null>(null);
-  const writeRef = React.useRef(write);
-  writeRef.current = write;
 
   const { historyCursor, navigateHistory, exitHistoryBrowsing } = useHistoryNavigation(
     buffer,
@@ -698,7 +699,7 @@ export const PromptInput = React.memo(function PromptInput({
       setShowModelDropdown,
       setOpenRawModelDropdown,
       setStatusMessage,
-      writeOutput: (text: string) => writeRef.current(text),
+      writeOutput: (text: string) => onCommandOutput?.(text),
     };
     executeSlashCommand(item, ctx);
   }

@@ -34,6 +34,7 @@ import { createTFunction } from "../../i18n/translate";
 import { LocaleContext, setActiveTFunction, type LocaleContextValue } from "../../i18n/context";
 import type { PromptSubmission } from "../types/commands";
 import type { SessionMessage } from "../../session";
+import { buildSystemMessage } from "../utils";
 
 type AppProps = {
   onRestart?: () => void;
@@ -108,6 +109,13 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
   const handleSubmit = useCallback(
     (submission: PromptSubmission) => {
       void actions.handlePrompt(submission);
+    },
+    [actions]
+  );
+
+  const handleCommandOutput = useCallback(
+    (text: string) => {
+      actions.setMessages((prev) => [...prev, buildSystemMessage(text)]);
     },
     [actions]
   );
@@ -451,6 +459,7 @@ function App({ onRestart: _onRestart }: AppProps): React.ReactElement {
         helpVisible={helpVisible}
         placeholder="Type your message..."
         providerKeys={providerKeys}
+        onCommandOutput={handleCommandOutput}
       />
     );
   }

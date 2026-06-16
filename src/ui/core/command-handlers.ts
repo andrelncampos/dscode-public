@@ -29,7 +29,7 @@ export type CommandContext = {
   setShowModelDropdown: (show: boolean) => void;
   setOpenRawModelDropdown: (show: boolean) => void;
   setStatusMessage: (msg: string) => void;
-  /** Write output below Ink's render area so it persists across renders. */
+  /** Write command output as a system message in the chat flow (Static component). */
   writeOutput: (text: string) => void;
 };
 
