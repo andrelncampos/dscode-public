@@ -1609,13 +1609,6 @@ export class SessionManager {
               }
             : null);
         if (responseUsage) {
-          const cache = normalizeCacheTokens(responseUsage);
-          responseUsage.normalizedCacheHitTokens = cache?.hit ?? 0;
-          responseUsage.normalizedCacheMissTokens = cache?.miss ?? 0;
-          this.lastCallCacheMetrics = {
-            hit: responseUsage.normalizedCacheHitTokens,
-            miss: responseUsage.normalizedCacheMissTokens,
-          };
           const budgetWarning = recordBudgetCostWithCache(
             this.projectRoot,
             model,
@@ -1623,6 +1616,13 @@ export class SessionManager {
             modelPricing,
             this.getResolvedSettings().budget
           );
+          this.lastCallCacheMetrics =
+            typeof responseUsage.normalizedCacheHitTokens === "number"
+              ? {
+                  hit: responseUsage.normalizedCacheHitTokens,
+                  miss: responseUsage.normalizedCacheMissTokens ?? 0,
+                }
+              : null;
           if (budgetWarning) {
             this.addSessionSystemMessage(sessionId, budgetWarning, true);
           }

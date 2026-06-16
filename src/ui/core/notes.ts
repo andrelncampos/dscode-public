@@ -10,7 +10,7 @@ import { resolveSpecName } from "./spec-names";
 export type NoteStatus = "open" | "closed" | "paused" | "abandoned";
 
 export interface Note {
-  id: string; // 4 lowercase hex chars
+  id: string; // sequential numeric (1, 2, 3, ...)
   text: string; // note body
   status: NoteStatus; // always one of the 4 statuses
   createdAt: string; // ISO 8601 with seconds, UTC
@@ -182,6 +182,22 @@ export function parseNoteArgs(input: string): ParsedNoteArgs {
   }
 
   return { positional, flags };
+}
+
+export function parseTagsFromArgs(args: ParsedNoteArgs): string[] | undefined {
+  const rawTag = args.flags.tag;
+  if (typeof rawTag === "string") {
+    const tag = rawTag.trim();
+    return tag.length > 0 ? [tag] : undefined;
+  }
+  if (Array.isArray(rawTag)) {
+    const tags = rawTag
+      .filter((v): v is string => typeof v === "string")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    return tags.length > 0 ? tags : undefined;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------

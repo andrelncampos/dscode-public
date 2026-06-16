@@ -113,7 +113,7 @@ export function formatHomeRelativePath(value: string, home = os.homedir()): stri
 }
 
 export function buildWelcomeTips(skills: SkillInfo[], t: I18nTFunction): Array<{ label: string; description: string }> {
-  const slashTips = buildSlashCommands(skills).map((item) => ({
+  const slashTips = buildSlashCommands().map((item) => ({
     label: item.label,
     description: formatSlashCommandDescription(item.description, t),
   }));

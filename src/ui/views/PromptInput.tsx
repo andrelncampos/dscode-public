@@ -12,8 +12,7 @@ import {
   deleteWordBefore,
   deleteWordAfter,
   expandPasteMarkers,
-  getCurrentSlashToken,
-  getCurrentHashToken,
+  getCurrentPrefixToken,
   insertText,
   isEmpty,
   killLine,
@@ -37,10 +36,8 @@ import {
 import {
   buildSlashCommands,
   buildHashCommands,
-  filterSlashCommands,
-  filterHashCommands,
-  findExactSlashCommand,
-  findExactHashCommand,
+  filterCommandsByPrefix,
+  findExactCommandByPrefix,
 } from "../core/slash-commands";
 import type { SlashCommandItem } from "../core/slash-commands";
 import { executeSlashCommand, type CommandContext } from "../core/command-handlers";
@@ -202,26 +199,26 @@ export const PromptInput = React.memo(function PromptInput({
     !showModelDropdown &&
     fileMentionToken !== null &&
     fileMentionKey !== dismissedFileMentionKey;
-  const slashItems = React.useMemo(() => buildSlashCommands(skills), [skills]);
-  const slashToken = getCurrentSlashToken(buffer);
+  const slashItems = React.useMemo(() => buildSlashCommands(), []);
+  const slashToken = getCurrentPrefixToken(buffer, "/");
   const slashMenu = React.useMemo(
     () =>
       showSkillsDropdown || showModelDropdown || showFileMentionMenu
         ? []
         : slashToken
-          ? filterSlashCommands(slashItems, slashToken)
+          ? filterCommandsByPrefix(slashItems, slashToken, "/")
           : [],
     [showSkillsDropdown, showModelDropdown, showFileMentionMenu, slashToken, slashItems]
   );
   const showMenu = slashMenu.length > 0;
   const hashItems = React.useMemo(() => buildHashCommands(skills), [skills]);
-  const hashToken = getCurrentHashToken(buffer);
+  const hashToken = getCurrentPrefixToken(buffer, "#");
   const hashMenu = React.useMemo(
     () =>
       showSkillsDropdown || showModelDropdown || showFileMentionMenu
         ? []
         : hashToken
-          ? filterHashCommands(hashItems, hashToken)
+          ? filterCommandsByPrefix(hashItems, hashToken, "#")
           : [],
     [showSkillsDropdown, showModelDropdown, showFileMentionMenu, hashToken, hashItems]
   );
@@ -504,7 +501,7 @@ export const PromptInput = React.memo(function PromptInput({
           }
         }
         if (returnAction === "submit") {
-          const exactMatch = hashToken ? findExactHashCommand(hashItems, hashToken) : null;
+          const exactMatch = hashToken ? findExactCommandByPrefix(hashItems, hashToken, "#") : null;
           const selected = exactMatch ?? hashMenu[hashMenuIndex];
           if (selected) {
             handleHashSelection(selected);
@@ -533,7 +530,7 @@ export const PromptInput = React.memo(function PromptInput({
           // Prefer exact match over menu index position — otherwise typing
           // "/notes" selects the first filtered item (notes-add) instead of
           // the exact command (notes), creating a note with "/notes" content.
-          const exactMatch = slashToken ? findExactSlashCommand(slashItems, slashToken) : null;
+          const exactMatch = slashToken ? findExactCommandByPrefix(slashItems, slashToken, "/") : null;
           const selected = exactMatch ?? slashMenu[menuIndex];
           if (selected) {
             handleSlashSelection(selected);
@@ -799,7 +796,7 @@ export const PromptInput = React.memo(function PromptInput({
     }
 
     if (trimmed.startsWith("/")) {
-      const exactMatch = findExactSlashCommand(slashItems, trimmed.split(/\s+/, 1)[0]);
+      const exactMatch = findExactCommandByPrefix(slashItems, trimmed.split(/\s+/, 1)[0], "/");
       if (exactMatch) {
         handleSlashSelection(exactMatch);
         return;
@@ -877,7 +874,7 @@ export const PromptInput = React.memo(function PromptInput({
     clearUndoRedoStacks();
   }
 
-  const matchedCommand = slashToken ? findExactSlashCommand(slashItems, slashToken) : null;
+  const matchedCommand = slashToken ? findExactCommandByPrefix(slashItems, slashToken, "/") : null;
   const inlineHint = matchedCommand?.args ? ` ${matchedCommand.args.join(ARGS_SEPARATOR)}` : "";
 
   return (

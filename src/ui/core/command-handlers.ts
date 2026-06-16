@@ -7,6 +7,7 @@ import {
   updateNoteStatus,
   updateNoteDeadline,
   parseNoteArgs,
+  parseTagsFromArgs,
   formatNote,
   formatNoteList,
   isValidDate,
@@ -133,19 +134,8 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       ctx.writeOutput(t("cmd.notes-add-usage") + "\n");
       return;
     }
-    // FR-A03: handle multiple --tag flags
-    const rawTag = args.flags.tag;
-    let tags: string[] | undefined;
-    if (typeof rawTag === "string") {
-      tags = [rawTag];
-    } else if (Array.isArray(rawTag)) {
-      tags = rawTag.filter((v): v is string => typeof v === "string");
-    }
-    // FR-A04: reject empty tags
-    if (tags) {
-      tags = tags.map((t) => t.trim()).filter((t) => t.length > 0);
-      if (tags.length === 0) tags = undefined;
-    }
+    // FR-A03+A04: extract and validate tags
+    const tags = parseTagsFromArgs(args);
     const note = createNote(text, { deadline, tags, specId });
     ctx.writeOutput(formatNote(note) + "\n");
     ctx.resetPromptInput();
@@ -217,17 +207,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
     const specRemove = args.flags["spec-remove"] === true;
     // Resolve tags
-    const rawTag = args.flags.tag;
-    let tags: string[] | undefined;
-    if (typeof rawTag === "string") {
-      tags = [rawTag];
-    } else if (Array.isArray(rawTag)) {
-      tags = rawTag.filter((v): v is string => typeof v === "string");
-    }
-    if (tags) {
-      tags = tags.map((t) => t.trim()).filter((t) => t.length > 0);
-      if (tags.length === 0) tags = undefined;
-    }
+    const tags = parseTagsFromArgs(args);
     // Resolve deadline
     const deadline = typeof args.flags.deadline === "string" ? args.flags.deadline : undefined;
     if (deadline && !isValidDate(deadline)) {

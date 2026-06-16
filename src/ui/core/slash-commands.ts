@@ -262,7 +262,7 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
   },
 ];
 
-export function buildSlashCommands(_skills: SkillInfo[]): SlashCommandItem[] {
+export function buildSlashCommands(): SlashCommandItem[] {
   return [...BUILTIN_SLASH_COMMANDS];
 }
 
@@ -276,43 +276,22 @@ export function buildHashCommands(skills: SkillInfo[]): SlashCommandItem[] {
   }));
 }
 
-export function filterSlashCommands(items: SlashCommandItem[], token: string): SlashCommandItem[] {
-  if (!token.startsWith("/")) {
-    return [];
-  }
-  const query = token.slice(1).toLowerCase();
-  if (!query) {
-    return items;
-  }
+export function filterCommandsByPrefix(items: SlashCommandItem[], token: string, prefix: string): SlashCommandItem[] {
+  if (!token.startsWith(prefix)) return [];
+  const query = token.slice(prefix.length).toLowerCase();
+  if (!query) return items;
   return items.filter((item) => item.name.toLowerCase().includes(query));
 }
 
-export function filterHashCommands(items: SlashCommandItem[], token: string): SlashCommandItem[] {
-  if (!token.startsWith("#")) {
-    return [];
-  }
-  const query = token.slice(1).toLowerCase();
-  if (!query) {
-    return items;
-  }
-  return items.filter((item) => item.name.toLowerCase().includes(query));
-}
-
-export function findExactSlashCommand(items: SlashCommandItem[], token: string): SlashCommandItem | null {
-  if (!token.startsWith("/")) {
-    return null;
-  }
-  const query = token.slice(1);
+export function findExactCommandByPrefix(
+  items: SlashCommandItem[],
+  token: string,
+  prefix: string
+): SlashCommandItem | null {
+  if (!token.startsWith(prefix)) return null;
+  const query = token.slice(prefix.length);
   const matches = items.filter((item) => item.name === query);
   return matches[0] ?? null;
-}
-
-export function findExactHashCommand(items: SlashCommandItem[], token: string): SlashCommandItem | null {
-  if (!token.startsWith("#")) {
-    return null;
-  }
-  const query = token.slice(1);
-  return items.find((item) => item.name === query) ?? null;
 }
 
 export function formatSlashCommandDescription(description: string, t: I18nTFunction): string {

@@ -47,7 +47,7 @@
 | 260 | developer-notes | audited | V28 |
 | 260A | notes-mvp | audited | V28 (child of 260) |
 | 260B | notes-refinement | audited | V28 (child of 260) |
-| 270 | code-quality-cleanup | planned | V30 |
+| 270 | code-quality-cleanup | implemented | V30 |
 | 280 | error-handling-hardening | planned | V29, L7 |
 | 290 | test-infra-error-visibility | audited | V29, L7 |
 | 300 | dynamic-help-modal | planned | V30, V1 |

@@ -6,7 +6,7 @@ import {
   deleteForward,
   deleteWordBefore,
   deleteWordAfter,
-  getCurrentSlashToken,
+  getCurrentPrefixToken,
   insertText,
   killLine,
   moveDown,
@@ -103,22 +103,22 @@ test("deleteWordAfter removes the next word and leading whitespace", () => {
 
 test("getCurrentSlashToken returns the slash word at the cursor", () => {
   const buffer = { text: "/skill", cursor: 6 };
-  assert.equal(getCurrentSlashToken(buffer), "/skill");
+  assert.equal(getCurrentPrefixToken(buffer, "/"), "/skill");
 });
 
 test("getCurrentSlashToken returns full text when it starts with /", () => {
   const buffer = { text: "/skill foo", cursor: 10 };
-  assert.equal(getCurrentSlashToken(buffer), "/skill foo");
+  assert.equal(getCurrentPrefixToken(buffer, "/"), "/skill foo");
 });
 
 test("getCurrentSlashToken returns null when text starts on a new line with /", () => {
   const buffer = { text: "do this\n/n", cursor: 10 };
-  assert.equal(getCurrentSlashToken(buffer), null);
+  assert.equal(getCurrentPrefixToken(buffer, "/"), null);
 });
 
 test("getCurrentSlashToken returns null when no slash prefix", () => {
   const buffer = { text: "hello", cursor: 5 };
-  assert.equal(getCurrentSlashToken(buffer), null);
+  assert.equal(getCurrentPrefixToken(buffer, "/"), null);
 });
 
 test("inserting newlines builds a multi-line buffer", () => {

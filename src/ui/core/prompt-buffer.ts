@@ -153,17 +153,9 @@ export function isEmpty(state: PromptBufferState): boolean {
   return state.text.length === 0;
 }
 
-export function getCurrentSlashToken(state: PromptBufferState): string | null {
+export function getCurrentPrefixToken(state: PromptBufferState, prefix: string): string | null {
   const text = state.text;
-  if (text.length === 0 || !text.startsWith("/")) {
-    return null;
-  }
-  return text;
-}
-
-export function getCurrentHashToken(state: PromptBufferState): string | null {
-  const text = state.text;
-  if (text.length === 0 || !text.startsWith("#")) {
+  if (text.length === 0 || !text.startsWith(prefix)) {
     return null;
   }
   return text;
