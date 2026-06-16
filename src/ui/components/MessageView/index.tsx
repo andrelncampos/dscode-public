@@ -161,7 +161,17 @@ export function MessageView({ message, collapsed, width = 80 }: MessageViewProps
         </Box>
       );
     }
-    return null;
+    // Generic system message (e.g., slash-command output without special meta).
+    const segments = renderMarkdownSegments(message.content || "", width);
+    return (
+      <Box marginY={0} marginLeft={1} marginBottom={1} flexDirection="column">
+        {segments.map((seg, i) => (
+          <Text key={i} dimColor>
+            {seg.body}
+          </Text>
+        ))}
+      </Box>
+    );
   }
 
   return null;
