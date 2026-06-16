@@ -52,8 +52,6 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "model-params",
     "model-thinking",
     "budget",
-    "keys",
-    "terminal-setup",
   ]);
 });
 
