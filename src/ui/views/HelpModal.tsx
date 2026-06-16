@@ -18,10 +18,12 @@ type HelpModalProps = {
 type ShortcutEntry = {
   key: string;
   description: string;
+  separator?: boolean;
 };
 
 function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntimeProfile): ShortcutEntry[] {
   return [
+    // ── Keyboard ──
     { key: "?", description: t("help.toggle") },
     { key: "Esc", description: t("help.close") },
     { key: "Ctrl+C", description: t("help.cancel") },
@@ -42,14 +44,55 @@ function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntime
     { key: "Enter", description: t("help.submit") },
     { key: "@", description: t("help.file-mention") },
     { key: "/", description: t("help.command-menu") },
+    { key: "PageUp/PageDown", description: t("help.scroll-history") },
+    // ── Conversation ──
+    { key: "", description: "", separator: true },
     { key: "/model", description: t("help.model-cmd") },
     { key: "/new", description: t("help.new-cmd") },
     { key: "/resume", description: t("help.resume-cmd") },
+    { key: "/continue", description: t("help.continue-cmd") },
+    { key: "/init", description: t("help.init-cmd") },
     { key: "/undo", description: t("help.undo-cmd") },
+    { key: "/exit", description: t("help.exit-cmd") },
+    { key: "/skills", description: t("help.skills-cmd") },
+    { key: "/cls", description: t("help.cls-cmd") },
     { key: "/raw", description: t("help.raw-cmd") },
     { key: "/mcp", description: t("help.mcp-cmd") },
-    { key: "/exit", description: t("help.exit-cmd") },
-    { key: "PageUp/PageDown", description: t("help.scroll-history") },
+    // ── Notes ──
+    { key: "", description: "", separator: true },
+    { key: "/note-add", description: t("help.note-add-cmd") },
+    { key: "/note-list", description: t("help.note-list-cmd") },
+    { key: "/note-status", description: t("help.note-status-cmd") },
+    { key: "/note-edit", description: t("help.note-edit-cmd") },
+    { key: "/note-deadline", description: t("help.note-deadline-cmd") },
+    { key: "/note-delete", description: t("help.note-delete-cmd") },
+    // ── Specs ──
+    { key: "", description: "", separator: true },
+    { key: "/spec-init", description: t("help.spec-init-cmd") },
+    { key: "/spec-plan", description: t("help.spec-plan-cmd") },
+    { key: "/spec-new", description: t("help.spec-new-cmd") },
+    { key: "/spec-verify", description: t("help.spec-verify-cmd") },
+    { key: "/spec-implement", description: t("help.spec-implement-cmd") },
+    { key: "/spec-audit", description: t("help.spec-audit-cmd") },
+    { key: "/spec-list", description: t("help.spec-list-cmd") },
+    { key: "/spec-status", description: t("help.spec-status-cmd") },
+    // ── Models ──
+    { key: "", description: "", separator: true },
+    { key: "/model-list", description: t("help.model-list-cmd") },
+    { key: "/model-add", description: t("help.model-add-cmd") },
+    { key: "/model-remove", description: t("help.model-remove-cmd") },
+    { key: "/model-info", description: t("help.model-info-cmd") },
+    { key: "/model-key", description: t("help.model-key-cmd") },
+    { key: "/model-default", description: t("help.model-default-cmd") },
+    { key: "/model-params", description: t("help.model-params-cmd") },
+    { key: "/model-thinking", description: t("help.model-thinking-cmd") },
+    // ── Steering & Budget ──
+    { key: "", description: "", separator: true },
+    { key: "/steering-add", description: t("help.steering-add-cmd") },
+    { key: "/steering-list", description: t("help.steering-list-cmd") },
+    { key: "/steering-remove", description: t("help.steering-remove-cmd") },
+    { key: "/steering-alter", description: t("help.steering-alter-cmd") },
+    { key: "/budget", description: t("help.budget-cmd") },
   ];
 }
 
@@ -116,16 +159,22 @@ export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalPro
 
         {/* Shortcut rows */}
         <Box flexDirection="column" flexGrow={1} overflow="hidden">
-          {shortcuts.map((shortcut) => (
-            <Box key={shortcut.key} flexDirection="row" flexShrink={0} height={1}>
-              <Box width={keyColWidth} flexShrink={0}>
-                <Text dimColor>{shortcut.key}</Text>
+          {shortcuts.map((shortcut, idx) =>
+            shortcut.separator ? (
+              <Box key={`sep-${idx}`} flexShrink={0} height={1}>
+                <Text> </Text>
               </Box>
-              <Box flexGrow={1} overflow="hidden">
-                <Text wrap="truncate-end">{shortcut.description}</Text>
+            ) : (
+              <Box key={shortcut.key} flexDirection="row" flexShrink={0} height={1}>
+                <Box width={keyColWidth} flexShrink={0}>
+                  <Text dimColor>{shortcut.key}</Text>
+                </Box>
+                <Box flexGrow={1} overflow="hidden">
+                  <Text wrap="truncate-end">{shortcut.description}</Text>
+                </Box>
               </Box>
-            </Box>
-          ))}
+            )
+          )}
         </Box>
 
         {/* Footer */}
