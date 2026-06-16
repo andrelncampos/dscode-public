@@ -1,6 +1,6 @@
 ---
 name: notes-refinement
-status: created
+status: verified
 references: V28, 260, 260A
 ---
 
@@ -19,7 +19,7 @@ references: V28, 260, 260A
 | `/note-status` handler — confirmation | `src/ui/core/command-handlers.ts` | +3 |
 | `/note-delete` handler — new | `src/ui/core/command-handlers.ts` | +20 |
 | Command registration (delete) | `commands.ts` + `slash-commands.ts` | +3 |
-| I18n keys (6 new) | `en.ts`, `es.ts`, `pt.ts` | +18 |
+| I18n keys (7 new + 1 updated) | `en.ts`, `es.ts`, `pt.ts` | +21 |
 | Tests | `notes.test.ts` + `spec-names.test.ts` (new) | ~70 |
 
 ---
@@ -195,17 +195,13 @@ if (filters.specId) {
     return;
   }
   const note = notes[idx];
-  const changes: string[] = [];
   if (text !== undefined) {
     note.text = text;
-    changes.push("text");
   }
   if (specRemove) {
     delete note.specId;
-    changes.push("spec removed");
   } else if (specId !== undefined) {
     note.specId = specId;
-    changes.push("spec");
   }
   if (tags !== undefined) {
     if (tags.length > 0) {
@@ -213,11 +209,9 @@ if (filters.specId) {
     } else {
       delete note.tags;
     }
-    changes.push("tags");
   }
   if (deadline !== undefined) {
     note.deadline = deadline;
-    changes.push("deadline");
   }
   note.updatedAt = now();
   writeNotes(notes);
@@ -227,8 +221,9 @@ if (filters.specId) {
 },
 ```
 
+**Note:** The `now()` function must be exported from `notes.ts` (change `function now()` to `export function now()` on line 91). The handler calls `now()` via the import to set `updatedAt`.
+
 **Key decisions:**
-- Tags are replaced, not appended. `/note-edit <id> --tag bug` sets tags to `["bug"]` even if previous tags were `["todo"]`. This matches the semantics of "edit" (replace), not "append".
 - `--spec-remove` overrides `--spec` if both present.
 - Text is optional — metadata-only edits are valid.
 
@@ -348,7 +343,7 @@ COMMAND_HANDLERS["note-edit"](item, ctx)
 | `formatNoteList header shows spec name` | FR-B01 |
 | `note-delete removes note from file` | FR-B03 |
 | `note-delete shows not found for missing id` | FR-B03 |
-| `deleteNote function removes correct element` | FR-B03 |
+| `note-delete removes note from file` | FR-B03 |
 
 ### Modified Tests
 
@@ -375,7 +370,7 @@ New files:
   src/ui/core/spec-names.ts           ← ~35 lines (read roadmap, parse, cache)
 
 Modified files:
-  src/ui/core/notes.ts                ← formatNote (+3), formatNoteList (+3), import resolveSpecName
+  src/ui/core/notes.ts                ← formatNote (+3), formatNoteList (+3), import resolveSpecName, export now()
   src/ui/core/command-handlers.ts     ← note-edit refactor (+25), note-delete new (+20), note-status (+3), note-deadline (+3)
   src/ui/types/commands.ts            ← +1 command kind
   src/ui/core/slash-commands.ts       ← +1 command entry

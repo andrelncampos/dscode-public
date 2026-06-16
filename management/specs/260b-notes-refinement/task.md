@@ -1,6 +1,6 @@
 ---
 name: notes-refinement
-status: created
+status: verified
 references: V28, 260, 260A
 ---
 
