@@ -262,19 +262,33 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
   },
 ];
 
-export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {
-  const skillItems: SlashCommandItem[] = skills.map((skill) => ({
+export function buildSlashCommands(_skills: SkillInfo[]): SlashCommandItem[] {
+  return [...BUILTIN_SLASH_COMMANDS];
+}
+
+export function buildHashCommands(skills: SkillInfo[]): SlashCommandItem[] {
+  return skills.map((skill) => ({
     kind: "skill",
     name: skill.name,
-    label: `/${skill.name}`,
+    label: `#${skill.name}`,
     description: skill.description || "(no description)",
     skill,
   }));
-  return [...skillItems, ...BUILTIN_SLASH_COMMANDS];
 }
 
 export function filterSlashCommands(items: SlashCommandItem[], token: string): SlashCommandItem[] {
   if (!token.startsWith("/")) {
+    return [];
+  }
+  const query = token.slice(1).toLowerCase();
+  if (!query) {
+    return items;
+  }
+  return items.filter((item) => item.name.toLowerCase().includes(query));
+}
+
+export function filterHashCommands(items: SlashCommandItem[], token: string): SlashCommandItem[] {
+  if (!token.startsWith("#")) {
     return [];
   }
   const query = token.slice(1).toLowerCase();
@@ -290,7 +304,15 @@ export function findExactSlashCommand(items: SlashCommandItem[], token: string):
   }
   const query = token.slice(1);
   const matches = items.filter((item) => item.name === query);
-  return matches.find((item) => item.kind !== "skill") ?? matches[0] ?? null;
+  return matches[0] ?? null;
+}
+
+export function findExactHashCommand(items: SlashCommandItem[], token: string): SlashCommandItem | null {
+  if (!token.startsWith("#")) {
+    return null;
+  }
+  const query = token.slice(1);
+  return items.find((item) => item.name === query) ?? null;
 }
 
 export function formatSlashCommandDescription(description: string, t: I18nTFunction): string {

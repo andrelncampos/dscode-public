@@ -4,7 +4,12 @@ import * as os from "node:os";
 import path from "node:path";
 import type { SkillInfo } from "../../session";
 import type { ResolvedDeepcodingSettings } from "../../settings";
-import { buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescription } from "../core/slash-commands";
+import {
+  buildSlashCommands,
+  buildHashCommands,
+  BUILTIN_SLASH_COMMANDS,
+  formatSlashCommandDescription,
+} from "../core/slash-commands";
 import type { I18nTFunction } from "../../i18n/translate";
 import { useLocale } from "../../i18n/context";
 import { ThemedGradient } from "./ThemedGradient";
@@ -108,14 +113,20 @@ export function formatHomeRelativePath(value: string, home = os.homedir()): stri
 }
 
 export function buildWelcomeTips(skills: SkillInfo[], t: I18nTFunction): Array<{ label: string; description: string }> {
-  const slashTips = buildSlashCommands(skills)
-    .filter((item) => item.kind !== "skill" || item.skill?.isLoaded)
+  const slashTips = buildSlashCommands(skills).map((item) => ({
+    label: item.label,
+    description: formatSlashCommandDescription(item.description, t),
+  }));
+
+  const hashTips = buildHashCommands(skills)
+    .filter((item) => item.skill?.isLoaded)
     .map((item) => ({
       label: item.label,
       description: formatSlashCommandDescription(item.description, t),
     }));
 
   return [
+    ...hashTips,
     ...slashTips,
     ...getShortcutTips(t).filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
   ];

@@ -2,8 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSlashCommands,
+  buildHashCommands,
   filterSlashCommands,
+  filterHashCommands,
   findExactSlashCommand,
+  findExactHashCommand,
   formatSlashCommandDescription,
   formatSlashCommandLabel,
 } from "../ui";
@@ -14,12 +17,14 @@ const skills: SkillInfo[] = [
   { name: "code-review", path: "~/.agents/skills/code-review/SKILL.md", description: "Review code" },
 ];
 
-test("buildSlashCommands prefixes skills before built-ins", () => {
+// ── buildSlashCommands (built-in only, no skills) ──
+
+test("buildSlashCommands returns only built-in commands", () => {
   const items = buildSlashCommands(skills);
-  assert.equal(items[0].kind, "skill");
-  assert.equal(items[0].name, "skill-writer");
-  const builtinNames = items.filter((i) => i.kind !== "skill").map((i) => i.name);
-  assert.deepEqual(builtinNames, [
+  // Skills no longer appear in slash commands
+  assert.equal(items[0].kind, "skills");
+  const names = items.map((i) => i.name);
+  assert.deepEqual(names, [
     "skills",
     "model",
     "new",
@@ -61,10 +66,23 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
   ]);
 });
 
+// ── buildHashCommands (skills only, with # prefix) ──
+
+test("buildHashCommands returns skills with # labels", () => {
+  const items = buildHashCommands(skills);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].kind, "skill");
+  assert.equal(items[0].name, "skill-writer");
+  assert.equal(items[0].label, "#skill-writer");
+  assert.equal(items[1].label, "#code-review");
+});
+
+// ── filterSlashCommands ──
+
 test("filterSlashCommands matches partial prefixes", () => {
   const items = buildSlashCommands(skills);
   const matched = filterSlashCommands(items, "/skil").map((i) => i.name);
-  assert.deepEqual(matched, ["skill-writer", "skills"]);
+  assert.deepEqual(matched, ["skills"]);
 });
 
 test("filterSlashCommands returns all entries on bare slash", () => {
@@ -77,6 +95,28 @@ test("filterSlashCommands returns nothing for non-slash tokens", () => {
   const items = buildSlashCommands(skills);
   assert.deepEqual(filterSlashCommands(items, "skill"), []);
 });
+
+// ── filterHashCommands ──
+
+test("filterHashCommands matches partial prefixes", () => {
+  const items = buildHashCommands(skills);
+  const matched = filterHashCommands(items, "#skil").map((i) => i.name);
+  assert.deepEqual(matched, ["skill-writer"]);
+});
+
+test("filterHashCommands returns all skills on bare hash", () => {
+  const items = buildHashCommands(skills);
+  const matched = filterHashCommands(items, "#");
+  assert.equal(matched.length, items.length);
+});
+
+test("filterHashCommands returns nothing for non-hash tokens", () => {
+  const items = buildHashCommands(skills);
+  assert.deepEqual(filterHashCommands(items, "skill"), []);
+  assert.deepEqual(filterHashCommands(items, "/skill"), []);
+});
+
+// ── findExactSlashCommand ──
 
 test("findExactSlashCommand returns null when nothing matches", () => {
   const items = buildSlashCommands(skills);
@@ -133,25 +173,41 @@ test("findExactSlashCommand returns built-in /raw", () => {
   assert.equal(item?.kind, "raw");
 });
 
-test("findExactSlashCommand returns the matching skill", () => {
+test("findExactSlashCommand no longer matches skills (skills moved to #)", () => {
   const items = buildSlashCommands(skills);
-  const item = findExactSlashCommand(items, "/code-review");
+  assert.equal(findExactSlashCommand(items, "/code-review"), null);
+});
+
+// ── findExactHashCommand ──
+
+test("findExactHashCommand returns matching skill", () => {
+  const items = buildHashCommands(skills);
+  const item = findExactHashCommand(items, "#code-review");
   assert.ok(item);
   assert.equal(item?.kind, "skill");
   assert.equal(item?.skill?.name, "code-review");
 });
+
+test("findExactHashCommand returns null for unknown skill", () => {
+  const items = buildHashCommands(skills);
+  assert.equal(findExactHashCommand(items, "#missing"), null);
+});
+
+// ── formatSlashCommandDescription ──
 
 test("formatSlashCommandDescription keeps descriptions on one line", () => {
   const mockT = (key: string) => key;
   assert.equal(formatSlashCommandDescription("Line one\n  line two", mockT), "Line one line two");
 });
 
-test("formatSlashCommandLabel marks loaded skills", () => {
-  const items = buildSlashCommands([
+// ── formatSlashCommandLabel ──
+
+test("formatSlashCommandLabel marks loaded skills with # prefix", () => {
+  const items = buildHashCommands([
     { name: "loaded", path: "/skills/loaded/SKILL.md", description: "Loaded skill", isLoaded: true },
     { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" },
   ]);
 
-  assert.equal(formatSlashCommandLabel(items[0]), "/loaded ✓");
-  assert.equal(formatSlashCommandLabel(items[1]), "/fresh");
+  assert.equal(formatSlashCommandLabel(items[0]), "#loaded ✓");
+  assert.equal(formatSlashCommandLabel(items[1]), "#fresh");
 });

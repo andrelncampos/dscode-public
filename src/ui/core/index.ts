@@ -23,8 +23,11 @@ export {
 export {
   BUILTIN_SLASH_COMMANDS,
   buildSlashCommands,
+  buildHashCommands,
   filterSlashCommands,
+  filterHashCommands,
   findExactSlashCommand,
+  findExactHashCommand,
   formatSlashCommandDescription,
   formatSlashCommandLabel,
   type SlashCommandKind,

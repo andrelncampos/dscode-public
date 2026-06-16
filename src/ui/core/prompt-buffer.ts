@@ -161,6 +161,14 @@ export function getCurrentSlashToken(state: PromptBufferState): string | null {
   return text;
 }
 
+export function getCurrentHashToken(state: PromptBufferState): string | null {
+  const text = state.text;
+  if (text.length === 0 || !text.startsWith("#")) {
+    return null;
+  }
+  return text;
+}
+
 /**
  * Regex matching paste markers like `[paste #1 +123 lines]` or `[paste #2 1234 chars]`.
  * When the user pastes a large block of text (>10 lines or >1000 chars), a compact

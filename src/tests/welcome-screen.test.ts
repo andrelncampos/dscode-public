@@ -35,6 +35,6 @@ test("buildWelcomeTips includes built-in slash commands and loaded skills", () =
 
   const labels = tips.map((tip) => tip.label);
   assert.ok(labels.includes("/new"));
-  assert.ok(labels.includes("/loaded"));
-  assert.equal(labels.includes("/fresh"), false);
+  assert.ok(labels.includes("#loaded"));
+  assert.equal(labels.includes("#fresh"), false);
 });

@@ -13,6 +13,7 @@ import {
   deleteWordAfter,
   expandPasteMarkers,
   getCurrentSlashToken,
+  getCurrentHashToken,
   insertText,
   isEmpty,
   killLine,
@@ -33,7 +34,14 @@ import {
   redoPromptEdit,
   undoPromptEdit,
 } from "../core/prompt-undo-redo";
-import { buildSlashCommands, filterSlashCommands, findExactSlashCommand } from "../core/slash-commands";
+import {
+  buildSlashCommands,
+  buildHashCommands,
+  filterSlashCommands,
+  filterHashCommands,
+  findExactSlashCommand,
+  findExactHashCommand,
+} from "../core/slash-commands";
 import type { SlashCommandItem } from "../core/slash-commands";
 import { executeSlashCommand, type CommandContext } from "../core/command-handlers";
 import { PromptFooter } from "../components/PromptFooter";
@@ -159,6 +167,7 @@ export const PromptInput = React.memo(function PromptInput({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [pendingExit, setPendingExit] = useState(false);
   const [menuIndex, setMenuIndex] = useState(0);
+  const [hashMenuIndex, setHashMenuIndex] = useState(0);
   const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
   const [openRawModelDropdown, setOpenRawModelDropdown] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
@@ -205,6 +214,18 @@ export const PromptInput = React.memo(function PromptInput({
     [showSkillsDropdown, showModelDropdown, showFileMentionMenu, slashToken, slashItems]
   );
   const showMenu = slashMenu.length > 0;
+  const hashItems = React.useMemo(() => buildHashCommands(skills), [skills]);
+  const hashToken = getCurrentHashToken(buffer);
+  const hashMenu = React.useMemo(
+    () =>
+      showSkillsDropdown || showModelDropdown || showFileMentionMenu
+        ? []
+        : hashToken
+          ? filterHashCommands(hashItems, hashToken)
+          : [],
+    [showSkillsDropdown, showModelDropdown, showFileMentionMenu, hashToken, hashItems]
+  );
+  const showHashMenu = hashMenu.length > 0;
   const promptHistoryKey = React.useMemo(() => promptHistory.join("\0"), [promptHistory]);
   const hasRunningProcess = runningProcesses && runningProcesses.size > 0;
   const processOrPasteHint = hasRunningProcess
@@ -233,11 +254,17 @@ export const PromptInput = React.memo(function PromptInput({
     }
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     if (cacheLine) stats += ` · ${cacheLine}`;
-    return `${newlineHint} · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
+    return `${newlineHint} · # skills · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
   })();
   const showFooterText = useMemo(
-    () => showMenu || showSkillsDropdown || openRawModelDropdown || showModelDropdown || showFileMentionMenu,
-    [showMenu, showSkillsDropdown, showModelDropdown, openRawModelDropdown, showFileMentionMenu]
+    () =>
+      showMenu ||
+      showHashMenu ||
+      showSkillsDropdown ||
+      openRawModelDropdown ||
+      showModelDropdown ||
+      showFileMentionMenu,
+    [showMenu, showHashMenu, showSkillsDropdown, showModelDropdown, openRawModelDropdown, showFileMentionMenu]
   );
 
   const cursorPlacement = useMemo(
@@ -287,6 +314,16 @@ export const PromptInput = React.memo(function PromptInput({
       setMenuIndex(slashMenu.length - 1);
     }
   }, [slashMenu, showMenu, menuIndex]);
+
+  useEffect(() => {
+    if (!showHashMenu) {
+      setHashMenuIndex(0);
+      return;
+    }
+    if (hashMenuIndex >= hashMenu.length) {
+      setHashMenuIndex(hashMenu.length - 1);
+    }
+  }, [hashMenu, showHashMenu, hashMenuIndex]);
 
   useEffect(() => {
     if (!fileMentionKey) {
@@ -447,6 +484,32 @@ export const PromptInput = React.memo(function PromptInput({
       if (showFileMentionMenu) {
         if (key.upArrow || key.downArrow || key.tab || returnAction === "submit") {
           return;
+        }
+      }
+
+      if (showHashMenu) {
+        if (key.upArrow) {
+          setHashMenuIndex((idx) => (idx - 1 + hashMenu.length) % hashMenu.length);
+          return;
+        }
+        if (key.downArrow) {
+          setHashMenuIndex((idx) => (idx + 1) % hashMenu.length);
+          return;
+        }
+        if (key.tab) {
+          const selected = hashMenu[hashMenuIndex];
+          if (selected) {
+            completeHashTokenWithLabel(selected);
+            return;
+          }
+        }
+        if (returnAction === "submit") {
+          const exactMatch = hashToken ? findExactHashCommand(hashItems, hashToken) : null;
+          const selected = exactMatch ?? hashMenu[hashMenuIndex];
+          if (selected) {
+            handleHashSelection(selected);
+            return;
+          }
         }
       }
 
@@ -767,7 +830,7 @@ export const PromptInput = React.memo(function PromptInput({
 
   function completeSlashTokenWithLabel(item: SlashCommandItem): void {
     exitHistoryBrowsing();
-    const label = item.kind === "skill" ? item.label : item.label;
+    const label = item.label;
     updateBuffer((state) => {
       let start = state.cursor;
       while (start > 0 && !/\s/.test(state.text[start - 1] ?? "")) {
@@ -775,6 +838,37 @@ export const PromptInput = React.memo(function PromptInput({
       }
       const token = state.text.slice(start, state.cursor);
       if (!token.startsWith("/")) {
+        return state;
+      }
+      const text = `${state.text.slice(0, start)}${label} ${state.text.slice(state.cursor)}`;
+      return { text, cursor: start + label.length + 1 };
+    });
+    clearUndoRedoStacks();
+  }
+
+  function clearHashToken(): void {
+    exitHistoryBrowsing();
+    setBuffer((state) => removeCurrentHashToken(state));
+    clearUndoRedoStacks();
+  }
+
+  function handleHashSelection(item: SlashCommandItem): void {
+    if (item.skill) {
+      addSelectedSkill(item.skill);
+    }
+    clearHashToken();
+  }
+
+  function completeHashTokenWithLabel(item: SlashCommandItem): void {
+    exitHistoryBrowsing();
+    const label = item.label;
+    updateBuffer((state) => {
+      let start = state.cursor;
+      while (start > 0 && !/\s/.test(state.text[start - 1] ?? "")) {
+        start -= 1;
+      }
+      const token = state.text.slice(start, state.cursor);
+      if (!token.startsWith("#")) {
         return state;
       }
       const text = `${state.text.slice(0, start)}${label} ${state.text.slice(state.cursor)}`;
@@ -849,6 +943,7 @@ export const PromptInput = React.memo(function PromptInput({
         }}
         onSelect={insertFileMentionSelection}
       />
+      <SlashCommandMenu width={screenWidth} items={hashMenu} activeIndex={hashMenuIndex} />
       <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
       <PromptFooter
         busy={busy}
@@ -905,6 +1000,21 @@ export function removeCurrentSlashToken(state: PromptBufferState): PromptBufferS
 
   const token = state.text.slice(start, state.cursor);
   if (!token.startsWith("/")) {
+    return state;
+  }
+
+  const text = `${state.text.slice(0, start)}${state.text.slice(state.cursor)}`;
+  return { text, cursor: start };
+}
+
+export function removeCurrentHashToken(state: PromptBufferState): PromptBufferState {
+  let start = state.cursor;
+  while (start > 0 && !/\s/.test(state.text[start - 1] ?? "")) {
+    start -= 1;
+  }
+
+  const token = state.text.slice(start, state.cursor);
+  if (!token.startsWith("#")) {
     return state;
   }
 
