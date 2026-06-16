@@ -32,7 +32,7 @@ const enDictionary = {
   "cmd.model-params": "Configure generation parameters (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configure thinking budget for extended-thinking models",
   "cmd.note-add": "Create a quick note/reminder with optional deadline and tags",
-  "cmd.note-add-usage": "Usage: /note-add <text> [--deadline YYYY-MM-DD] [--tag <tag>]",
+  "cmd.note-add-usage": "Usage: /note-add <text> [--deadline YYYY-MM-DD] [--tag <tag>] [--spec <id>]",
   "cmd.note-deadline": "Set, change, or remove note deadline",
   "cmd.note-deadline-usage": "Usage: /note-deadline <id> <YYYY-MM-DD> | --remove",
   "cmd.note-edit": "Edit note text in-place",

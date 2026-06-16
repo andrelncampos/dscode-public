@@ -34,7 +34,7 @@ const esDictionary = {
   "cmd.model-params": "Configurar par\u00e1metros de generaci\u00f3n (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar presupuesto de thinking para modelos de pensamiento extendido",
   "cmd.note-add": "Crear una nota rápida con fecha límite y etiquetas opcionales",
-  "cmd.note-add-usage": "Uso: /note-add <texto> [--deadline AAAA-MM-DD] [--tag <tag>]",
+  "cmd.note-add-usage": "Uso: /note-add <texto> [--deadline AAAA-MM-DD] [--tag <tag>] [--spec <id>]",
   "cmd.note-deadline": "Definir, cambiar o eliminar fecha límite",
   "cmd.note-deadline-usage": "Uso: /note-deadline <id> <AAAA-MM-DD> | --remove",
   "cmd.note-edit": "Editar texto de nota sin salir del terminal",

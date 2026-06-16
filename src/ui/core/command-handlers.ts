@@ -122,9 +122,27 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       process.stdout.write(t("cmd.note-invalid-date") + "\n");
       return;
     }
-    const tagFlag = args.flags.tag;
-    const tags = typeof tagFlag === "string" ? [tagFlag] : undefined;
-    const note = createNote(text, { deadline, tags });
+    // FR-A02: extract --spec
+    const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
+    if (args.flags.spec !== undefined && specId === undefined) {
+      // --spec was provided but value is not a string (true or array)
+      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      return;
+    }
+    // FR-A03: handle multiple --tag flags
+    const rawTag = args.flags.tag;
+    let tags: string[] | undefined;
+    if (typeof rawTag === "string") {
+      tags = [rawTag];
+    } else if (Array.isArray(rawTag)) {
+      tags = rawTag.filter((v): v is string => typeof v === "string");
+    }
+    // FR-A04: reject empty tags
+    if (tags) {
+      tags = tags.map((t) => t.trim()).filter((t) => t.length > 0);
+      if (tags.length === 0) tags = undefined;
+    }
+    const note = createNote(text, { deadline, tags, specId });
     process.stdout.write(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },

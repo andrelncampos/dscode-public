@@ -21,7 +21,7 @@ export interface Note {
 
 export interface ParsedNoteArgs {
   positional: string[];
-  flags: Record<string, string | true>;
+  flags: Record<string, string | true | string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +152,7 @@ export function parseNoteArgs(input: string): ParsedNoteArgs {
   }
 
   const positional: string[] = [];
-  const flags: Record<string, string | true> = {};
+  const flags: Record<string, string | true | string[]> = {};
 
   for (let j = 0; j < tokens.length; j++) {
     const t = tokens[j];
@@ -161,7 +161,15 @@ export function parseNoteArgs(input: string): ParsedNoteArgs {
       // check next token for value
       const next = tokens[j + 1];
       if (next && !next.startsWith("--")) {
-        flags[name] = next;
+        const existing = flags[name];
+        if (existing === undefined) {
+          flags[name] = next;
+        } else if (typeof existing === "string") {
+          flags[name] = [existing, next];
+        } else if (Array.isArray(existing)) {
+          existing.push(next);
+        }
+        // If existing is true (boolean flag), don't accumulate — string value wins.
         j++; // consume value
       } else {
         flags[name] = true; // boolean flag
@@ -178,7 +186,7 @@ export function parseNoteArgs(input: string): ParsedNoteArgs {
 // CRUD Operations
 // ---------------------------------------------------------------------------
 
-export function createNote(text: string, options: { deadline?: string; tags?: string[] }): Note {
+export function createNote(text: string, options: { deadline?: string; tags?: string[]; specId?: string }): Note {
   const notes = readNotes();
   const id = generateNoteId(new Set(notes.map((n) => n.id)));
   const ts = now();
@@ -310,14 +318,22 @@ const STATUS_COLORS: Record<NoteStatus, string> = {
   abandoned: "\x1b[31m",
 };
 
+export function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const slice = text.slice(0, maxLen);
+  const lastSpace = slice.lastIndexOf(" ");
+  if (lastSpace > maxLen * 0.6) {
+    // Only use word boundary if it's not too far back (> 60% of maxLen).
+    // This prevents a single long word at position 5 from producing 6-char output.
+    return slice.slice(0, lastSpace) + "...";
+  }
+  return slice + "...";
+}
+
 export function formatNote(note: Note): string {
   const RESET = "\x1b[0m";
   const color = STATUS_COLORS[note.status] ?? "";
-  const parts: string[] = [
-    `[${note.id}]`,
-    `${color}${note.status.toUpperCase()}${RESET}`,
-    note.text.length > 80 ? note.text.slice(0, 80) + "..." : note.text,
-  ];
+  const parts: string[] = [`[${note.id}]`, `${color}${note.status.toUpperCase()}${RESET}`, truncateText(note.text, 80)];
   if (note.deadline) {
     parts.push(`(deadline: ${note.deadline})`);
   }
@@ -343,7 +359,13 @@ export function formatNoteList(
   const lines = [header];
   for (const note of notes) {
     const isOverdue = note.deadline && note.deadline < today();
-    const prefix = isOverdue ? "\x1b[1;31mOVERDUE\x1b[0m " : "";
+    let prefix = "";
+    if (isOverdue && note.deadline) {
+      const deadlineDate = new Date(note.deadline + "T00:00:00Z");
+      const todayDate = new Date(today() + "T00:00:00Z");
+      const days = Math.floor((todayDate.getTime() - deadlineDate.getTime()) / 86400000);
+      prefix = `\x1b[1;31mOVERDUE (${days}d)\x1b[0m `;
+    }
     lines.push(prefix + formatNote(note));
   }
   return lines.join("\n");

@@ -27,7 +27,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. Existing callers compile unchanged.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -52,7 +52,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Existing tests pass. New test: `parseNoteArgs("--tag a --tag b")` → `flags.tag = ["a", "b"]`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -78,7 +78,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. Handler compiles with updated types.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -102,7 +102,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Unit tests verify word-boundary truncation, hard truncation fallback, and non-truncation for short text.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -123,7 +123,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Unit test with fixed today value stubbed via `new Date()` mock or by creating a note with known past deadline and verifying output format.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -142,7 +142,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. Grep confirms all 3 values contain `--spec <id>`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -172,7 +172,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsx --test src/tests/notes.test.ts` — all tests pass (30 existing + ~11 new).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -187,7 +187,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Output shows `pass` count increased by ~11, `fail` count is 0.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -202,4 +202,4 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Roadmap line updated. `git diff` confirms only status changed.
 
-**Status:** [ ] pending
+**Status:** [x] done

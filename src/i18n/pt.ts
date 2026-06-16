@@ -34,7 +34,7 @@ const ptDictionary = {
   "cmd.model-params": "Configurar par\u00e2metros de gera\u00e7\u00e3o (temperature, max_tokens, top_p)",
   "cmd.model-thinking": "Configurar or\u00e7amento de thinking para modelos de pensamento estendido",
   "cmd.note-add": "Criar uma nota r\u00e1pida com prazo e tags opcionais",
-  "cmd.note-add-usage": "Uso: /note-add <texto> [--deadline AAAA-MM-DD] [--tag <tag>]",
+  "cmd.note-add-usage": "Uso: /note-add <texto> [--deadline AAAA-MM-DD] [--tag <tag>] [--spec <id>]",
   "cmd.note-deadline": "Definir, alterar ou remover prazo da nota",
   "cmd.note-deadline-usage": "Uso: /note-deadline <id> <AAAA-MM-DD> | --remove",
   "cmd.note-edit": "Editar texto da nota sem sair do terminal",

@@ -17,6 +17,7 @@ import {
   updateNoteDeadline,
   formatNote,
   formatNoteList,
+  truncateText,
 } from "../ui/core/notes";
 
 // ---------------------------------------------------------------------------
@@ -387,4 +388,119 @@ test("formatNoteList shows header and lines", () => {
   assert.ok(output.includes("═══ NOTES ═══"));
   assert.ok(output.includes("[a]"));
   assert.ok(output.includes("[b]"));
+});
+
+// ---------------------------------------------------------------------------
+// FR-A01: createNote specId
+// ---------------------------------------------------------------------------
+
+test("createNote accepts specId option", () => {
+  const dir = setup();
+  try {
+    const note = createNote("text", { specId: "120" });
+    assert.equal(note.specId, "120");
+  } finally {
+    teardown(dir);
+  }
+});
+
+test("createNote without specId has no specId field", () => {
+  const dir = setup();
+  try {
+    const note = createNote("text", {});
+    assert.equal(note.specId, undefined);
+  } finally {
+    teardown(dir);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FR-A03: parseNoteArgs multi-flag accumulation
+// ---------------------------------------------------------------------------
+
+test("parseNoteArgs accumulates repeated --tag values", () => {
+  const result = parseNoteArgs("--tag a --tag b");
+  assert.deepEqual(result.flags.tag, ["a", "b"]);
+  assert.deepEqual(result.positional, []);
+});
+
+test("parseNoteArgs keeps single --tag as string", () => {
+  const result = parseNoteArgs("--tag a");
+  assert.equal(result.flags.tag, "a");
+});
+
+test("parseNoteArgs keeps --overdue as true", () => {
+  const result = parseNoteArgs("--overdue");
+  assert.equal(result.flags.overdue, true);
+  assert.deepEqual(result.positional, []);
+});
+
+test("parseNoteArgs handles --tag --spec --deadline combined", () => {
+  const result = parseNoteArgs("--tag bug --spec 260 --deadline 2026-07-01");
+  assert.equal(result.flags.tag, "bug");
+  assert.equal(result.flags.spec, "260");
+  assert.equal(result.flags.deadline, "2026-07-01");
+});
+
+// ---------------------------------------------------------------------------
+// FR-A05: truncateText
+// ---------------------------------------------------------------------------
+
+test("truncateText truncates at word boundary", () => {
+  // 85 chars, last space at position 78
+  const text = "The quick brown fox jumps over the lazy dog and then continues running very far away";
+  const result = truncateText(text, 80);
+  assert.ok(result.length <= 83); // 80 + "..."
+  assert.ok(result.endsWith("..."));
+  assert.ok(!result.includes(" ..."));
+});
+
+test("truncateText hard-truncates when no space near limit", () => {
+  // 100+ chars, space at position 5, no other space until after 80
+  const text = "Hello " + "X".repeat(100) + " and more text here";
+  // "Hello " = 6 chars, then 74 X chars = 80, then more
+  // The only space before position 80 is at position 5
+  // 5 < 80*0.6 = 48, so hard truncate at 80
+  const result = truncateText(text, 80);
+  assert.equal(result.length, 83); // 80 + "..."
+  assert.ok(result.endsWith("..."));
+});
+
+test("truncateText does not truncate short text", () => {
+  const result = truncateText("short", 80);
+  assert.equal(result, "short");
+  assert.ok(!result.includes("..."));
+});
+
+// ---------------------------------------------------------------------------
+// FR-A06: formatNoteList overdue days count
+// ---------------------------------------------------------------------------
+
+test("formatNoteList shows overdue days count", () => {
+  const dir = setup();
+  try {
+    const note = createNote("overdue note", { deadline: "2020-01-01" });
+    const notes = readNotes();
+    const output = formatNoteList(notes, {});
+    assert.ok(output.includes("OVERDUE ("));
+    assert.ok(output.includes("d)"));
+    const match = output.match(/OVERDUE \((\d+)d\)/);
+    assert.ok(match);
+    const days = parseInt(match[1], 10);
+    assert.ok(days > 0);
+  } finally {
+    teardown(dir);
+  }
+});
+
+test("formatNoteList no overdue badge for future deadline", () => {
+  const dir = setup();
+  try {
+    const note = createNote("future note", { deadline: "2099-12-31" });
+    const notes = readNotes();
+    const output = formatNoteList(notes, {});
+    assert.equal(output.includes("OVERDUE"), false);
+  } finally {
+    teardown(dir);
+  }
 });
