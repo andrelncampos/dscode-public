@@ -467,7 +467,11 @@ export const PromptInput = React.memo(function PromptInput({
           }
         }
         if (returnAction === "submit") {
-          const selected = slashMenu[menuIndex];
+          // Prefer exact match over menu index position — otherwise typing
+          // "/notes" selects the first filtered item (notes-add) instead of
+          // the exact command (notes), creating a note with "/notes" content.
+          const exactMatch = slashToken ? findExactSlashCommand(slashItems, slashToken) : null;
+          const selected = exactMatch ?? slashMenu[menuIndex];
           if (selected) {
             handleSlashSelection(selected);
             return;
