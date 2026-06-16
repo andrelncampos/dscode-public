@@ -8,6 +8,7 @@ import {
   HELP_MODAL_KEY_COL_WIDTH,
   HELP_MODAL_KEY_COL_MAX_RATIO,
 } from "../core/layout-constants";
+import { BUILTIN_SLASH_COMMANDS } from "../core/slash-commands";
 import type { TerminalRuntimeProfile } from "../core/terminal-runtime";
 import { detectTerminalRuntime } from "../core/terminal-runtime";
 
@@ -20,6 +21,14 @@ type ShortcutEntry = {
   description: string;
   separator?: boolean;
 };
+
+function getCommandSection(kind: string): number {
+  if (kind.startsWith("notes")) return 1;
+  if (kind.startsWith("spec")) return 2;
+  if (kind.startsWith("model-")) return 3;
+  if (kind.startsWith("steering") || kind === "budget") return 4;
+  return 0; // Conversation
+}
 
 function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntimeProfile): ShortcutEntry[] {
   return [
@@ -45,55 +54,37 @@ function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntime
     { key: "@", description: t("help.file-mention") },
     { key: "/", description: t("help.command-menu") },
     { key: "PageUp/PageDown", description: t("help.scroll-history") },
-    // ── Conversation ──
-    { key: "", description: "", separator: true },
-    { key: "/model", description: t("help.model-cmd") },
-    { key: "/new", description: t("help.new-cmd") },
-    { key: "/resume", description: t("help.resume-cmd") },
-    { key: "/continue", description: t("help.continue-cmd") },
-    { key: "/init", description: t("help.init-cmd") },
-    { key: "/undo", description: t("help.undo-cmd") },
-    { key: "/exit", description: t("help.exit-cmd") },
-    { key: "/skills", description: t("help.skills-cmd") },
-    { key: "/cls", description: t("help.cls-cmd") },
-    { key: "/raw", description: t("help.raw-cmd") },
-    { key: "/mcp", description: t("help.mcp-cmd") },
-    // ── Notes ──
-    { key: "", description: "", separator: true },
-    { key: "/notes-add", description: t("help.notes-add-cmd") },
-    { key: "/notes", description: t("help.notes-cmd") },
-    { key: "/notes-status", description: t("help.notes-status-cmd") },
-    { key: "/notes-edit", description: t("help.notes-edit-cmd") },
-    { key: "/notes-deadline", description: t("help.notes-deadline-cmd") },
-    { key: "/notes-delete", description: t("help.notes-delete-cmd") },
-    // ── Specs ──
-    { key: "", description: "", separator: true },
-    { key: "/spec-init", description: t("help.spec-init-cmd") },
-    { key: "/spec-plan", description: t("help.spec-plan-cmd") },
-    { key: "/spec-new", description: t("help.spec-new-cmd") },
-    { key: "/spec-verify", description: t("help.spec-verify-cmd") },
-    { key: "/spec-implement", description: t("help.spec-implement-cmd") },
-    { key: "/spec-audit", description: t("help.spec-audit-cmd") },
-    { key: "/spec-list", description: t("help.spec-list-cmd") },
-    { key: "/spec-status", description: t("help.spec-status-cmd") },
-    // ── Models ──
-    { key: "", description: "", separator: true },
-    { key: "/model-list", description: t("help.model-list-cmd") },
-    { key: "/model-add", description: t("help.model-add-cmd") },
-    { key: "/model-remove", description: t("help.model-remove-cmd") },
-    { key: "/model-info", description: t("help.model-info-cmd") },
-    { key: "/model-key", description: t("help.model-key-cmd") },
-    { key: "/model-default", description: t("help.model-default-cmd") },
-    { key: "/model-params", description: t("help.model-params-cmd") },
-    { key: "/model-thinking", description: t("help.model-thinking-cmd") },
-    // ── Steering & Budget ──
-    { key: "", description: "", separator: true },
-    { key: "/steering-add", description: t("help.steering-add-cmd") },
-    { key: "/steering-list", description: t("help.steering-list-cmd") },
-    { key: "/steering-remove", description: t("help.steering-remove-cmd") },
-    { key: "/steering-alter", description: t("help.steering-alter-cmd") },
-    { key: "/budget", description: t("help.budget-cmd") },
+    ...buildCommandShortcuts(t),
   ];
+}
+
+function buildCommandShortcuts(t: (key: string) => string): ShortcutEntry[] {
+  const bySection: ShortcutEntry[][] = [[], [], [], [], []];
+
+  for (const item of BUILTIN_SLASH_COMMANDS) {
+    const section = getCommandSection(item.kind);
+    let desc = t(`help.${item.kind}-cmd`);
+    if (desc === `help.${item.kind}-cmd`) {
+      desc = t(item.description);
+      if (desc === item.description) desc = item.description;
+    }
+    bySection[section].push({
+      key: item.label,
+      description: desc ?? "",
+    });
+  }
+
+  const result: ShortcutEntry[] = [];
+  for (let i = 0; i < bySection.length; i++) {
+    const entries = bySection[i];
+    if (entries.length === 0) continue;
+    entries.sort((a, b) => a.key.localeCompare(b.key));
+    result.push({ key: "", description: "", separator: true });
+    for (const entry of entries) {
+      result.push(entry);
+    }
+  }
+  return result;
 }
 
 export const HelpModal = React.memo(function HelpModal({ onClose }: HelpModalProps): React.ReactElement {
