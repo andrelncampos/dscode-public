@@ -1,6 +1,6 @@
 ---
 name: notes-mvp
-status: created
+status: verified
 references: V28, 260
 ---
 
@@ -71,7 +71,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    - `const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined`.
    - If `args.flags.spec !== undefined && specId === undefined` → output usage and return.
 4. Replace tag handling:
-   - Current: `const tags = args.flags.tag ? (Array.isArray(args.flags.tag) ? args.flags.tag : [args.flags.tag]) : undefined;`
+   - Current: `const tagFlag = args.flags.tag; const tags = typeof tagFlag === "string" ? [tagFlag] : undefined;`
    - New: Normalize `string | string[] | true` — string → `[string]`, array → filter strings, true → undefined.
 5. Add empty tag filtering: `tags.map(t => t.trim()).filter(t => t.length > 0)`; if empty after filter, set to `undefined`.
 6. Pass `specId` to `createNote`: `createNote(text, { deadline, tags, specId })`.
@@ -127,7 +127,26 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ---
 
-### Task 6: Write Refinement Tests
+### Task 6: Update I18n Usage Message
+
+**Objective:** Update `cmd.note-add-usage` in all 3 language files to include the `--spec` flag in the usage string.
+
+**Requirements Covered:** FR-A02 (usage message must list `--spec <id>`).
+
+**Design References:** File / Module Layout in design.md.
+
+**Actions:**
+1. Open `src/i18n/en.ts`. Append ` [--spec <id>]` before the closing quote of the `"cmd.note-add-usage"` value.
+2. Open `src/i18n/es.ts`. Append ` [--spec <id>]` (or equivalent Spanish).
+3. Open `src/i18n/pt.ts`. Append ` [--spec <id>]` (or equivalent Portuguese).
+
+**Validation:** `npx tsc --noEmit` passes. Grep confirms all 3 values contain `--spec <id>`.
+
+**Status:** [ ] pending
+
+---
+
+### Task 7: Write Refinement Tests
 
 **Objective:** Add tests for all 5 changes introduced by this spec.
 
@@ -157,7 +176,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ---
 
-### Task 7: Full Test Suite Verification
+### Task 8: Full Test Suite Verification
 
 **Objective:** Ensure zero regressions.
 
@@ -172,13 +191,13 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 ---
 
-### Task 8: Update Roadmap Status
+### Task 9: Update Roadmap Status
 
 **Objective:** Mark spec 260A as `in-progress` when implementation starts, then `done` when complete.
 
 **Actions:**
 1. Open `management/roadmap.md`.
-2. At start: change `| 260A | notes-mvp | planned | V28 (child of 260) |` → `| 260A | notes-mvp | in-progress | V28 (child of 260) |`.
+2. At start: change `| 260A | notes-mvp | verified | V28 (child of 260) |` → `| 260A | notes-mvp | in-progress | V28 (child of 260) |`.
 3. After all tasks complete and tests pass: change `in-progress` → `done`.
 
 **Validation:** Roadmap line updated. `git diff` confirms only status changed.

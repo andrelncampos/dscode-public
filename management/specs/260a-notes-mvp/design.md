@@ -1,6 +1,6 @@
 ---
 name: notes-mvp
-status: created
+status: verified
 references: V28, 260
 ---
 
@@ -178,7 +178,7 @@ if (t.startsWith("--")) {
 note.text.length > 80 ? note.text.slice(0, 80) + "..." : note.text,
 
 // After:
-function truncateText(text: string, maxLen: number): string {
+export function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const slice = text.slice(0, maxLen);
   const lastSpace = slice.lastIndexOf(" ");
@@ -299,6 +299,9 @@ Modified files:
   src/tests/notes.test.ts           ← +11 new tests
 
 No new files.
-No i18n changes needed (reuse existing "cmd.note-add-usage" key).
+  src/i18n/en.ts                    ← update "cmd.note-add-usage" value (+1)
+  src/i18n/es.ts                    ← update "cmd.note-add-usage" value (+1)
+  src/i18n/pt.ts                    ← update "cmd.note-add-usage" value (+1)
+
 No changes to commands.ts, slash-commands.ts.
 ```

@@ -1,6 +1,6 @@
 ---
 name: notes-mvp
-status: created
+status: verified
 references: V28, 260
 ---
 
@@ -83,7 +83,8 @@ This spec refines the three MVP commands (`/note-add`, `/note-list`, `/note-stat
 
 **Acceptance Criteria:**
 - [ ] `formatNote` truncates at the last space before or at position 80.
-- [ ] If no space exists before position 80, hard-truncate at 80 (backward compatible for long single words).
+- [ ] If the last space is before 60% of the limit (position < 48 for limit 80), hard-truncate at 80 instead to avoid producing too-short output (e.g., a 5-char line from a space at position 5).
+- [ ] If no space exists at all before position 80, hard-truncate at 80.
 - [ ] Append `...` after truncation.
 - [ ] Text ≤ 80 characters is unchanged.
 
