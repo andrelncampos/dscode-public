@@ -46,6 +46,7 @@ export const COMMAND_KINDS = [
   "note-status",
   "note-edit",
   "note-deadline",
+  "note-delete",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];

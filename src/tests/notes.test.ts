@@ -18,7 +18,9 @@ import {
   formatNote,
   formatNoteList,
   truncateText,
+  now,
 } from "../ui/core/notes";
+import { resolveSpecName, clearSpecNameCache } from "../ui/core/spec-names";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -500,6 +502,92 @@ test("formatNoteList no overdue badge for future deadline", () => {
     const notes = readNotes();
     const output = formatNoteList(notes, {});
     assert.equal(output.includes("OVERDUE"), false);
+  } finally {
+    teardown(dir);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FR-B01: spec name resolution in display
+// ---------------------------------------------------------------------------
+
+test("formatNote shows spec name when available", () => {
+  const dir = setup();
+  try {
+    fs.mkdirSync("management", { recursive: true });
+    fs.writeFileSync(path.join("management", "roadmap.md"), "| 260 | developer-notes | audited | V28 |\n", "utf8");
+    clearSpecNameCache();
+    const note = createNote("test", { specId: "260" });
+    const output = formatNote(note);
+    assert.ok(output.includes("(spec: #260 developer-notes)"));
+  } finally {
+    teardown(dir);
+  }
+});
+
+test("formatNote shows spec number only when name unresolved", () => {
+  const dir = setup();
+  try {
+    clearSpecNameCache();
+    const note: Note = {
+      id: "abcd",
+      text: "test",
+      status: "open",
+      createdAt: "2026-01-01T00:00:00",
+      updatedAt: "2026-01-01T00:00:00",
+      specId: "999",
+    };
+    const output = formatNote(note);
+    assert.ok(output.includes("(spec: #999)"));
+    assert.equal(output.includes("(spec: #999 "), false); // no name after number
+  } finally {
+    teardown(dir);
+  }
+});
+
+test("formatNoteList header shows spec name", () => {
+  const dir = setup();
+  try {
+    fs.mkdirSync("management", { recursive: true });
+    fs.writeFileSync(path.join("management", "roadmap.md"), "| 120 | explore-subagent | audited | V17 |\n", "utf8");
+    clearSpecNameCache();
+    const note = createNote("test", {});
+    const note2 = createNote("test2", { specId: "120" });
+    const notes = [note, note2];
+    const output = formatNoteList(notes, { specId: "120" });
+    assert.ok(output.includes("spec: #120 explore-subagent"));
+  } finally {
+    teardown(dir);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FR-B03: note-delete
+// ---------------------------------------------------------------------------
+
+test("note-delete removes note from file", () => {
+  const dir = setup();
+  try {
+    const note = createNote("delete me", {});
+    const notesBefore = readNotes();
+    assert.equal(notesBefore.length, 1);
+    const idx = notesBefore.findIndex((n) => n.id === note.id);
+    notesBefore.splice(idx, 1);
+    writeNotes(notesBefore);
+    const notesAfter = readNotes();
+    assert.equal(notesAfter.length, 0);
+  } finally {
+    teardown(dir);
+  }
+});
+
+test("note-delete findIndex returns -1 for missing id", () => {
+  const dir = setup();
+  try {
+    createNote("exists", {});
+    const notes = readNotes();
+    const idx = notes.findIndex((n) => n.id === "nonexistent");
+    assert.equal(idx, -1);
   } finally {
     teardown(dir);
   }

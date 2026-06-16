@@ -57,6 +57,7 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "note-status",
     "note-edit",
     "note-deadline",
+    "note-delete",
   ]);
 });
 

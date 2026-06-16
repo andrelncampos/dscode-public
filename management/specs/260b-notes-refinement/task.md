@@ -39,7 +39,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsc --noEmit` passes. Manual test against current `roadmap.md`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -60,7 +60,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsc --noEmit` passes. Existing tests still pass (spec name may be present or absent depending on roadmap readability).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -86,7 +86,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsc --noEmit` passes. Slash command test updated.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -113,7 +113,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsc --noEmit` passes. Handler compiles with new types.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -132,7 +132,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** Existing tests still pass. New behavior is additive (prepends confirmation line).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -151,7 +151,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsc --noEmit` passes. Grep confirms all 8 keys present in all 3 files (7 new + 1 updated).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -180,7 +180,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** `npx tsx --test src/tests/spec-names.test.ts` — all pass. `npx tsx --test src/tests/notes.test.ts` — all pass (existing + new).
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -195,7 +195,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** Output shows `pass` count increased, `fail` count is 0.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -210,4 +210,4 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on com
 
 **Validation:** Roadmap line updated. `git diff` confirms only status changed.
 
-**Status:** [ ] pending
+**Status:** [x] done

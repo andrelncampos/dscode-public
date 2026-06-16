@@ -2,6 +2,8 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 
+import { resolveSpecName } from "./spec-names";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -88,7 +90,7 @@ export function generateNoteId(existingIds: Set<string>): string {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function now(): string {
+export function now(): string {
   return new Date().toISOString().replace(/\..+/, "");
 }
 
@@ -341,7 +343,9 @@ export function formatNote(note: Note): string {
     parts.push(`(tags: ${note.tags.join(", ")})`);
   }
   if (note.specId) {
-    parts.push(`(spec: #${note.specId})`);
+    const name = resolveSpecName(note.specId);
+    const label = name ? `#${note.specId} ${name}` : `#${note.specId}`;
+    parts.push(`(spec: ${label})`);
   }
   return parts.join(" ");
 }
@@ -353,7 +357,11 @@ export function formatNoteList(
   const filterParts: string[] = ["\x1b[1m═══ NOTES ═══\x1b[0m"];
   if (filters.status) filterParts.push(`status: ${filters.status}`);
   if (filters.overdue) filterParts.push("overdue");
-  if (filters.specId) filterParts.push(`spec: #${filters.specId}`);
+  if (filters.specId) {
+    const name = resolveSpecName(filters.specId);
+    const label = name ? `#${filters.specId} ${name}` : `#${filters.specId}`;
+    filterParts.push(`spec: ${label}`);
+  }
   const header = filterParts.join("  ");
 
   const lines = [header];

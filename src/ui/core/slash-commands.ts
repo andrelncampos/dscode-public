@@ -253,6 +253,13 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     args: ["<id>", "YYYY-MM-DD|--remove"],
     description: "cmd.note-deadline",
   },
+  {
+    kind: "note-delete",
+    name: "note-delete",
+    label: "/note-delete",
+    args: ["<id>"],
+    description: "cmd.note-delete",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {
