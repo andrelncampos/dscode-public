@@ -104,7 +104,7 @@ type PromptToolOptions = {
   cacheMode?: "off" | "aware" | "strict";
 };
 
-const DEFAULT_SKILL_TEMPLATES = ["karpathy-guidelines.md"];
+const DEFAULT_SKILL_TEMPLATES = ["karpathy-guidelines.md", "project-structure.md"];
 const DEFAULT_SKILL_RESOURCE_FILE_LIMIT = 50;
 const SKILL_RESOURCE_EXCLUDED_DIRS = new Set([
   ".cache",
