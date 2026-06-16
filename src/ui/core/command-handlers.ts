@@ -5,7 +5,6 @@ import {
   createNote,
   listNotes,
   updateNoteStatus,
-  updateNoteText,
   updateNoteDeadline,
   parseNoteArgs,
   formatNote,
