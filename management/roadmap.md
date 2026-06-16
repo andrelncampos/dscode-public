@@ -47,7 +47,6 @@
 | 280 | error-handling-hardening | planned | V29, L7 |
 | 290 | test-infra-error-visibility | planned | V29, L7 |
 | 300 | dynamic-help-modal | planned | V30, V1 |
-| 180A | cache-metrics-tui-display | planned | V21, V30 (child of 180) |
 | 320 | session-module-split | planned | V31, L1 |
 
 ---
@@ -148,9 +147,6 @@ Spec 290 (test-infra-error-visibility)
 
 Spec 300 (dynamic-help-modal)
   (standalone — generates HelpModal shortcut list from BUILTIN_SLASH_COMMANDS at runtime)
-
-Spec 180A (cache-metrics-tui-display)
-  └── depends on Spec 180 (needs normalizeCacheTokens, computeCacheSavings, computeCacheHitRate from cache-metrics infrastructure)
 
 Spec 320 (session-module-split)
   (standalone — mechanical extraction of session.ts into focused modules; zero behavior change)

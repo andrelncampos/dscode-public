@@ -590,10 +590,6 @@ clear feedback.
   slash command registry (`BUILTIN_SLASH_COMMANDS`). Adding a new slash command
   requires changes in only one place — the command definition. The help screen never
   drifts from reality.
-- **Cache visibility:** Cache hit rate and monetary savings are displayed per-turn
-  and aggregated in the exit summary. Users see exactly how much they save through
-  DeepSeek's prompt caching — currently the data is tracked in `budget.md` but
-  invisible during the session.
 - **Code cleanup:** Dead code, unused parameters, outdated comments, and duplicated
   logic are systematically removed. The codebase tells the truth — comments match
   behavior, functions are used where exported, no copy-paste drift between slash
@@ -602,7 +598,6 @@ clear feedback.
 **Delivered by:**
 - Spec 300 (dynamic-help-modal) — auto-generate help from command registry.
 - Spec 270 (code-quality-cleanup) — DRY fixes, dead code removal, comment correction.
-- Spec 180A (cache-metrics-tui-display) — per-turn and exit-summary cache display (child of 180; infrastructure already built).
 
 ---
 
