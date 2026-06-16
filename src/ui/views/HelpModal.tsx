@@ -60,12 +60,12 @@ function buildBaseShortcuts(t: (key: string) => string, profile: TerminalRuntime
     { key: "/mcp", description: t("help.mcp-cmd") },
     // ── Notes ──
     { key: "", description: "", separator: true },
-    { key: "/note-add", description: t("help.note-add-cmd") },
-    { key: "/note-list", description: t("help.note-list-cmd") },
-    { key: "/note-status", description: t("help.note-status-cmd") },
-    { key: "/note-edit", description: t("help.note-edit-cmd") },
-    { key: "/note-deadline", description: t("help.note-deadline-cmd") },
-    { key: "/note-delete", description: t("help.note-delete-cmd") },
+    { key: "/notes-add", description: t("help.notes-add-cmd") },
+    { key: "/notes", description: t("help.notes-cmd") },
+    { key: "/notes-status", description: t("help.notes-status-cmd") },
+    { key: "/notes-edit", description: t("help.notes-edit-cmd") },
+    { key: "/notes-deadline", description: t("help.notes-deadline-cmd") },
+    { key: "/notes-delete", description: t("help.notes-delete-cmd") },
     // ── Specs ──
     { key: "", description: "", separator: true },
     { key: "/spec-init", description: t("help.spec-init-cmd") },

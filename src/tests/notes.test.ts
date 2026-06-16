@@ -562,10 +562,10 @@ test("formatNoteList header shows spec name", () => {
 });
 
 // ---------------------------------------------------------------------------
-// FR-B03: note-delete
+// FR-B03: notes-delete
 // ---------------------------------------------------------------------------
 
-test("note-delete removes note from file", () => {
+test("notes-delete removes note from file", () => {
   const dir = setup();
   try {
     const note = createNote("delete me", {});
@@ -581,7 +581,7 @@ test("note-delete removes note from file", () => {
   }
 });
 
-test("note-delete findIndex returns -1 for missing id", () => {
+test("notes-delete findIndex returns -1 for missing id", () => {
   const dir = setup();
   try {
     createNote("exists", {});

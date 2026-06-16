@@ -41,12 +41,12 @@ export const COMMAND_KINDS = [
   "model-params",
   "model-thinking",
   "budget",
-  "note-add",
-  "note-list",
-  "note-status",
-  "note-edit",
-  "note-deadline",
-  "note-delete",
+  "notes-add",
+  "notes",
+  "notes-status",
+  "notes-edit",
+  "notes-deadline",
+  "notes-delete",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];

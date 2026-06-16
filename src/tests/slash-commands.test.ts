@@ -52,12 +52,12 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
     "model-params",
     "model-thinking",
     "budget",
-    "note-add",
-    "note-list",
-    "note-status",
-    "note-edit",
-    "note-deadline",
-    "note-delete",
+    "notes-add",
+    "notes",
+    "notes-status",
+    "notes-edit",
+    "notes-deadline",
+    "notes-delete",
   ]);
 });
 
