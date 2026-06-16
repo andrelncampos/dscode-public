@@ -43,6 +43,12 @@
 | 260 | developer-notes | audited | V28 |
 | 260A | notes-mvp | audited | V28 (child of 260) |
 | 260B | notes-refinement | audited | V28 (child of 260) |
+| 270 | code-quality-cleanup | planned | V30 |
+| 280 | error-handling-hardening | planned | V29, L7 |
+| 290 | test-infra-error-visibility | planned | V29, L7 |
+| 300 | dynamic-help-modal | planned | V30, V1 |
+| 180A | cache-metrics-tui-display | planned | V21, V30 (child of 180) |
+| 320 | session-module-split | planned | V31, L1 |
 
 ---
 
@@ -130,6 +136,24 @@ Spec 260A (notes-mvp)
 
 Spec 260B (notes-refinement)
   └── depends on Spec 260A (needs notes.ts core from notes-mvp)
+
+Spec 270 (code-quality-cleanup)
+  (standalone — small DRY fixes in slash-commands.ts, notes.ts, command-handlers.ts, prompt-buffer.ts, session.ts)
+
+Spec 280 (error-handling-hardening)
+  (standalone — replaces bare catch {} with stderr logging; enhances error-classification.ts)
+
+Spec 290 (test-infra-error-visibility)
+  (standalone — captures worker stderr in run-tests.mjs to expose real import errors)
+
+Spec 300 (dynamic-help-modal)
+  (standalone — generates HelpModal shortcut list from BUILTIN_SLASH_COMMANDS at runtime)
+
+Spec 180A (cache-metrics-tui-display)
+  └── depends on Spec 180 (needs normalizeCacheTokens, computeCacheSavings, computeCacheHitRate from cache-metrics infrastructure)
+
+Spec 320 (session-module-split)
+  (standalone — mechanical extraction of session.ts into focused modules; zero behavior change)
 ```
 
 ---

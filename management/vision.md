@@ -553,3 +553,74 @@ type `/note-add` and move on.
 **Delivered by:**
 - Spec 260A (notes-mvp) — `/note-add`, `/note-list`, `/note-status`.
 - Spec 260B (notes-refinement) — `/note-edit`, `/note-deadline`, spec linking.
+
+---
+
+### V29: Operational Robustness & Debuggability
+
+The product must fail visibly and informatively — never silently. When something goes
+wrong (API error, file I/O failure, unexpected exception), DsCode surfaces actionable
+information instead of swallowing the error in a bare `catch {}` block.
+
+- **Error visibility:** Every `catch {}` block in the codebase must either log the error
+  to stderr (development) or surface a classified message to the user (production).
+  Silent failures are treated as bugs.
+- **Error classification:** API errors are classified into user-friendly categories —
+  authentication failure, rate limit, quota exceeded, model not found, network timeout,
+  context length exceeded. Raw provider error JSON is never shown to the user.
+- **Test infrastructure reliability:** The CI test runner must report actual import and
+  load errors, not mask them as "No test suite found." Every test failure must be
+  attributable to a specific file and error message.
+- **Logger resilience:** The error logger itself must not be a source of silent failures.
+  If `logApiError` fails, it writes to stderr before giving up.
+
+**Delivered by:**
+- Spec 280 (error-handling-hardening) — catch logging, error classification, logger resilience.
+- Spec 290 (test-infra-error-visibility) — worker stderr capture, real error reporting.
+
+---
+
+### V30: UI Discoverability & Polish
+
+Small but high-impact refinements to the terminal UI that make the product feel
+complete and professional — every feature is discoverable, every interaction has
+clear feedback.
+
+- **Dynamic help modal:** The `?` help screen is generated automatically from the
+  slash command registry (`BUILTIN_SLASH_COMMANDS`). Adding a new slash command
+  requires changes in only one place — the command definition. The help screen never
+  drifts from reality.
+- **Cache visibility:** Cache hit rate and monetary savings are displayed per-turn
+  and aggregated in the exit summary. Users see exactly how much they save through
+  DeepSeek's prompt caching — currently the data is tracked in `budget.md` but
+  invisible during the session.
+- **Code cleanup:** Dead code, unused parameters, outdated comments, and duplicated
+  logic are systematically removed. The codebase tells the truth — comments match
+  behavior, functions are used where exported, no copy-paste drift between slash
+  and hash command infrastructure.
+
+**Delivered by:**
+- Spec 300 (dynamic-help-modal) — auto-generate help from command registry.
+- Spec 270 (code-quality-cleanup) — DRY fixes, dead code removal, comment correction.
+- Spec 180A (cache-metrics-tui-display) — per-turn and exit-summary cache display (child of 180; infrastructure already built).
+
+---
+
+### V31: Session Module Architecture
+
+The session manager (`session.ts`) has grown to 4147 lines — a monolithic file that
+mixes session lifecycle, LLM chat orchestration, context compaction, skill discovery,
+MCP lifecycle, and terminal title management. This creates maintenance friction:
+every change to session behavior requires navigating a single massive file, and
+merge conflicts are frequent.
+
+- **Focused modules:** Session CRUD, chat orchestration, context compaction, and
+  skill discovery are extracted into separate files with clear interfaces.
+- **Zero behavior change:** The split is purely mechanical — no user-visible
+  difference, no API changes, no test regressions. The existing test suite serves
+  as the acceptance criteria.
+- **Gradual extraction:** Modules are extracted one at a time, each in its own PR,
+  following the layering pattern from L1 (layer work, never a single "multi-module" PR).
+
+**Delivered by:**
+- Spec 320 (session-module-split) — phased extraction of session.ts into focused modules.
