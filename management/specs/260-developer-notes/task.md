@@ -30,7 +30,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** TypeScript compiles with `npx tsc --noEmit`. File has 0 dependencies on React/Ink.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -59,7 +59,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Manual test: call `writeNotes([...])` then `readNotes()` and verify round-trip. Delete file and verify `readNotes()` returns `[]`. Corrupt JSON and verify returns `[]`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -82,7 +82,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Run 1000 generations and verify all are 4-char hex, no collisions within set. Test collision avoidance with mock set containing generated ID.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -109,7 +109,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 - `"\"hello world\" --tag bug"` → `{ positional: ["hello world"], flags: { tag: "bug" } }`
 - `"fix login --tag bug --deadline 2026-07-01"` → correct extraction
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -132,7 +132,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Test valid dates (`2026-01-01`, `2024-02-29`), invalid dates (`2026-13-01`, `2026-02-30`, `not-a-date`). Test all 4 valid statuses and invalid ones.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -161,7 +161,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Unit test each CRUD function with isolated temp directory. Verify file persistence. Verify status updates change status and timestamp. Verify text updates. Verify deadline set and removal.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -187,7 +187,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Test formatting with note having all fields, note with minimal fields, empty list. Verify ANSI codes present for status colors. Verify overdue prefix appears for past deadline.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -205,7 +205,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. TypeScript ensures these are valid in `SlashCommandKind`.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -228,7 +228,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. Commands appear in `buildSlashCommands(...)` result.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -261,7 +261,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. Handlers exist in object and are correctly typed.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -280,7 +280,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsc --noEmit` passes. All 39 keys (13 × 3) present.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -302,7 +302,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** `npx tsx --test src/tests/notes.test.ts` — all tests pass.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -317,7 +317,7 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Roadmap line updated. `git diff` confirms only status changed.
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 ---
 
@@ -332,4 +332,4 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
 
 **Validation:** Output shows `pass` count increased by 25+, `fail` count is 0.
 
-**Status:** [ ] pending
+**Status:** [x] done

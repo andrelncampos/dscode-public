@@ -1,0 +1,350 @@
+import path from "node:path";
+import fs from "node:fs";
+import crypto from "node:crypto";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type NoteStatus = "open" | "closed" | "paused" | "abandoned";
+
+export interface Note {
+  id: string; // 4 lowercase hex chars
+  text: string; // note body
+  status: NoteStatus; // always one of the 4 statuses
+  createdAt: string; // ISO 8601 with seconds, UTC
+  updatedAt: string; // ISO 8601 with seconds, UTC
+  deadline?: string; // YYYY-MM-DD, absent if no deadline
+  tags?: string[]; // lowercase, deduplicated on write, absent if empty
+  specId?: string; // spec number as string, absent if not linked
+}
+
+export interface ParsedNoteArgs {
+  positional: string[];
+  flags: Record<string, string | true>;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const NOTES_PATH = path.join(".dscode", "notes.json");
+const NOTES_TMP = path.join(".dscode", "notes.json.tmp");
+
+// ---------------------------------------------------------------------------
+// File I/O
+// ---------------------------------------------------------------------------
+
+export function readNotes(): Note[] {
+  if (!fs.existsSync(NOTES_PATH)) return [];
+  try {
+    const content = fs.readFileSync(NOTES_PATH, "utf8");
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) return parsed as Note[];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeNotes(notes: Note[]): void {
+  const dir = path.dirname(NOTES_PATH);
+  fs.mkdirSync(dir, { recursive: true });
+
+  // Ensure .dscode/.gitignore exists so notes.json is never committed
+  const gitignorePath = path.join(dir, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, "notes.json\n", "utf8");
+  }
+
+  const json = JSON.stringify(notes, null, 2);
+  fs.writeFileSync(NOTES_TMP, json, "utf8");
+  fs.renameSync(NOTES_TMP, NOTES_PATH);
+
+  const fd = fs.openSync(NOTES_PATH, "r");
+  try {
+    fs.fsyncSync(fd);
+  } catch {
+    // fsync may not be supported on all platforms (e.g., Windows on read-only fd).
+    // The renameSync above is atomic on NTFS, so this is a best-effort flush.
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ID Generation
+// ---------------------------------------------------------------------------
+
+export function generateNoteId(existingIds: Set<string>): string {
+  for (let i = 0; i < 100; i++) {
+    const id = crypto.randomBytes(2).toString("hex");
+    if (!existingIds.has(id)) return id;
+  }
+  throw new Error("note ID generation exhausted after 100 attempts");
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function now(): string {
+  return new Date().toISOString().replace(/\..+/, "");
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+export function isValidDate(dateStr: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const d = new Date(dateStr + "T00:00:00Z");
+  if (isNaN(d.getTime())) return false;
+  const [y, m, day] = dateStr.split("-").map(Number);
+  if (m < 1 || m > 12) return false;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  if (day < 1 || day > daysInMonth) return false;
+  return true;
+}
+
+export function isValidStatus(status: string): status is NoteStatus {
+  return ["open", "closed", "paused", "abandoned"].includes(status);
+}
+
+// ---------------------------------------------------------------------------
+// Arg Parsing
+// ---------------------------------------------------------------------------
+
+export function parseNoteArgs(input: string): ParsedNoteArgs {
+  const tokens: string[] = [];
+  let i = 0;
+  const len = input.length;
+
+  while (i < len) {
+    // skip whitespace
+    if (input[i] === " ") {
+      i++;
+      continue;
+    }
+    // quoted string
+    if (input[i] === '"') {
+      i++; // skip opening quote
+      let acc = "";
+      while (i < len && input[i] !== '"') {
+        acc += input[i];
+        i++;
+      }
+      if (i < len) i++; // skip closing quote
+      tokens.push(acc);
+      continue;
+    }
+    // unquoted token
+    let acc = "";
+    while (i < len && input[i] !== " ") {
+      acc += input[i];
+      i++;
+    }
+    tokens.push(acc);
+  }
+
+  const positional: string[] = [];
+  const flags: Record<string, string | true> = {};
+
+  for (let j = 0; j < tokens.length; j++) {
+    const t = tokens[j];
+    if (t.startsWith("--")) {
+      const name = t.slice(2);
+      // check next token for value
+      const next = tokens[j + 1];
+      if (next && !next.startsWith("--")) {
+        flags[name] = next;
+        j++; // consume value
+      } else {
+        flags[name] = true; // boolean flag
+      }
+    } else {
+      positional.push(t);
+    }
+  }
+
+  return { positional, flags };
+}
+
+// ---------------------------------------------------------------------------
+// CRUD Operations
+// ---------------------------------------------------------------------------
+
+export function createNote(text: string, options: { deadline?: string; tags?: string[] }): Note {
+  const notes = readNotes();
+  const id = generateNoteId(new Set(notes.map((n) => n.id)));
+  const ts = now();
+
+  const note: Note = {
+    id,
+    text,
+    status: "open",
+    createdAt: ts,
+    updatedAt: ts,
+    ...options,
+  };
+
+  if (note.tags) {
+    const deduped = [...new Set(note.tags.map((t) => t.toLowerCase().trim()))];
+    if (deduped.length > 0) {
+      note.tags = deduped;
+    } else {
+      delete note.tags;
+    }
+  }
+
+  notes.push(note);
+  writeNotes(notes);
+  return note;
+}
+
+export function listNotes(filters: { status?: NoteStatus; overdue?: boolean; specId?: string }): Note[] {
+  let notes = readNotes();
+  const todayStr = today();
+
+  if (filters.status) {
+    notes = notes.filter((n) => n.status === filters.status);
+  }
+  if (filters.overdue) {
+    notes = notes.filter((n) => n.deadline && n.deadline < todayStr);
+  }
+  if (filters.specId) {
+    notes = notes.filter((n) => n.specId === filters.specId);
+  }
+
+  const overdue: Note[] = [];
+  const open: Note[] = [];
+  const paused: Note[] = [];
+  const closed: Note[] = [];
+  const abandoned: Note[] = [];
+
+  for (const n of notes) {
+    const isOverdue = n.deadline && n.deadline < todayStr;
+    if (isOverdue) {
+      overdue.push(n);
+    } else {
+      switch (n.status) {
+        case "open":
+          open.push(n);
+          break;
+        case "paused":
+          paused.push(n);
+          break;
+        case "closed":
+          closed.push(n);
+          break;
+        case "abandoned":
+          abandoned.push(n);
+          break;
+      }
+    }
+  }
+
+  const byDeadlineAsc = (a: Note, b: Note) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999");
+  const byCreatedDesc = (a: Note, b: Note) => b.createdAt.localeCompare(a.createdAt);
+
+  overdue.sort(byDeadlineAsc);
+  open.sort((a, b) => {
+    if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return byCreatedDesc(a, b);
+  });
+  paused.sort(byCreatedDesc);
+  closed.sort(byCreatedDesc);
+  abandoned.sort(byCreatedDesc);
+
+  return [...overdue, ...open, ...paused, ...closed, ...abandoned];
+}
+
+export function updateNoteStatus(id: string, status: NoteStatus): Note | null {
+  const notes = readNotes();
+  const idx = notes.findIndex((n) => n.id === id);
+  if (idx === -1) return null;
+  notes[idx].status = status;
+  notes[idx].updatedAt = now();
+  writeNotes(notes);
+  return notes[idx];
+}
+
+export function updateNoteText(id: string, text: string): Note | null {
+  const notes = readNotes();
+  const idx = notes.findIndex((n) => n.id === id);
+  if (idx === -1) return null;
+  notes[idx].text = text;
+  notes[idx].updatedAt = now();
+  writeNotes(notes);
+  return notes[idx];
+}
+
+export function updateNoteDeadline(id: string, deadline: string | null): Note | null {
+  const notes = readNotes();
+  const idx = notes.findIndex((n) => n.id === id);
+  if (idx === -1) return null;
+  if (deadline === null) {
+    delete notes[idx].deadline;
+  } else {
+    notes[idx].deadline = deadline;
+  }
+  notes[idx].updatedAt = now();
+  writeNotes(notes);
+  return notes[idx];
+}
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
+
+const STATUS_COLORS: Record<NoteStatus, string> = {
+  open: "\x1b[33m",
+  closed: "\x1b[32m",
+  paused: "\x1b[2m",
+  abandoned: "\x1b[31m",
+};
+
+export function formatNote(note: Note): string {
+  const RESET = "\x1b[0m";
+  const color = STATUS_COLORS[note.status] ?? "";
+  const parts: string[] = [
+    `[${note.id}]`,
+    `${color}${note.status.toUpperCase()}${RESET}`,
+    note.text.length > 80 ? note.text.slice(0, 80) + "..." : note.text,
+  ];
+  if (note.deadline) {
+    parts.push(`(deadline: ${note.deadline})`);
+  }
+  if (note.tags && note.tags.length > 0) {
+    parts.push(`(tags: ${note.tags.join(", ")})`);
+  }
+  if (note.specId) {
+    parts.push(`(spec: #${note.specId})`);
+  }
+  return parts.join(" ");
+}
+
+export function formatNoteList(
+  notes: Note[],
+  filters: { status?: NoteStatus; overdue?: boolean; specId?: string }
+): string {
+  const filterParts: string[] = ["\x1b[1m═══ NOTES ═══\x1b[0m"];
+  if (filters.status) filterParts.push(`status: ${filters.status}`);
+  if (filters.overdue) filterParts.push("overdue");
+  if (filters.specId) filterParts.push(`spec: #${filters.specId}`);
+  const header = filterParts.join("  ");
+
+  const lines = [header];
+  for (const note of notes) {
+    const isOverdue = note.deadline && note.deadline < today();
+    const prefix = isOverdue ? "\x1b[1;31mOVERDUE\x1b[0m " : "";
+    lines.push(prefix + formatNote(note));
+  }
+  return lines.join("\n");
+}

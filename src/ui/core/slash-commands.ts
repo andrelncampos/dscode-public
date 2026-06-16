@@ -218,6 +218,41 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     label: "/budget",
     description: "cmd.budget",
   },
+  {
+    kind: "note-add",
+    name: "note-add",
+    label: "/note-add",
+    args: ["<text>", "--deadline", "YYYY-MM-DD", "--tag", "<tag>"],
+    description: "cmd.note-add",
+  },
+  {
+    kind: "note-list",
+    name: "note-list",
+    label: "/note-list",
+    args: ["--status", "open|closed|paused|abandoned", "--overdue", "--spec", "<id>"],
+    description: "cmd.note-list",
+  },
+  {
+    kind: "note-status",
+    name: "note-status",
+    label: "/note-status",
+    args: ["<id>", "<status>"],
+    description: "cmd.note-status",
+  },
+  {
+    kind: "note-edit",
+    name: "note-edit",
+    label: "/note-edit",
+    args: ["<id>", '"<text>"'],
+    description: "cmd.note-edit",
+  },
+  {
+    kind: "note-deadline",
+    name: "note-deadline",
+    label: "/note-deadline",
+    args: ["<id>", "YYYY-MM-DD|--remove"],
+    description: "cmd.note-deadline",
+  },
 ];
 
 export function buildSlashCommands(skills: SkillInfo[]): SlashCommandItem[] {

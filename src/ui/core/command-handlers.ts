@@ -1,6 +1,19 @@
 import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
+import {
+  createNote,
+  listNotes,
+  updateNoteStatus,
+  updateNoteText,
+  updateNoteDeadline,
+  parseNoteArgs,
+  formatNote,
+  formatNoteList,
+  isValidDate,
+  isValidStatus,
+} from "./notes";
+import type { NoteStatus } from "./notes";
 
 export type CommandContext = {
   buffer: { text: string };
@@ -88,6 +101,126 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       imageUrls: [],
       selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
     });
+    ctx.resetPromptInput();
+  },
+  "note-add": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const input = ctx.buffer.text.replace(/^\/note-add\s*/, "").trim();
+    if (!input) {
+      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      return;
+    }
+    const args = parseNoteArgs(input);
+    const text = args.positional.join(" ");
+    if (!text) {
+      process.stdout.write(t("cmd.note-add-usage") + "\n");
+      return;
+    }
+    const deadline = typeof args.flags.deadline === "string" ? args.flags.deadline : undefined;
+    if (deadline && !isValidDate(deadline)) {
+      process.stdout.write(t("cmd.note-invalid-date") + "\n");
+      return;
+    }
+    const tagFlag = args.flags.tag;
+    const tags = typeof tagFlag === "string" ? [tagFlag] : undefined;
+    const note = createNote(text, { deadline, tags });
+    process.stdout.write(formatNote(note) + "\n");
+    ctx.resetPromptInput();
+  },
+  "note-list": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const input = ctx.buffer.text.replace(/^\/note-list\s*/, "").trim();
+    const args = parseNoteArgs(input);
+    const status: NoteStatus | undefined =
+      typeof args.flags.status === "string"
+        ? isValidStatus(args.flags.status)
+          ? args.flags.status
+          : undefined
+        : undefined;
+    if (args.flags.status && !status) {
+      process.stdout.write(t("cmd.note-invalid-status") + "\n");
+      return;
+    }
+    const overdue = args.flags.overdue === true;
+    const specId = typeof args.flags.spec === "string" ? args.flags.spec : undefined;
+    const notes = listNotes({ status, overdue, specId });
+    if (notes.length === 0) {
+      process.stdout.write(t("cmd.note-list-empty") + "\n");
+    } else {
+      process.stdout.write(formatNoteList(notes, { status, overdue, specId }) + "\n");
+    }
+    ctx.resetPromptInput();
+  },
+  "note-status": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const input = ctx.buffer.text.replace(/^\/note-status\s*/, "").trim();
+    const parts = input.split(/\s+/);
+    const id = parts[0];
+    const status = parts[1];
+    if (!id || !status) {
+      process.stdout.write(t("cmd.note-status-usage") + "\n");
+      return;
+    }
+    if (!isValidStatus(status)) {
+      process.stdout.write(t("cmd.note-invalid-status") + "\n");
+      return;
+    }
+    const note = updateNoteStatus(id, status as NoteStatus);
+    if (!note) {
+      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      return;
+    }
+    process.stdout.write(formatNote(note) + "\n");
+    ctx.resetPromptInput();
+  },
+  "note-edit": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const input = ctx.buffer.text.replace(/^\/note-edit\s*/, "").trim();
+    const args = parseNoteArgs(input);
+    const id = args.positional[0];
+    const text = args.positional.slice(1).join(" ");
+    if (!id || !text) {
+      process.stdout.write(t("cmd.note-edit-usage") + "\n");
+      return;
+    }
+    const note = updateNoteText(id, text);
+    if (!note) {
+      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      return;
+    }
+    process.stdout.write(formatNote(note) + "\n");
+    ctx.resetPromptInput();
+  },
+  "note-deadline": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const t = getActiveTFunction();
+    const input = ctx.buffer.text.replace(/^\/note-deadline\s*/, "").trim();
+    const args = parseNoteArgs(input);
+    const id = args.positional[0];
+    if (!id) {
+      process.stdout.write(t("cmd.note-deadline-usage") + "\n");
+      return;
+    }
+    const remove = args.flags.remove === true;
+    const deadline = remove ? null : (args.positional[1] ?? null);
+    if (!remove && !deadline) {
+      process.stdout.write(t("cmd.note-deadline-usage") + "\n");
+      return;
+    }
+    if (deadline && typeof deadline === "string" && !isValidDate(deadline)) {
+      process.stdout.write(t("cmd.note-invalid-date") + "\n");
+      return;
+    }
+    const note = updateNoteDeadline(id, deadline as string | null);
+    if (!note) {
+      process.stdout.write(t("cmd.note-not-found", { id }) + "\n");
+      return;
+    }
+    process.stdout.write(formatNote(note) + "\n");
     ctx.resetPromptInput();
   },
 };
