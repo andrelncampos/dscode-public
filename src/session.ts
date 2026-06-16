@@ -735,6 +735,27 @@ export class SessionManager {
       }
     }
 
+    // Collect built-in template skills (lower priority than user/project skills)
+    const templateSkillNames = new Set<string>();
+    const templatesDir = path.join(getExtensionRoot(), "templates", "skills");
+    if (fs.existsSync(templatesDir)) {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(templatesDir, { withFileTypes: true });
+      } catch {
+        entries = [];
+      }
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+        const skillPath = path.join(templatesDir, entry.name);
+        const skillName = entry.name.replace(/\.md$/, "");
+        templateSkillNames.add(skillName);
+        if (!skillsByName.has(skillName)) {
+          skillsByName.set(skillName, this.readSkillInfo(skillPath, skillPath, skillName));
+        }
+      }
+    }
+
     if (sessionId) {
       const loadedSkillKeys = this.getLoadedSkillKeys(sessionId);
       for (const skill of skillsByName.values()) {
@@ -742,6 +763,12 @@ export class SessionManager {
           skill.isLoaded = true;
         }
       }
+    }
+
+    // Template skills are always loaded (auto-injected via getDefaultSkillPrompt)
+    for (const name of templateSkillNames) {
+      const skill = skillsByName.get(name);
+      if (skill) skill.isLoaded = true;
     }
 
     return Array.from(skillsByName.values()).sort((a, b) => a.name.localeCompare(b.name));
