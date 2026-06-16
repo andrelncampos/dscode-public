@@ -1,6 +1,6 @@
 ---
 name: developer-notes
-status: created
+status: verified
 references: V28
 ---
 
@@ -179,10 +179,10 @@ Tasks MUST be executed sequentially in numerical order. Each task depends on the
    - Build parts: `[id]`, colored status, truncated text (80 chars), deadline, tags, specId.
    - Omit absent optional fields.
 2. Implement `formatNoteList(notes, filters): string`:
-   - Empty → i18n key `cmd.note-list-empty` (hardcoded fallback: English string).
-   - Header with filter desc.
+   - Header with filter description.
    - Prepend `OVERDUE` in red bold for overdue notes.
    - Join with `\n`.
+   - Note: caller handles empty list via `t("cmd.note-list-empty")`. This function assumes non-empty input.
 3. Export both functions.
 
 **Validation:** Test formatting with note having all fields, note with minimal fields, empty list. Verify ANSI codes present for status colors. Verify overdue prefix appears for past deadline.

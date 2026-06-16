@@ -1,6 +1,6 @@
 ---
 name: developer-notes
-status: created
+status: verified
 references: V28
 ---
 
@@ -129,16 +129,15 @@ export function parseNoteArgs(input: string): ParsedNoteArgs
 ```
 
 **Internal Logic:**
-1. Remove leading slash-command prefix: locate first space after initial token, take everything after it.
-2. Tokenize: use a simple state machine over `input.trim()`:
+1. Tokenize: use a simple state machine over the already-trimmed input (handler strips the command prefix before calling this function):
    - Space → push current token if non-empty.
    - `"` → enter quote mode, accumulate until closing `"`, push as single token.
    - `-` → start of flag. If followed by `-`, it's a long flag (`--tag`). Accumulate flag name until space or `=` or end. If `=`, value follows. If space, next token is value unless it starts with `-`.
    - Default → accumulate into current token.
-3. Parse tokens:
+2. Parse tokens:
    - If token starts with `--`: check next token. If next token exists and does NOT start with `--`, it's a value → `flags[name] = value` and skip next token. If next token starts with `--` or doesn't exist, `flags[name] = true`.
    - Otherwise: push to `positional` array.
-4. Return `{ positional, flags }`.
+3. Return `{ positional, flags }`.
 
 ### Component: `src/ui/core/notes.ts` — CRUD Operations
 
@@ -466,7 +465,9 @@ COMMAND_HANDLERS["note-list"](item, ctx)
   │   ├─ readNotes()               ← reads all notes
   │   ├─ filter overdue            ← n.deadline && n.deadline < today
   │   └─ sort                      ← overdue deadline ascending
-  ├─ formatNoteList(notes)         ← header + lines or empty message
+  ├─ notes.length === 0?         ← check empty
+  │   └─ process.stdout.write(t("cmd.note-list-empty"))
+  ├─ formatNoteList(notes)         ← header + lines (assumes non-empty)
   ├─ process.stdout.write(...)
   └─ ctx.resetPromptInput()
 ```
@@ -527,7 +528,6 @@ Modified files:
 | `formatNote omits absent optional fields` | FR-006 |
 | `formatNote color-codes status` | FR-006 |
 | `formatNoteList shows header and lines` | FR-006 |
-| `formatNoteList shows empty message` | FR-006 |
 
 ### Integration Tests
 

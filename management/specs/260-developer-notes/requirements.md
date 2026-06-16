@@ -1,6 +1,6 @@
 ---
 name: developer-notes
-status: created
+status: verified
 references: V28
 ---
 
@@ -44,7 +44,7 @@ This spec is the **parent** of 260A (notes-mvp) and 260B (notes-refinement). It 
 
 **Acceptance Criteria:**
 - [ ] `readNotes(): Note[]` — reads `.dscode/notes.json`, parses JSON, validates it is an array. Returns `[]` if file missing or invalid JSON.
-- [ ] `writeNotes(notes: Note[]): void` — writes to a temp file first (`notes.json.tmp`), then renames over the original. Sync the directory fd after rename.
+- [ ] `writeNotes(notes: Note[]): void` — writes to a temp file first (`notes.json.tmp`), then renames over the original. Syncs the file fd after rename.
 - [ ] If write crashes between temp and rename, next `readNotes()` recovers the original file (temp is overwritten on next write).
 - [ ] `.dscode/` directory is created if missing before first write.
 - [ ] `notes.json` is excluded from git via `.gitignore` entry in `.dscode/.gitignore`.
