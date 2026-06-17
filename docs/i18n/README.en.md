@@ -274,7 +274,7 @@ When the AI makes changes to files, **review each diff** before committing. DsCo
 
 ## All slash commands
 
-Type `/` in the prompt to open the menu. There are **28 built-in commands** + dynamic skills (`/<skill-name>`):
+Type `/` in the prompt to open the menu. There are **37 built-in commands** + dynamic skills (`/<skill-name>`):
 
 ### Session
 
@@ -284,6 +284,8 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/resume` | Resume a previous conversation |
 | `/continue` | Continue the active conversation (or resume if empty) |
 | `/undo` | Restore code and/or conversation to a previous checkpoint |
+| `/context` | Show session metrics: tokens, cost, cache hit rate, model, and thinking mode |
+| `/clear` | Clear the session context — resets messages and tokens while keeping the session active |
 
 ### Model and display
 
@@ -319,6 +321,15 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | `/steering-remove <N>` | Remove the Nth steering rule from `AGENTS.md` |
 | `/steering-alter <N>` | Alter the Nth steering rule in `AGENTS.md` |
 
+### Developer notes
+
+| Command | Description |
+|---|---|
+| `/notes` | List all notes with status, tags, linked spec, and days until due |
+| `/notes-add` | Create a new development note (with spec, tags, and due date) |
+| `/notes-delete <id>` | Remove a note by its numeric ID |
+| `/notes-search <term>` | Search notes by text |
+
 ### SDD (Spec-Driven Development)
 
 | Command | Description |
@@ -343,6 +354,7 @@ Type `/` in the prompt to open the menu. There are **28 built-in commands** + dy
 | Command | Description |
 |---|---|
 | `/exit` | Quit DsCode |
+| `/help` | Open the help screen with all commands and keyboard shortcuts |
 
 ---
 
@@ -475,6 +487,8 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 | **agent-drift-guard** | Detects and corrects execution drift |
 | **karpathy-guidelines** | Best practices to reduce common LLM mistakes |
 | **plan-and-execute** | Structured planning with progress tracking |
+| **sdd-workflow** | Teaches the full SDD cycle (planned → created → verified → implemented → audited) |
+| **project-structure** | Maps the `.dscode/` and `management/` project structure |
 
 ### Inclusion modes
 
@@ -533,6 +547,7 @@ When the main agent needs a review, it calls the `code-reviewer` tool and receiv
 |---|---|
 | `Enter` | Send prompt |
 | `Shift+Enter` | Insert newline |
+| `#` | Activate skill by name (skill menu) |
 | `@` | Search and mention project files |
 | `Tab` | Autocomplete commands and mentions |
 | `/` | Open command menu |
@@ -566,6 +581,7 @@ Each example below is something you can type in the DsCode prompt field.
 | **Review a diff** | "Review the last commit changes and point out problems." |
 | **Create tests** | "Create unit tests for the validateUser() function in src/validators.ts." |
 | **Use a skill** | "Use the security review skill to audit this code." |
+| **Record a note** | Type `/notes-add` to create a development note with tags, linked spec, and due date. |
 | **Initialize AGENTS.md** | Type `/init` to create a file with instructions the AI will follow in the project. |
 
 DsCode works **conversationally**: you type what you need, the AI responds and uses tools. You can confirm or reject each action.
@@ -579,6 +595,7 @@ DsCode works **conversationally**: you type what you need, the AI responds and u
 | **Session** | An ongoing conversation between you and the AI. Each `/new` starts a clean session. | Start a new session when switching tasks to avoid mixing contexts. |
 | **Context** | The entire conversation history the AI "remembers". Includes your messages, responses, and files read. | Long contexts use more tokens. Use `/new` to reset. |
 | **Skills** | Markdown guides that teach the AI to follow specific rules. | Create a skill to standardize reviews, code style, or team processes. |
+| **Developer notes** | Built-in note-taking system. Record technical debt, ideas, and tasks with tags, spec linking, and due dates. | Use `/notes-add` during development to avoid losing context. Notes are stored in `.dscode/notes.json`. |
 | **Tools** | Tools the AI uses: `bash` (shell), `read`/`write`/`edit` (files), `glob`/`grep` (search), `Explore` (subagent), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (questions), `UpdatePlan` (tasks). | The AI decides which to use. You can block dangerous ones via `permissions`. |
 | **`@` Mentions** | Type `@` in the prompt to search and reference project files. | Use to direct the AI: "Analyze @src/utils.ts" — it already knows which file to read. |
 | **Provider** | The company providing the AI model (DeepSeek, OpenAI, Anthropic, Google Gemini, etc.). | Choose a provider based on cost, quality, and privacy. |
