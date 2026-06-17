@@ -80,7 +80,7 @@ DsCode इनके लिए उपयोगी है:
 
 ## इंस्टॉलेशन
 
-**[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public-public/releases)** से अपने ऑपरेटिंग सिस्टम के लिए बाइनरी डाउनलोड करें।  
+**[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public/releases)** से अपने ऑपरेटिंग सिस्टम के लिए बाइनरी डाउनलोड करें।  
 **[Node.js 24+](https://nodejs.org)** आवश्यक है।
 
 | ऑपरेटिंग सिस्टम | फ़ाइल |
@@ -232,7 +232,7 @@ my-project/
 
 ### चरण 1: इंस्टॉल करें
 
-[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public-public/releases) से बाइनरी डाउनलोड करें, निकालें और `./dscode` चलाएं। **Node.js 24+ आवश्यक है।**
+[रिलीज़ पेज](https://github.com/andrelncampos/dscode-public/releases) से बाइनरी डाउनलोड करें, निकालें और `./dscode` चलाएं। **Node.js 24+ आवश्यक है।**
 
 ### चरण 2: अपनी की कॉन्फ़िगर करें
 
@@ -900,7 +900,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## सहायता कैसे प्राप्त करें
 
-यदि आपको कोई समस्या आती है, तो [GitHub पर एक issue खोलें](https://github.com/andrelncampos/dscode-public-public/issues)।
+यदि आपको कोई समस्या आती है, तो [GitHub पर एक issue खोलें](https://github.com/andrelncampos/dscode-public/issues)।
 
 रिपोर्ट करते समय, शामिल करें:
 
@@ -957,8 +957,8 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | चैनल | लिंक |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ DsCode को **केवल** ऊपर दिए गए आधिकारिक चैनलों से इंस्टॉल करें। तृतीय-पक्ष साइटों या असत्यापित लिंक पर प्रकाशित संस्करणों पर भरोसा न करें।
 
@@ -966,5 +966,5 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

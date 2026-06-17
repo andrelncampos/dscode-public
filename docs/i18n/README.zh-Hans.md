@@ -80,7 +80,7 @@ DsCode 对以下人群有用：
 
 ## 安装
 
-从 **[Releases 页面](https://github.com/andrelncampos/dscode-public-public/releases)** 下载适合你操作系统的二进制文件。  
+从 **[Releases 页面](https://github.com/andrelncampos/dscode-public/releases)** 下载适合你操作系统的二进制文件。  
 需要 **[Node.js 24+](https://nodejs.org)**。
 
 | 操作系统 | 文件 |
@@ -232,7 +232,7 @@ my-project/
 
 ### 第 1 步：安装
 
-从 [Releases 页面](https://github.com/andrelncampos/dscode-public-public/releases) 下载二进制文件，解压后运行 `./dscode`。**需要 Node.js 24+。**
+从 [Releases 页面](https://github.com/andrelncampos/dscode-public/releases) 下载二进制文件，解压后运行 `./dscode`。**需要 Node.js 24+。**
 
 ### 第 2 步：配置你的密钥
 
@@ -899,7 +899,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## 如何获取帮助
 
-如果遇到问题，在 [GitHub 上开一个 issue](https://github.com/andrelncampos/dscode-public-public/issues)。
+如果遇到问题，在 [GitHub 上开一个 issue](https://github.com/andrelncampos/dscode-public/issues)。
 
 报告问题时，请包括：
 
@@ -956,8 +956,8 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 | 渠道 | 链接 |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ **仅**从上述官方渠道安装 DsCode。不要信任第三方网站或未经验证的链接上发布的版本。
 
@@ -965,5 +965,5 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

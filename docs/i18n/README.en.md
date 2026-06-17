@@ -74,7 +74,7 @@ DsCode works in **sessions**. Each session is an ongoing conversation. The AI us
 
 ## Installation
 
-Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Download the binary for your operating system from the **[releases page](https://github.com/andrelncampos/dscode-public/releases)**.  
 Requires **[Node.js 24+](https://nodejs.org)**.
 
 | Operating System | File |
@@ -222,7 +222,7 @@ my-project/
 
 ### Step 1: Install
 
-Download the binary from the [releases page](https://github.com/andrelncampos/dscode-public-public/releases), extract it, and run `./dscode`. **Requires Node.js 24+.**
+Download the binary from the [releases page](https://github.com/andrelncampos/dscode-public/releases), extract it, and run `./dscode`. **Requires Node.js 24+.**
 
 ### Step 2: Configure your key
 
@@ -865,7 +865,7 @@ DsCode has **native Google Gemini support** via `GeminiProvider`. Models with th
 
 ## How to get help
 
-If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
+If you encounter a problem, open an [issue on GitHub](https://github.com/andrelncampos/dscode-public/issues).
 
 When reporting, include:
 
@@ -922,8 +922,8 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../CHANGELOG.
 | Channel | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ Install DsCode **only** from the official channels above. Do not trust versions published on third-party sites or unverified links.
 
@@ -931,5 +931,5 @@ Third-party dependencies maintain their own licenses. See [NOTICE](../CHANGELOG.
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800

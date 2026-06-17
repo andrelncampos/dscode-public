@@ -74,7 +74,7 @@ DsCode funciona en **sesiones**. Cada sesión es una conversación continua. La 
 
 ## Instalación
 
-Descarga el binario para tu sistema operativo desde la **[página de releases](https://github.com/andrelncampos/dscode-public-public/releases)**.  
+Descarga el binario para tu sistema operativo desde la **[página de releases](https://github.com/andrelncampos/dscode-public/releases)**.  
 Requiere **[Node.js 24+](https://nodejs.org)**.
 
 | Sistema operativo | Archivo |
@@ -222,7 +222,7 @@ mi-proyecto/
 
 ### Paso 1: Instala
 
-Descarga el binario desde la [página de releases](https://github.com/andrelncampos/dscode-public-public/releases), extráelo y ejecuta `./dscode`. **Requiere Node.js 24+.**
+Descarga el binario desde la [página de releases](https://github.com/andrelncampos/dscode-public/releases), extráelo y ejecuta `./dscode`. **Requiere Node.js 24+.**
 
 ### Paso 2: Configura tu clave
 
@@ -866,7 +866,7 @@ DsCode tiene **soporte nativo para Google Gemini** mediante `GeminiProvider`. Lo
 
 ## Cómo pedir ayuda
 
-Si encuentras un problema, abre una [issue en GitHub](https://github.com/andrelncampos/dscode-public-public/issues).
+Si encuentras un problema, abre una [issue en GitHub](https://github.com/andrelncampos/dscode-public/issues).
 
 Al reportar un problema, incluye:
 
@@ -923,8 +923,8 @@ Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](
 | Canal | Link |
 |---|---|
 | **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
-| **Releases** | [github.com/andrelncampos/dscode-public-public/releases](https://github.com/andrelncampos/dscode-public-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public-public/issues](https://github.com/andrelncampos/dscode-public-public/issues) |
+| **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
+| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
 
 ⚠️ Instala DsCode **solo** desde los canales oficiales mencionados. No confíes en versiones publicadas en sitios de terceros o enlaces no verificados.
 
@@ -932,5 +932,5 @@ Las dependencias de terceros mantienen sus propias licencias. Consulta [NOTICE](
 
 <!-- LINK GROUP -->
 
-[github-license-link]: https://github.com/andrelncampos/dscode-public-public/blob/master/LICENSE
+[github-license-link]: https://github.com/andrelncampos/dscode-public/blob/master/LICENSE
 [github-license-shield]: https://img.shields.io/github/license/andrelncampos/dscode?color=4d6BFE&labelColor=black&style=flat-square&cacheSeconds=1800
