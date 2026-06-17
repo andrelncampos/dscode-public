@@ -55,6 +55,8 @@ const ptDictionary = {
   "cmd.notes-status-usage": "Uso: /notes-status <id> <status>",
   "cmd.notes-updated": "Nota {{id}} atualizada.",
   "cmd.budget": "Exibir o resumo de custos acumulados do projeto (budget.md)",
+  "cmd.context": "Exibir status do contexto atual: tokens, janela, cache, mensagens, custo",
+  "cmd.clear": "Limpar mensagens da sessão atual e começar do zero",
   "cmd.no-description": "(sem descrição)",
 
   // Welcome screen

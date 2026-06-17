@@ -2,7 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as crypto from "node:crypto";
 
-import { getCompactPromptTokenThreshold } from "../session";
+import { getCompactPromptTokenThreshold } from "../../src/session/compaction";
+import {
+  getCompactionCandidateRange,
+  findStablePrefixEndIndex,
+  findCompactionBoundary,
+  shouldCompactSession,
+} from "../../src/session/compaction";
 import type { SessionMessage } from "../session";
 import { DEFAULT_MODEL_PRICING } from "../common/model-capabilities";
 import { getModelCapabilities } from "../common/model-catalog";
@@ -89,8 +95,14 @@ function makeCompacted(id: string, role: "user" | "assistant" | "tool", content:
 // shouldCompactSession — indirect tests
 // ---------------------------------------------------------------------------
 
-test("getCompactPromptTokenThreshold — returns correct thresholds", () => {
-  assert.equal(getCompactPromptTokenThreshold("deepseek-v4-pro"), 384 * 1024);
+test("getCompactPromptTokenThreshold — dynamic based on context window + cache ratio", () => {
+  // deepseek-v4-pro: 1M window × 0.60 (cache ratio 120:1 ≥ 50)
+  assert.equal(getCompactPromptTokenThreshold("deepseek-v4-pro"), 600_000);
+  // deepseek-v4-flash: 1M window × 0.60 (cache ratio 50:1 ≥ 50)
+  assert.equal(getCompactPromptTokenThreshold("deepseek-v4-flash"), 600_000);
+  // claude-sonnet-4-6: 1M window × 0.38 (cache ratio 10:1 < 50)
+  assert.equal(getCompactPromptTokenThreshold("claude-sonnet-4-6"), 380_000);
+  // unknown model with no capabilities: fallback
   assert.equal(getCompactPromptTokenThreshold("unknown-model"), 128 * 1024);
 });
 
@@ -107,40 +119,6 @@ test("getModelCapabilities — deepseek pro has context window", () => {
   assert.ok(caps, "deepseek-v4-pro capabilities should exist");
   assert.ok(caps.contextWindow > 0, "context window should be > 0");
 });
-
-// ---------------------------------------------------------------------------
-// getCompactionCandidateRange tests (using standalone replica)
-// ---------------------------------------------------------------------------
-
-function getCompactionCandidateRange(
-  sessionMessages: SessionMessage[]
-): { rangeStart: number; rangeEnd: number } | null {
-  let rangeStart = -1;
-  for (let i = sessionMessages.length - 1; i >= 0; i -= 1) {
-    if (sessionMessages[i]?.meta?.isSummary) {
-      rangeStart = i + 1;
-      break;
-    }
-  }
-  if (rangeStart === -1) {
-    const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
-    rangeStart = firstNonSystem >= 0 ? firstNonSystem : sessionMessages.length;
-  }
-  if (rangeStart >= sessionMessages.length) return null;
-
-  let eligibleCount = 0;
-  for (let i = rangeStart; i < sessionMessages.length; i += 1) {
-    const m = sessionMessages[i];
-    if (!m) continue;
-    if (m.compacted) continue;
-    if (m.meta?.isSummary) continue;
-    if (m.role === "user" || m.role === "assistant" || m.role === "tool") {
-      eligibleCount += 1;
-    }
-  }
-  if (eligibleCount < 5) return null;
-  return { rangeStart, rangeEnd: sessionMessages.length };
-}
 
 test("getCompactionCandidateRange — no previous summary returns range from first non-system", () => {
   const msgs: SessionMessage[] = [
@@ -244,19 +222,6 @@ test("getCompactionCandidateRange — all messages compacted returns null", () =
 // findStablePrefixEndIndex tests (standalone replica)
 // ---------------------------------------------------------------------------
 
-function findStablePrefixEndIndex(sessionMessages: SessionMessage[], stablePrefixHash: string): number {
-  let runningContent = "";
-  for (let i = 0; i < sessionMessages.length; i += 1) {
-    const msg = sessionMessages[i];
-    if (!msg || msg.role !== "system") continue;
-    runningContent += msg.content ?? "";
-    const hash = crypto.createHash("sha256").update(runningContent).digest("hex");
-    if (hash === stablePrefixHash) return i + 1;
-  }
-  const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
-  return firstNonSystem >= 0 ? firstNonSystem : 0;
-}
-
 test("findStablePrefixEndIndex — returns index after stable prefix system messages", () => {
   const msgs: SessionMessage[] = [
     makeSys("s0", "You are an AI assistant."),
@@ -278,45 +243,6 @@ test("findStablePrefixEndIndex — hash mismatch falls back to first non-system"
   const wrongHash = "0000000000000000000000000000000000000000000000000000000000000000";
   assert.equal(findStablePrefixEndIndex(msgs, wrongHash), 2, "fallback to first non-system");
 });
-
-// ---------------------------------------------------------------------------
-// findCompactionBoundary tests (standalone replica)
-// ---------------------------------------------------------------------------
-
-function hasToolError(content: string): boolean {
-  return content.includes("Error:") || content.includes("ERROR");
-}
-
-function findCompactionBoundary(
-  messages: SessionMessage[],
-  startIndex: number,
-  endIndex: number,
-  cacheContext?: { cachedPrefixMessageCount: number; cacheHitRate: number }
-): number {
-  const preservationCount =
-    cacheContext && cacheContext.cacheHitRate > 0.5
-      ? Math.min(5, Math.max(3, Math.floor(cacheContext.cachedPrefixMessageCount * 0.1)))
-      : 5;
-
-  let boundary = endIndex;
-  let preservedCount = 0;
-  for (let i = endIndex - 1; i > startIndex; i -= 1) {
-    const msg = messages[i];
-    if (!msg) continue;
-    if (msg.role === "tool" && msg.content && hasToolError(msg.content)) {
-      boundary = i;
-      break;
-    }
-    if (msg.role === "user" || msg.role === "assistant") {
-      preservedCount += 1;
-      if (preservedCount >= preservationCount) {
-        boundary = i;
-        break;
-      }
-    }
-  }
-  return boundary;
-}
 
 test("findCompactionBoundary — cache context high hit rate reduces preservation", () => {
   const msgs: SessionMessage[] = [makeSys("s0", "System")];
@@ -356,48 +282,6 @@ test("findCompactionBoundary — large prefix with high hit rate caps at 5", () 
   assert.equal(findCompactionBoundary(msgs, 1, 60, { cachedPrefixMessageCount: 60, cacheHitRate: 0.9 }), 55);
 });
 
-// ---------------------------------------------------------------------------
-// shouldCompactSession — economic logic tests (standalone replica)
-// ---------------------------------------------------------------------------
-
-function shouldCompactSession(args: {
-  activeTokens: number;
-  model: string;
-  effectiveCacheMode: "off" | "aware" | "strict";
-  cacheHitRate: number;
-  compactedTokenCount: number;
-  remainingTokenCount: number;
-  stablePrefixTokenCount: number;
-  estimatedNewTurnTokens: number;
-}): boolean {
-  const threshold = getCompactPromptTokenThreshold(args.model);
-  if (args.activeTokens <= threshold) return false;
-  if (args.effectiveCacheMode === "off") return true;
-
-  const pricing = DEFAULT_MODEL_PRICING[args.model];
-  if (!pricing || pricing.inputPrice <= 0) return true;
-
-  const safeHitRate = Number.isFinite(args.cacheHitRate) && args.cacheHitRate >= 0 ? args.cacheHitRate : 0;
-
-  const caps = getModelCapabilities(args.model);
-  if (caps && caps.contextWindow > 0 && args.activeTokens > caps.contextWindow * 0.85) return true;
-
-  const nonNewTurnTokens = args.activeTokens - args.estimatedNewTurnTokens;
-  const cacheHits = nonNewTurnTokens * safeHitRate;
-  const cacheMisses = nonNewTurnTokens * (1 - safeHitRate);
-  const costWithout =
-    (cacheHits / 1_000_000) * pricing.cacheReadPrice +
-    (cacheMisses / 1_000_000) * pricing.inputPrice +
-    (args.estimatedNewTurnTokens / 1_000_000) * pricing.inputPrice;
-
-  const summaryTokens = args.compactedTokenCount * 0.15;
-  const freshTokens = summaryTokens + args.remainingTokenCount + args.estimatedNewTurnTokens;
-  const costWith =
-    (args.stablePrefixTokenCount / 1_000_000) * pricing.cacheReadPrice + (freshTokens / 1_000_000) * pricing.inputPrice;
-
-  return costWith < costWithout;
-}
-
 test("shouldCompactSession — below threshold returns false", () => {
   assert.equal(
     shouldCompactSession({
@@ -411,14 +295,14 @@ test("shouldCompactSession — below threshold returns false", () => {
       estimatedNewTurnTokens: 800,
     }),
     false,
-    "100K tokens (below 384K threshold) should return false"
+    "100K tokens (below 600K dynamic threshold) should return false"
   );
 });
 
 test("shouldCompactSession — cacheMode off compacts when above threshold", () => {
   assert.equal(
     shouldCompactSession({
-      activeTokens: 400_000,
+      activeTokens: 650_000,
       model: "deepseek-v4-pro",
       effectiveCacheMode: "off",
       cacheHitRate: 0.9,
@@ -435,7 +319,7 @@ test("shouldCompactSession — cacheMode off compacts when above threshold", () 
 test("shouldCompactSession — high cache hit rate skips compaction", () => {
   // Flow 1 from design: 92% hit rate, costWith > costWithout
   const result = shouldCompactSession({
-    activeTokens: 400_000,
+    activeTokens: 650_000,
     model: "deepseek-v4-pro",
     effectiveCacheMode: "aware",
     cacheHitRate: 0.92,
@@ -450,7 +334,7 @@ test("shouldCompactSession — high cache hit rate skips compaction", () => {
 test("shouldCompactSession — low cache hit rate compacts", () => {
   // Flow 2 from design: 15% hit rate, costWith < costWithout
   const result = shouldCompactSession({
-    activeTokens: 400_000,
+    activeTokens: 650_000,
     model: "deepseek-v4-pro",
     effectiveCacheMode: "aware",
     cacheHitRate: 0.15,
@@ -464,7 +348,7 @@ test("shouldCompactSession — low cache hit rate compacts", () => {
 
 test("shouldCompactSession — zero cache data assumes 0% and compacts", () => {
   const result = shouldCompactSession({
-    activeTokens: 400_000,
+    activeTokens: 650_000,
     model: "deepseek-v4-pro",
     effectiveCacheMode: "aware",
     cacheHitRate: 0,

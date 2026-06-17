@@ -55,6 +55,8 @@ const esDictionary = {
   "cmd.notes-status-usage": "Uso: /notes-status <id> <estado>",
   "cmd.notes-updated": "Nota {{id}} actualizada.",
   "cmd.budget": "Mostrar el resumen de costos acumulados del proyecto (budget.md)",
+  "cmd.context": "Mostrar estado actual del contexto: tokens, ventana, caché, mensajes, costo",
+  "cmd.clear": "Limpiar mensajes de la sesión actual y empezar de cero",
   "cmd.no-description": "(sin descripción)",
 
   // Welcome screen

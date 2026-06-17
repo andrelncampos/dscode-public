@@ -618,4 +618,25 @@ merge conflicts are frequent.
   following the layering pattern from L1 (layer work, never a single "multi-module" PR).
 
 **Delivered by:**
-- Spec 320 (session-module-split) — phased extraction of session.ts into focused modules.
+- Spec 320 (session-module-split) — phase 1: skill discovery extraction (`src/session/skills.ts`).
+- Spec 330 (compaction-pure-extract) — phase 2: pure compaction functions (~140 lines, zero coupling).
+- Spec 340 (mcp-lifecycle-extract) — phase 3: MCP lifecycle extraction (`initMcpServers`, `disableMcpServer`, `reconnectMcpServer`).
+- Spec 350 (session-cleanup) — phase 4: dead import removal, old method cleanup, final verification.
+
+---
+
+### V32: Context Visibility & Reset
+
+Users need to see what's happening inside their session — how much context they've consumed,
+what the cache hit rate is, how much cost has accumulated — without leaving the TUI. They
+also need a quick way to reset the conversation when the context becomes cluttered.
+
+- **`/context` — zero-cost status dashboard:** Displays active tokens vs context window,
+  message count, input/output/cached tokens, cache hit rate, session and project cost,
+  compaction threshold, and session status. All data comes from in-memory state; no LLM
+  call is made.
+- **`/clear` — session reset without restart:** Discards all messages in the current
+  session while keeping the session alive (same sessionId, same settings, same MCP
+  connections). Requires explicit "yes" confirmation to prevent accidental data loss.
+
+**Delivered by:** Spec 360 (context-status-and-clear).

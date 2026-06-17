@@ -345,7 +345,7 @@ Quando a IA fizer alterações em arquivos, **revise cada diff** antes de commit
 
 ## Todos os comandos slash
 
-Digite `/` no prompt para abrir o menu. São **28 comandos built-in** + skills dinâmicos (`/<skill-name>`):
+Digite `/` no prompt para abrir o menu. São **37 comandos built-in** + skills dinâmicos (`/<skill-name>`):
 
 ### Sessão
 
@@ -355,6 +355,8 @@ Digite `/` no prompt para abrir o menu. São **28 comandos built-in** + skills d
 | `/resume` | Retomar uma conversa anterior |
 | `/continue` | Continuar a conversa ativa (ou retomar se vazia) |
 | `/undo` | Restaurar código e/ou conversa para um checkpoint anterior |
+| `/context` | Mostrar métricas da sessão: tokens, custo, cache hit rate, modelo e thinking mode |
+| `/clear` | Limpar o contexto da sessão — zera mensagens e tokens mantendo a sessão ativa |
 
 ### Modelo e exibição
 
@@ -390,6 +392,15 @@ Digite `/` no prompt para abrir o menu. São **28 comandos built-in** + skills d
 | `/steering-remove <N>` | Remover a N-ésima regra de steering do `AGENTS.md` |
 | `/steering-alter <N>` | Alterar a N-ésima regra de steering do `AGENTS.md` |
 
+### Notas de desenvolvimento
+
+| Comando | Descrição |
+|---|---|
+| `/notes` | Listar todas as notas com status, tags, spec vinculada e dias até o vencimento |
+| `/notes-add` | Criar uma nova nota de desenvolvimento (com spec, tags e data de vencimento) |
+| `/notes-delete <id>` | Remover uma nota pelo ID numérico |
+| `/notes-search <termo>` | Buscar notas por texto livre |
+
 ### SDD (Spec-Driven Development)
 
 | Comando | Descrição |
@@ -414,6 +425,7 @@ Digite `/` no prompt para abrir o menu. São **28 comandos built-in** + skills d
 | Comando | Descrição |
 |---|---|
 | `/exit` | Sair do DsCode |
+| `/help` | Abrir a tela de ajuda com todos os comandos e atalhos de teclado |
 
 ---
 
@@ -546,6 +558,8 @@ Skills são guias em Markdown que ensinam a IA a trabalhar de um jeito específi
 | **agent-drift-guard** | Detecta e corrige desvios de execução |
 | **karpathy-guidelines** | Boas práticas para reduzir erros comuns de LLM |
 | **plan-and-execute** | Planejamento estruturado com tracking de progresso |
+| **sdd-workflow** | Ensina o ciclo SDD completo (planned → created → verified → implemented → audited) |
+| **project-structure** | Mapeia a estrutura `.dscode/` e `management/` do projeto |
 
 ### Modos de inclusão
 
@@ -604,6 +618,7 @@ Quando o agente principal precisa de uma revisão, ele chama a ferramenta `code-
 |---|---|
 | `Enter` | Enviar prompt |
 | `Shift+Enter` | Inserir quebra de linha |
+| `#` | Ativar skill pelo nome (menu de skills) |
 | `@` | Buscar e mencionar arquivos do projeto |
 | `Tab` | Autocompletar comandos e menções |
 | `/` | Abrir menu de comandos |
@@ -637,6 +652,7 @@ Cada exemplo abaixo é algo que você pode digitar no campo de prompt do DsCode.
 | **Revisar um diff** | "Revise as alterações do último commit e aponte problemas." |
 | **Criar testes** | "Crie testes unitários para a função validateUser() em src/validators.ts." |
 | **Usar uma skill** | "Use a skill de revisão de segurança para auditar este código." |
+| **Registrar uma nota** | Digite `/notes-add` para criar uma nota de desenvolvimento com tags, spec vinculada e data de vencimento. |
 | **Inicializar AGENTS.md** | Digite `/init` para criar um arquivo com instruções que a IA seguirá no projeto. |
 
 O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA responde e usa ferramentas. Você pode confirmar ou rejeitar cada ação.
@@ -650,6 +666,7 @@ O DsCode funciona de forma **conversacional**: você digita o que precisa, a IA 
 | **Sessão** | Uma conversa contínua entre você e a IA. Cada `/new` inicia uma sessão limpa. | Comece uma nova sessão ao mudar de tarefa para evitar misturar contextos. |
 | **Contexto** | Todo o histórico da conversa que a IA "lembra". Inclui suas mensagens, respostas e arquivos lidos. | Contextos longos gastam mais tokens. Use `/new` para resetar. |
 | **Skills** | Guias em Markdown que ensinam a IA a seguir regras específicas. | Crie uma skill para padronizar revisões, estilo de código ou processos da equipe. |
+| **Notas de desenvolvimento** | Sistema de notas integrado ao DsCode. Permite registrar débitos técnicos, ideias e tarefas com tags, vinculação a specs e datas de vencimento. | Use `/notes-add` durante o desenvolvimento para não perder contexto. As notas ficam em `.dscode/notes.json`. |
 | **Tools** | Ferramentas que a IA usa: `bash` (shell), `read`/`write`/`edit` (arquivos), `glob`/`grep` (busca), `Explore` (subagente), `WebSearch`/`WebFetch` (web), `AskUserQuestion` (perguntas), `UpdatePlan` (tarefas). | A IA decide quais usar. Você pode bloquear as perigosas via `permissions`. |
 | **Menções `@`** | Digite `@` no prompt para buscar e referenciar arquivos do projeto. | Use para direcionar a IA: "Analise @src/utils.ts" — ela já sabe qual arquivo ler. |
 | **Provider** | A empresa que fornece o modelo de IA (DeepSeek, OpenAI, Anthropic, Google Gemini, etc.). | Escolha o provedor com base em custo, qualidade e privacidade. |

@@ -219,6 +219,18 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     description: "cmd.budget",
   },
   {
+    kind: "context",
+    name: "context",
+    label: "/context",
+    description: "cmd.context",
+  },
+  {
+    kind: "clear",
+    name: "clear",
+    label: "/clear",
+    description: "cmd.clear",
+  },
+  {
     kind: "notes-add",
     name: "notes-add",
     label: "/notes-add",

@@ -715,12 +715,12 @@ rl.on("line", (line) => {
   await manager.initMcpServers({ crashy: { command: process.execPath, args: [serverPath] } });
 
   assert.equal(manager.getMcpStatus()[0]?.status, "ready");
-  assert.equal((manager as any).mcpToolDefinitions.length, 1);
+  assert.equal((manager as any).mcpLifecycle.mcpToolDefinitions.length, 1);
 
   // With auto-reconnect enabled (Spec 140), crash → "reconnecting" first
   await waitForMcpStatus(manager, "reconnecting");
 
-  assert.equal((manager as any).mcpToolDefinitions.length, 0);
+  assert.equal((manager as any).mcpLifecycle.mcpToolDefinitions.length, 0);
 
   manager.dispose();
 });
@@ -2533,4 +2533,94 @@ test("SessionManager.deleteSession does not affect other sessions", () => {
   // The remaining session should still have its messages accessible
   const messages = manager.listSessionMessages(session2);
   assert.ok(messages.length > 0);
+});
+
+test("getContextStatus without session returns no-active-session message", () => {
+  const tmpDir = createTempDir("context-test");
+  const manager = createSessionManager(tmpDir);
+
+  const result = (manager as any).getContextStatus("nonexistent-id");
+  assert.ok(result.includes("No active session"));
+});
+
+test("getContextStatus returns context status table with all metrics", async () => {
+  const tmpDir = createTempDir("context-test");
+  const manager = createSessionManager(tmpDir);
+
+  const sessionId = await manager.createSession({ text: "hello" });
+  assert.ok(sessionId);
+
+  const result = (manager as any).getContextStatus(sessionId);
+  assert.ok(result.includes("## Context Status"));
+  assert.ok(result.includes("| Model |"));
+  assert.ok(result.includes("| Active tokens |"));
+  assert.ok(result.includes("| Messages |"));
+  assert.ok(result.includes("| Input tokens |"));
+  assert.ok(result.includes("| Output tokens |"));
+  assert.ok(result.includes("| Cached tokens |"));
+  assert.ok(result.includes("| Cache hit rate |"));
+  assert.ok(result.includes("| Session cost |"));
+  assert.ok(result.includes("| Project cost |"));
+  assert.ok(result.includes("| Compaction threshold |"));
+  assert.ok(result.includes("| Status |"));
+});
+
+test("getContextStatus output contains model name and Markdown table format", async () => {
+  const tmpDir = createTempDir("context-test");
+  const manager = createSessionManager(tmpDir);
+
+  const sessionId = await manager.createSession({ text: "test" });
+  assert.ok(sessionId);
+
+  const result = (manager as any).getContextStatus(sessionId);
+  assert.ok(result.includes("| Model | test-model |"));
+  assert.ok(result.startsWith("## Context Status"));
+  assert.ok(result.includes("|--------|-------|"));
+});
+
+test("clearSessionContext without session returns no-session message", () => {
+  const tmpDir = createTempDir("clear-test");
+  const manager = createSessionManager(tmpDir);
+
+  const result = (manager as any).clearSessionContext("nonexistent-id");
+  assert.ok(result.includes("No active session to clear"));
+});
+
+test("clearSessionContext clears session messages and resets tokens", async () => {
+  const tmpDir = createTempDir("clear-test");
+  const manager = createSessionManager(tmpDir);
+
+  const sessionId = await manager.createSession({ text: "test message" });
+  assert.ok(sessionId);
+  assert.ok(manager.listSessionMessages(sessionId).length > 0);
+
+  const result = (manager as any).clearSessionContext(sessionId);
+  assert.ok(result.includes("Context cleared"));
+
+  assert.equal(manager.listSessionMessages(sessionId).length, 0);
+
+  const session = manager.getSession(sessionId);
+  assert.equal(session?.activeTokens, 0);
+  assert.equal(session?.usage, null);
+});
+
+test("after clearSessionContext, session remains functional", async () => {
+  const tmpDir = createTempDir("clear-test");
+  const manager = createSessionManager(tmpDir);
+
+  const sessionId = await manager.createSession({ text: "test message" });
+  assert.ok(sessionId);
+
+  (manager as any).clearSessionContext(sessionId);
+
+  // Session still exists
+  const session = manager.getSession(sessionId);
+  assert.ok(session);
+
+  // activeTokens and usage reset
+  assert.equal(session.activeTokens, 0);
+  assert.equal(session.usage, null);
+
+  // Messages cleared
+  assert.equal(manager.listSessionMessages(sessionId).length, 0);
 });

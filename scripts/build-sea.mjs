@@ -121,9 +121,7 @@ function buildPortable() {
   console.log("[sea] Building portable package...");
 
   const portableDir = resolve(BIN_DIR);
-  const toClean = isWindows
-    ? ["dscode.exe", "dscode.cmd", "dscode.ps1", "dscode.mjs", "node.exe"]
-    : ["dscode", "dscode.mjs", "node"];
+  const toClean = isWindows ? ["dscode.exe", "dscode.cmd", "dscode.mjs", "node.exe"] : ["dscode", "dscode.mjs", "node"];
   for (const f of toClean) {
     const fp = resolve(portableDir, f);
     if (existsSync(fp)) {
@@ -169,16 +167,6 @@ function buildPortable() {
     ].join("\r\n");
     writeFileSync(cmdPath, cmdContent, "utf8");
     console.log("[sea] dscode.cmd created.");
-
-    const ps1Path = resolve(portableDir, "dscode.ps1");
-    const ps1Content = [
-      "$DscodeHome = Split-Path -Parent $MyInvocation.MyCommand.Path",
-      '& "$DscodeHome\\node.exe" "$DscodeHome\\dscode.mjs" @args',
-      "exit $LASTEXITCODE",
-      "",
-    ].join("\r\n");
-    writeFileSync(ps1Path, ps1Content, "utf8");
-    console.log("[sea] dscode.ps1 created.");
 
     return { binPath: cmdPath, binName: "dscode.cmd", method: "portable" };
   }

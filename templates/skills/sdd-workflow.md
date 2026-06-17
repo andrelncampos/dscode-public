@@ -61,3 +61,14 @@ Each spec lives in `management/specs/<N>-<name>/` and contains:
 - `requirements.md` — what the spec delivers (the contract)
 - `design.md` — architecture and implementation plan
 - `task.md` — checklist of implementation steps
+
+## Direction of development
+
+This project will be developed, maintained, and evolved by autonomous AI. Therefore, every technical, architectural, documentary, operational, and organizational decision must be optimized for autonomous AI execution across the entire software lifecycle.
+
+When working on this project, always prioritize clarity, traceability, predictability, automation, testability, objective documentation, and low coupling. The code, architecture, processes, scripts, tests, commit patterns, error messages, configuration files, and documentation must be written in a way that allows an AI agent to understand, modify, validate, maintain, debug, and evolve the system with the lowest possible ambiguity and the least possible dependency on external context.
+
+This directive applies to all phases of the project, including conception, planning, implementation, refactoring, testing, review, build, packaging, distribution, publishing, support, corrective maintenance, evolutionary maintenance, technical auditing, and post-production operation.
+
+Whenever there is a choice between a solution that is more “elegant” but implicit and a solution that is clearer, more explicit, and easier for an AI agent to operate safely, choose the clearer and more explicit solution. The goal is to maximize the autonomy, safety, reliability, and efficiency of AI as the primary development agent for this software.
+

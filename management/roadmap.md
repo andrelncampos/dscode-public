@@ -19,8 +19,8 @@
 
 | # | Name | Status | References |
 |---|---|---|---|
-| 10 | more-effectiveness-and-economy | implemented | V6, V8, V11, ADR-005, ADR-006 |
-| 20 | tui-scalability | implemented | V1, L3 |
+| 10 | more-effectiveness-and-economy | audited | V6, V8, V11, ADR-005, ADR-006 |
+| 20 | tui-scalability | audited | V1, L3 |
 | 30 | provider-agnostic-llm-layer | audited | V12, V6, ADR-001, ADR-002, ADR-003, ADR-004, P1, P2, P3, L1, L2 |
 | 40 | openai-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P7 |
 | 50 | anthropic-provider-adapter | audited | V6, V12, ADR-001, ADR-002, ADR-004, ADR-005, P1, P2, P3, P6, P7 |
@@ -52,6 +52,10 @@
 | 290 | test-infra-error-visibility | audited | V29, L7 |
 | 300 | dynamic-help-modal | audited | V30, V1 |
 | 320 | session-module-split | audited | V31, L1 |
+| 330 | compaction-pure-extract | audited | V31 (child of 320) |
+| 340 | mcp-lifecycle-extract | audited | V31 (child of 320) |
+| 350 | session-cleanup | audited | V31 (child of 320) |
+| 360 | context-status-and-clear | audited | V32 |
 
 ---
 
@@ -154,6 +158,15 @@ Spec 300 (dynamic-help-modal)
 
 Spec 320 (session-module-split)
   (standalone — mechanical extraction of session.ts into focused modules; zero behavior change)
+  ├── Spec 330 (compaction-pure-extract)
+  │     (child of 320 — pure compaction functions ~140 lines, zero coupling to SessionManager)
+  ├── Spec 340 (mcp-lifecycle-extract)
+  │     (child of 320 — MCP lifecycle extraction, depends on 330 for analysis pattern)
+  └── Spec 350 (session-cleanup)
+        (child of 320 — depends on 330 and 340 being complete)
+
+Spec 360 (context-status-and-clear)
+  (standalone — new /context and /clear local commands, zero LLM calls)
 ```
 
 ---

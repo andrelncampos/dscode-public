@@ -47,6 +47,8 @@ export const COMMAND_KINDS = [
   "notes-edit",
   "notes-deadline",
   "notes-delete",
+  "context",
+  "clear",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];
@@ -80,6 +82,8 @@ export const PROMPT_COMMAND_KINDS = [
   "model-params",
   "model-thinking",
   "budget",
+  "context",
+  "clear",
 ] as const;
 
 export type PromptCommand = (typeof PROMPT_COMMAND_KINDS)[number];

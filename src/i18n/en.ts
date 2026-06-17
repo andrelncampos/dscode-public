@@ -53,6 +53,8 @@ const enDictionary = {
   "cmd.notes-status-usage": "Usage: /notes-status <id> <status>",
   "cmd.notes-updated": "Note {{id}} updated.",
   "cmd.budget": "Display accumulated project cost summary (budget.md)",
+  "cmd.context": "Show current context status: tokens, window, cache, messages, cost",
+  "cmd.clear": "Clear current session messages and start fresh",
   "cmd.no-description": "(no description)",
 
   // Welcome screen (11 keys)

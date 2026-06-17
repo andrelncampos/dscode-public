@@ -19,7 +19,6 @@ import {
   getStablePrefixHash,
   getSystemPrompt,
   getTools,
-  type ToolDefinition,
 } from "./prompt";
 import {
   ToolExecutor,
@@ -46,6 +45,14 @@ import { logApiError, classifyApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug } from "./common/debug-logger";
 import { killProcessTree } from "./common/process-tree";
 import { SessionSkills } from "./session/skills";
+import {
+  getCompactPromptTokenThreshold,
+  getCompactionCandidateRange,
+  findCompactionBoundary,
+  findStablePrefixEndIndex,
+  shouldCompactSession,
+} from "./session/compaction";
+import { SessionMcpLifecycle } from "./session/mcp-lifecycle";
 import { GitFileHistory, type FileHistoryCheckpointResult } from "./common/file-history";
 import { clearSessionState, getSnippet, rebuildSessionStateFromHistory } from "./common/state";
 import {
@@ -63,11 +70,12 @@ import {
 import { clearSessionWorkingDir } from "./tools/bash-handler";
 import { reportNewPrompt } from "./common/telemetry";
 import { OpenAIMessageConverter, type OpenAIMessageConverterOptions } from "./common/openai-message-converter";
-import { recordBudgetCostWithCache, getBudgetMarkdown } from "./common/budget-tracker";
+import { recordBudgetCostWithCache, getBudgetMarkdown, getBudgetCosts } from "./common/budget-tracker";
 import type { ModelPricing } from "./common/model-capabilities";
-import { DEFAULT_MODEL_PRICING } from "./common/model-capabilities";
+import { computeSessionCost, DEFAULT_MODEL_PRICING, formatCost } from "./common/model-capabilities";
 import { runWithExecCtx } from "./common/execution-context";
 import { TerminalTitleManager } from "./common/terminal-title";
+import { computeCacheHitRate } from "./common/cache-metrics";
 import { storeTurn, readRecentTurns } from "./memory/turn-memory-store";
 import { buildTurnContext } from "./memory/turn-memory-context-builder";
 import { canonicalizeText, canonicalizeShellOutput } from "./memory/turn-canonicalizer";
@@ -95,12 +103,12 @@ export type {
   UserToolPermission,
 } from "./common/permissions";
 
+export { getCompactPromptTokenThreshold } from "./session/compaction";
+
 const MAX_SESSION_ENTRIES = 50;
 const MAX_PROJECT_CODE_LENGTH = 64;
 const PROJECT_CODE_HASH_LENGTH = 16;
 const BACKGROUND_FAILURE_LOG_TAIL_CHARS = 4000;
-const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 384 * 1024;
-const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
 
 type ChatCompletionDebugOptions = {
   enabled?: boolean;
@@ -108,13 +116,6 @@ type ChatCompletionDebugOptions = {
   baseURL?: string;
   params?: Record<string, unknown>;
 };
-
-export function getCompactPromptTokenThreshold(model: string): number {
-  if (model.startsWith("deepseek-v4")) {
-    return DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD;
-  }
-  return DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD;
-}
 
 // Keep project storage paths short enough for Git's internal files on Windows.
 export function getProjectCode(projectRoot: string): string {
@@ -395,8 +396,8 @@ export class SessionManager {
   private readonly mcpManager = new McpManager();
   private readonly mcpPolicy: McpPolicy;
   private readonly mcpScopeResolver: McpScopeResolver;
-  private mcpToolDefinitions: ToolDefinition[] = [];
   private readonly skills: SessionSkills;
+  private readonly mcpLifecycle: SessionMcpLifecycle;
   private skillsCache: SkillInfo[] = [];
   private readonly skillMcpMap = new Map<string, Record<string, McpServerConfig>>();
   private readonly messageConverter: OpenAIMessageConverter;
@@ -437,6 +438,12 @@ export class SessionManager {
       path.join(os.homedir(), ".dscode", "mcp.json"),
       path.join(this.projectRoot, ".dscode", "mcp.json")
     );
+    this.mcpLifecycle = new SessionMcpLifecycle({
+      mcpManager: this.mcpManager,
+      mcpScopeResolver: this.mcpScopeResolver,
+      onMcpStatusChanged: this.onMcpStatusChanged,
+      projectRoot: this.projectRoot,
+    });
     const scopedMcpServers = this.mcpScopeResolver.resolve(this.getResolvedSettings().mcpServers);
     this.mcpManager.prepare(scopedMcpServers);
     this.mcpPolicy = new McpPolicy([]);
@@ -481,52 +488,23 @@ export class SessionManager {
   }
 
   async initMcpServers(servers?: Record<string, McpServerConfig>): Promise<void> {
-    const scopedServers = this.mcpScopeResolver.resolve(servers);
-    this.mcpManager.setOnToolsListChanged(() => {
-      this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
-    });
-    // Set status change callback to notify UI updates
-    this.mcpManager.setOnStatusChanged(() => {
-      this.onMcpStatusChanged?.();
-    });
-    await this.mcpManager.initialize(scopedServers);
-    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+    await this.mcpLifecycle.initMcpServers(servers);
   }
 
   getMcpStatus() {
-    return this.mcpManager.getStatus();
+    return this.mcpLifecycle.getMcpStatus();
   }
 
   getMcpManager(): McpManager {
-    return this.mcpManager;
+    return this.mcpLifecycle.getMcpManager();
   }
 
   async disableMcpServer(name: string): Promise<void> {
-    const scope = this.mcpManager.getServerScope(name);
-    if (scope && (scope.kind === "session" || scope.kind === "skill")) {
-      throw new Error("Cannot disable session-scoped servers");
-    }
-    let filePath: string;
-    if (scope?.kind === "global") {
-      filePath = `${require("node:os").homedir()}/.dscode/mcp.json`;
-    } else if (scope?.kind === "project") {
-      filePath = `${this.projectRoot}/.dscode/mcp.json`;
-    } else {
-      // legacy — skip for now, settings.json modification is complex
-      return;
-    }
-    const raw = require("node:fs").readFileSync(filePath, "utf8");
-    const config = JSON.parse(raw);
-    if (!config.servers) config.servers = {};
-    if (!config.servers[name]) config.servers[name] = {};
-    config.servers[name].disabled = true;
-    require("node:fs").writeFileSync(filePath, JSON.stringify(config, null, 2) + "\n", "utf8");
-    this.mcpManager.disconnectServer(name, true);
+    await this.mcpLifecycle.disableMcpServer(name);
   }
 
   async reconnectMcpServer(name: string, config?: McpServerConfig): Promise<void> {
-    await this.mcpManager.reconnect(name, config);
-    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+    await this.mcpLifecycle.reconnectMcpServer(name, config);
   }
 
   dispose(): void {
@@ -1038,6 +1016,49 @@ export class SessionManager {
         return;
       }
 
+      // ── Context command dispatch ──────────────────────────────
+      if (userPrompt.text && userPrompt.text.trim() === "/context") {
+        if (!this.activeSessionId) {
+          const sysMsg = this.buildSystemMessage("context", "No active session.", null, true);
+          this.onAssistantMessage(sysMsg, true);
+          return;
+        }
+        const statusText = this.getContextStatus(this.activeSessionId);
+        const sysMsg = this.buildSystemMessage("context", statusText, null, true);
+        this.onAssistantMessage(sysMsg, true);
+        return;
+      }
+
+      // ── Clear command dispatch ────────────────────────────────
+      if (userPrompt.text && userPrompt.text.trim() === "/clear") {
+        if (!this.activeSessionId) {
+          const sysMsg = this.buildSystemMessage("clear", "No active session to clear.", null, true);
+          this.onAssistantMessage(sysMsg, true);
+          return;
+        }
+        // Ask for confirmation
+        const promptMsg = "Isso descartará todas as mensagens desta sessão. Continuar? (yes/no)";
+        const sysMsg = this.buildSystemMessage("clear", promptMsg, null, true);
+        this.onAssistantMessage(sysMsg, true);
+        this.pendingCommandWizard = { command: "clear", wizardState: {} };
+        return;
+      }
+
+      // ── Clear confirmation dispatch ───────────────────────────
+      if (this.pendingCommandWizard?.command === "clear") {
+        const confirmText = userPrompt.text?.trim();
+        if (confirmText === "yes") {
+          const result = this.clearSessionContext(this.activeSessionId!);
+          const sysMsg = this.buildSystemMessage("clear", result, null, true);
+          this.onAssistantMessage(sysMsg, true);
+        } else {
+          const sysMsg = this.buildSystemMessage("clear", "Cancelado.", null, true);
+          this.onAssistantMessage(sysMsg, true);
+        }
+        this.pendingCommandWizard = null;
+        return;
+      }
+
       if (!this.activeSessionId || !this.getSession(this.activeSessionId)) {
         await this.createSession(userPrompt, controller);
       } else {
@@ -1409,7 +1430,11 @@ export class SessionManager {
     try {
       const maxIterations = 80000; // about 1K RMB cost
       let toolCalls: unknown[] | null = null;
-      const cachedTools = getTools(this.getPromptToolOptions(), this.mcpToolDefinitions, this.skillsCache);
+      const cachedTools = getTools(
+        this.getPromptToolOptions(),
+        this.mcpLifecycle.getToolDefinitions(),
+        this.skillsCache
+      );
 
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         if (this.isInterrupted(sessionId)) {
@@ -1808,7 +1833,7 @@ export class SessionManager {
     if (effectiveCacheMode !== "off") {
       // ── Cache-aware path ────────────────────────────────────────────
       messages = allMessages;
-      const candidateRange = this.getCompactionCandidateRange(allMessages);
+      const candidateRange = getCompactionCandidateRange(allMessages);
       if (!candidateRange) return;
       rangeStart = candidateRange.rangeStart;
 
@@ -1860,7 +1885,7 @@ export class SessionManager {
       const activeTokens = this.estimateContextTokens(allMessages);
 
       if (
-        !this.shouldCompactSession({
+        !shouldCompactSession({
           activeTokens,
           model: settings.model,
           effectiveCacheMode,
@@ -1903,7 +1928,7 @@ export class SessionManager {
     }
 
     // ── Common: find boundary ────────────────────────────────────────
-    const adjustedEndIndex = this.findCompactionBoundary(messages, rangeStart, endIndex, cacheContext);
+    const adjustedEndIndex = findCompactionBoundary(messages, rangeStart, endIndex, cacheContext);
     if (adjustedEndIndex <= rangeStart) return;
 
     // ── Common: LLM call for summary generation ───────────────────────
@@ -2004,7 +2029,7 @@ export class SessionManager {
 
     if (effectiveCacheMode !== "off" && stablePrefixContent) {
       const stablePrefixHash = getStablePrefixHash(stablePrefixContent);
-      insertionIndex = this.findStablePrefixEndIndex(messages, stablePrefixHash);
+      insertionIndex = findStablePrefixEndIndex(messages, stablePrefixHash);
       summaryId = crypto
         .createHash("sha256")
         .update("compaction:" + rangeStart + ":" + adjustedEndIndex + ":" + compactedSummary)
@@ -2032,152 +2057,6 @@ export class SessionManager {
     };
     messages.splice(insertionIndex, 0, summaryMessage);
     this.saveSessionMessages(sessionId, messages);
-  }
-
-  /**
-   * Find the optimal compaction boundary by walking backward from endIndex
-   * and stopping before high-importance messages (errors, recent reads).
-   * Returns the adjusted end index (exclusive).
-   */
-  private findCompactionBoundary(
-    messages: SessionMessage[],
-    startIndex: number,
-    endIndex: number,
-    cacheContext?: { cachedPrefixMessageCount: number; cacheHitRate: number }
-  ): number {
-    // Determine preservation count (cache-aware or legacy)
-    const preservationCount =
-      cacheContext && cacheContext.cacheHitRate > 0.5
-        ? Math.min(5, Math.max(3, Math.floor(cacheContext.cachedPrefixMessageCount * 0.1)))
-        : 5;
-
-    let boundary = endIndex;
-    let preservedCount = 0;
-    for (let i = endIndex - 1; i > startIndex; i -= 1) {
-      const msg = messages[i];
-      if (!msg) continue;
-
-      // Preserve tool messages that contain actual errors (not just the word in output)
-      if (msg.role === "tool" && msg.content && hasToolError(msg.content)) {
-        boundary = i;
-        break;
-      }
-
-      // Preserve recent user and assistant messages (last N messages before endIndex)
-      if (msg.role === "user" || msg.role === "assistant") {
-        preservedCount += 1;
-        if (preservedCount >= preservationCount) {
-          boundary = i;
-          break;
-        }
-      }
-    }
-    return boundary;
-  }
-
-  /**
-   * Compute the range of messages eligible for compaction,
-   * excluding already-compacted messages and previous summaries.
-   */
-  private getCompactionCandidateRange(
-    sessionMessages: SessionMessage[]
-  ): { rangeStart: number; rangeEnd: number } | null {
-    // Find rangeStart: last summary message + 1, or first non-system message
-    let rangeStart = -1;
-    for (let i = sessionMessages.length - 1; i >= 0; i -= 1) {
-      if (sessionMessages[i]?.meta?.isSummary) {
-        rangeStart = i + 1;
-        break;
-      }
-    }
-    if (rangeStart === -1) {
-      // No summary found — find first non-system message
-      const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
-      rangeStart = firstNonSystem >= 0 ? firstNonSystem : sessionMessages.length;
-    }
-
-    if (rangeStart >= sessionMessages.length) return null;
-
-    // Count eligible messages (user, assistant, tool; not compacted, not summary)
-    let eligibleCount = 0;
-    for (let i = rangeStart; i < sessionMessages.length; i += 1) {
-      const m = sessionMessages[i];
-      if (!m) continue;
-      if (m.compacted) continue;
-      if (m.meta?.isSummary) continue;
-      if (m.role === "user" || m.role === "assistant" || m.role === "tool") {
-        eligibleCount += 1;
-      }
-    }
-
-    if (eligibleCount < 5) return null;
-
-    return { rangeStart, rangeEnd: sessionMessages.length };
-  }
-
-  /**
-   * Locate the insertion point for compaction summaries — immediately after
-   * the last stable prefix system message. Uses hash comparison to find the
-   * exact boundary between stable prefix messages and volatile messages.
-   */
-  private findStablePrefixEndIndex(sessionMessages: SessionMessage[], stablePrefixHash: string): number {
-    let runningContent = "";
-    for (let i = 0; i < sessionMessages.length; i += 1) {
-      const msg = sessionMessages[i];
-      if (!msg || msg.role !== "system") continue;
-      runningContent += msg.content ?? "";
-      const hash = crypto.createHash("sha256").update(runningContent).digest("hex");
-      if (hash === stablePrefixHash) return i + 1;
-    }
-    // Fallback: first non-system message index (existing behavior)
-    const firstNonSystem = sessionMessages.findIndex((m) => m.role !== "system");
-    return firstNonSystem >= 0 ? firstNonSystem : 0;
-  }
-
-  /**
-   * Cache-aware compaction trigger: decides whether to compact based on
-   * token count threshold AND economic cost comparison (cache hit rate × pricing).
-   */
-  private shouldCompactSession(args: {
-    activeTokens: number;
-    model: string;
-    effectiveCacheMode: "off" | "aware" | "strict";
-    cacheHitRate: number;
-    compactedTokenCount: number;
-    remainingTokenCount: number;
-    stablePrefixTokenCount: number;
-    estimatedNewTurnTokens: number;
-  }): boolean {
-    const threshold = getCompactPromptTokenThreshold(args.model);
-    if (args.activeTokens <= threshold) return false;
-    if (args.effectiveCacheMode === "off") return true;
-
-    const pricing = DEFAULT_MODEL_PRICING[args.model];
-    if (!pricing || pricing.inputPrice <= 0) return true; // conservative: compact
-
-    const safeHitRate = Number.isFinite(args.cacheHitRate) && args.cacheHitRate >= 0 ? args.cacheHitRate : 0;
-
-    // Safety override: context window integrity > cost optimization
-    const contextWindow = getModelCapabilities(args.model)?.contextWindow ?? 0;
-    if (contextWindow > 0 && args.activeTokens > contextWindow * 0.85) return true;
-
-    // Cost without compaction: all existing tokens (split by cache hit rate) + new turn
-    const nonNewTurnTokens = args.activeTokens - args.estimatedNewTurnTokens;
-    const cacheHits = nonNewTurnTokens * safeHitRate;
-    const cacheMisses = nonNewTurnTokens * (1 - safeHitRate);
-    const costWithoutCompaction =
-      (cacheHits / 1_000_000) * pricing.cacheReadPrice +
-      (cacheMisses / 1_000_000) * pricing.inputPrice +
-      (args.estimatedNewTurnTokens / 1_000_000) * pricing.inputPrice;
-
-    // Cost with compaction: stable prefix (cached) + summary + remaining + new turn (all fresh)
-    const summaryTokens = args.compactedTokenCount * 0.15;
-    const freshTokens = summaryTokens + args.remainingTokenCount + args.estimatedNewTurnTokens;
-    const costWithCompaction =
-      (args.stablePrefixTokenCount / 1_000_000) * pricing.cacheReadPrice +
-      (freshTokens / 1_000_000) * pricing.inputPrice;
-
-    return costWithCompaction < costWithoutCompaction;
   }
 
   private async buildMemoryContextMessage(): Promise<SessionMessage | null> {
@@ -2518,6 +2397,74 @@ export class SessionManager {
   getSession(sessionId: string): SessionEntry | null {
     const index = this.loadSessionsIndex();
     return index.entries.find((entry) => entry.id === sessionId) ?? null;
+  }
+
+  private getContextStatus(sessionId: string): string {
+    const session = this.getSession(sessionId);
+    if (!session) return "No active session.";
+
+    const settings = this.getResolvedSettings();
+    const caps = getModelCapabilities(settings.model);
+    const messages = this.listSessionMessages(sessionId);
+    const budget = getBudgetCosts(this.projectRoot);
+    const threshold = getCompactPromptTokenThreshold(settings.model);
+
+    const pct = caps?.contextWindow ? ((session.activeTokens / caps.contextWindow) * 100).toFixed(1) : null;
+
+    const cacheRate = this.lastCallCacheMetrics
+      ? computeCacheHitRate(this.lastCallCacheMetrics.hit, this.lastCallCacheMetrics.miss)
+      : null;
+
+    const usage = session.usage;
+    const inputTokens = usage?.prompt_tokens ?? 0;
+    const outputTokens = usage?.completion_tokens ?? 0;
+    const cachedTokens =
+      ((usage?.prompt_tokens_details as Record<string, unknown> | undefined)?.cached_tokens as number) ?? 0;
+    const sessionCost = computeSessionCost(session.usagePerModel ?? null, DEFAULT_MODEL_PRICING);
+    const projectCost = budget ? budget.projectTotal : 0;
+
+    return `## Context Status
+
+| Metric | Value |
+|--------|-------|
+| Model | ${settings.model} |
+| Context window | ${caps?.contextWindow?.toLocaleString() ?? "N/A"} tokens |
+| Active tokens | ${session.activeTokens.toLocaleString()}${pct ? ` (${pct}%)` : ""} |
+| Messages | ${messages.length} |
+| Input tokens | ${inputTokens.toLocaleString()} |
+| Output tokens | ${outputTokens.toLocaleString()} |
+| Cached tokens | ${cachedTokens.toLocaleString()} |
+| Cache hit rate | ${cacheRate != null ? (cacheRate * 100).toFixed(1) + "%" : "N/A"} |
+| Session cost | ${formatCost(sessionCost ?? 0)} |
+| Project cost | ${formatCost(projectCost)} |
+| Compaction threshold | ${threshold.toLocaleString()} tokens |
+| Status | ${session.status} |`;
+  }
+
+  private clearSessionContext(sessionId: string): string {
+    const session = this.getSession(sessionId);
+    if (!session) return "No active session to clear.";
+
+    // Remove message file (.jsonl)
+    this.removeSessionMessages([sessionId]);
+
+    // Reset entry fields
+    this.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      status: "pending",
+      activeTokens: 0,
+      usage: null,
+      usagePerModel: null,
+      summary: null,
+      assistantReply: null,
+      assistantThinking: null,
+      assistantRefusal: null,
+      toolCalls: null,
+      lastUserPrompt: null,
+      lastBashCommand: null,
+    }));
+
+    return "Context cleared. Session is fresh.";
   }
 
   /**
@@ -3115,7 +3062,7 @@ export class SessionManager {
         this.mcpPolicy.addSkillRules(skill.name, skill.steering);
       }
     }
-    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+    this.mcpLifecycle.updateToolDefinitions();
   }
 
   /** Deactivate MCP servers and remove steering rules for skills no longer matched. */
@@ -3130,7 +3077,7 @@ export class SessionManager {
         this.skillMcpMap.delete(name);
       }
     }
-    this.mcpToolDefinitions = this.mcpManager.getMcpToolDefinitions();
+    this.mcpLifecycle.updateToolDefinitions();
   }
 
   /** Start MCP servers declared by a spec. Returns the config for prompt building. */
@@ -4086,15 +4033,6 @@ function extractDiffFromToolContent(content: string | null | undefined): string 
     return typeof parsed.metadata?.diff_preview === "string" ? parsed.metadata.diff_preview : undefined;
   } catch {
     return undefined;
-  }
-}
-
-function hasToolError(content: string): boolean {
-  try {
-    const parsed = JSON.parse(content) as { ok?: boolean; error?: string };
-    return parsed.ok === false || (typeof parsed.error === "string" && parsed.error.length > 0);
-  } catch {
-    return false;
   }
 }
 

@@ -55,6 +55,8 @@ test("buildSlashCommands returns only built-in commands", () => {
     "model-params",
     "model-thinking",
     "budget",
+    "context",
+    "clear",
     "notes-add",
     "notes",
     "notes-status",
