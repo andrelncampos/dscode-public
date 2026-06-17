@@ -10,6 +10,7 @@ import { handleWebFetchTool } from "./web-fetch-handler";
 import { handleUpdatePlanTool } from "./update-plan-handler";
 import { handleWebSearchTool } from "./web-search-handler";
 import { handleWriteTool } from "./write-handler";
+import { parseBashSideEffects } from "../common/permissions";
 import type { McpManager } from "../mcp/mcp-manager";
 import type { McpPolicy } from "../mcp/mcp-policy";
 import { repairToolCall, createRepairMetrics } from "./tool-call-repair";
@@ -144,6 +145,7 @@ export class ToolExecutor {
   private mcpAuditContext?: { specNumber: number };
   private repairMetrics: ToolCallRepairMetrics;
   private readonly toolRegistry: ToolRegistry;
+  private elicitationMode: boolean = false;
 
   constructor(
     projectRoot: string,
@@ -163,6 +165,10 @@ export class ToolExecutor {
   /** Set audit context for MCP tool calls during spec commands. */
   setMcpAuditContext(ctx: { specNumber: number } | undefined): void {
     this.mcpAuditContext = ctx;
+  }
+
+  setElicitationMode(enabled: boolean): void {
+    this.elicitationMode = enabled;
   }
 
   private buildToolRegistry(): ToolRegistry {
@@ -247,6 +253,37 @@ export class ToolExecutor {
     this.toolHandlers.set("WebSearch", handleWebSearchTool);
   }
 
+  private checkElicitationBlock(toolName: string, args: Record<string, unknown>): ToolExecutionResult | null {
+    if (toolName === "write" || toolName === "edit") {
+      return {
+        ok: false,
+        name: toolName,
+        error:
+          "Elicitation mode active. File modifications are blocked until /spec-plan-end is called. Ask clarifying questions instead.",
+      };
+    }
+    if (toolName === "bash") {
+      const sideEffects = parseBashSideEffects(args.sideEffects);
+      const writeScopes = [
+        "write-in-cwd",
+        "write-out-cwd",
+        "delete-in-cwd",
+        "delete-out-cwd",
+        "mutate-git-log",
+        "unknown",
+      ];
+      if (sideEffects.some((s) => writeScopes.includes(s))) {
+        return {
+          ok: false,
+          name: "bash",
+          error:
+            "Elicitation mode active. File modifications and mutations are blocked until /spec-plan-end is called. Read-only bash commands are allowed.",
+        };
+      }
+    }
+    return null;
+  }
+
   private parseToolCall(toolCall: unknown): ToolCall | null {
     if (!toolCall || typeof toolCall !== "object") {
       return null;
@@ -299,6 +336,12 @@ export class ToolExecutor {
     }
     const { toolCall: repaired, args } = repairResult;
     // --- END REPAIR PIPELINE ---
+
+    // Elicitation mode guard
+    if (this.elicitationMode) {
+      const blockResult = this.checkElicitationBlock(repaired.function.name, args);
+      if (blockResult) return blockResult;
+    }
 
     const toolName = repaired.function.name;
     const handlerName = toolName;

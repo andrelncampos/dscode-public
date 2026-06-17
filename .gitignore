@@ -5,6 +5,7 @@ dist/
 .vscode/
 *.tgz
 *.log
+*.bak.*
 .deepcode/
 .dscode/
 
@@ -18,3 +19,7 @@ EXTERNAL/
 /management/
 /.agents/
 .vitest-reports/
+
+# pnpm (project uses npm; pnpm files are local-only)
+pnpm-lock.yaml
+pnpm-workspace.yaml

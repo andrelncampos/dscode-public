@@ -49,6 +49,10 @@ export const COMMAND_KINDS = [
   "notes-delete",
   "context",
   "clear",
+  "spec-pipe",
+  "spec-plan-begin",
+  "spec-plan-end",
+  "spec-plan-reset",
 ] as const;
 
 export type SlashCommandKind = (typeof COMMAND_KINDS)[number];
@@ -84,6 +88,10 @@ export const PROMPT_COMMAND_KINDS = [
   "budget",
   "context",
   "clear",
+  "spec-pipe",
+  "spec-plan-begin",
+  "spec-plan-end",
+  "spec-plan-reset",
 ] as const;
 
 export type PromptCommand = (typeof PROMPT_COMMAND_KINDS)[number];

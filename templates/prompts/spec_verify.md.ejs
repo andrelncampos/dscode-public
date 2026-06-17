@@ -20,7 +20,19 @@ The spec declares these MCP tools. Use them when verification requires external 
 <%= mcpTools %>
 <% } %>
 
-### Step 2: Verify Requirements Completeness
+### Step 2: Run Structural Validation
+
+Before manual verification, run the structural validation tool:
+
+```bash
+node src/tools/spec-tracer.mjs --validate <%= specNumber %>
+```
+
+- If the output is `✅ All spec documents structurally valid.`, proceed to Step 3.
+- If violations are reported, fix each one before continuing. Re-run the validation until it passes.
+- The validation checks: YAML frontmatter, required sections, FR naming conventions, task status lines.
+
+### Step 3: Verify Requirements Completeness
 
 Check `requirements.md` against these criteria:
 
@@ -40,7 +52,7 @@ Check `requirements.md` against these criteria:
 - [ ] Does every requirement trace back to a value block in vision.md?
 - [ ] Are dependencies on other specs clearly stated?
 
-### Step 3: Verify Design Completeness
+### Step 4: Verify Design Completeness
 
 Check `design.md` against these criteria:
 
@@ -56,7 +68,7 @@ Check `design.md` against these criteria:
 - [ ] Does the design follow DRY where it doesn't conflict with KISS?
 - [ ] Is the data flow specified step-by-step for each operation?
 
-### Step 4: Verify Task Completeness
+### Step 5: Verify Task Completeness
 
 Check `task.md` against these criteria:
 
@@ -70,7 +82,7 @@ Check `task.md` against these criteria:
 - [ ] Does each task have a verifiable completion criterion?
 - [ ] Are all tasks marked as `[ ] pending`?
 
-### Step 5: Fix All Gaps Found
+### Step 6: Fix All Gaps Found
 
 For EVERY gap, ambiguity, or incompleteness found in steps 2-4:
 
@@ -79,18 +91,18 @@ For EVERY gap, ambiguity, or incompleteness found in steps 2-4:
 3. Add missing requirements, design specifications, or tasks.
 4. Remove ambiguous language and replace it with precise, deterministic descriptions.
 
-### Step 6: Final Check
+### Step 7: Final Check
 
 After all fixes:
 - Re-read all 3 documents.
 - Confirm 100% coverage, determinism, and actionability.
 - If any new gaps are found, go back to Step 5.
 
-### Step 7: Update Roadmap
+### Step 8: Update Roadmap
 
 Update the roadmap entry for spec #<%= specNumber %> to status `verified`.
 
-### Step 8: Report
+### Step 9: Report
 
 Report:
 1. Number of gaps found and fixed in requirements.md.

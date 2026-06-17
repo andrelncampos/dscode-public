@@ -1,11 +1,9 @@
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import React from "react";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { render, type Instance } from "ink";
 import { UpdatePrompt, type UpdatePromptChoice } from "../ui";
-import { killProcessTree } from "./process-tree";
 
 export type PackageInfo = {
   name: string;
@@ -23,11 +21,12 @@ type UpdateState = {
 };
 
 const UPDATE_STATE_FILE = "update-check.json";
-const NPM_VIEW_TIMEOUT_MS = 5000;
-const MAX_NPM_VIEW_OUTPUT_CHARS = 64 * 1024;
-export const UPDATE_SUCCESS_MESSAGE = "🎉 Update ran successfully! Please restart dscode.";
+export const UPDATE_SUCCESS_MESSAGE = "✅ Update complete! Please restart DsCode.";
 
-export async function promptForPendingUpdate(packageInfo: PackageInfo): Promise<{ installed: boolean }> {
+export async function promptForPendingUpdate(
+  packageInfo: PackageInfo,
+  githubToken?: string
+): Promise<{ installed: boolean }> {
   const state = readUpdateState();
   const pending = state.pending;
   if (!pending) {
@@ -44,8 +43,7 @@ export async function promptForPendingUpdate(packageInfo: PackageInfo): Promise<
     return { installed: false };
   }
 
-  const installSpec = `${pending.packageName}@${pending.latestVersion}`;
-  const installCommand = `npm install -g ${installSpec}`;
+  const installCommand = `Downloading dscode v${pending.latestVersion}`;
   const choice = await promptUpdateChoice({
     currentVersion: packageInfo.version,
     latestVersion: pending.latestVersion,
@@ -53,7 +51,7 @@ export async function promptForPendingUpdate(packageInfo: PackageInfo): Promise<
   });
 
   if (choice === "install") {
-    const ok = await runNpmInstallGlobal(installSpec);
+    const ok = await downloadAndInstallFromGitHub(pending.latestVersion, githubToken);
     if (ok) {
       writeUpdateState({ ...state, pending: null });
       process.stdout.write(`${UPDATE_SUCCESS_MESSAGE}\n\n`);
@@ -71,13 +69,13 @@ export async function promptForPendingUpdate(packageInfo: PackageInfo): Promise<
   return { installed: false };
 }
 
-export async function checkForNpmUpdate(packageInfo: PackageInfo): Promise<boolean> {
+export async function checkForUpdate(packageInfo: PackageInfo, githubToken?: string): Promise<boolean> {
   if (!packageInfo.name || !packageInfo.version) {
     return false;
   }
 
   try {
-    const latestVersion = await fetchLatestNpmVersion(packageInfo.name);
+    const latestVersion = await fetchLatestGitHubVersion(githubToken);
     if (!latestVersion || compareVersions(latestVersion, packageInfo.version) <= 0) {
       clearPendingUpdate();
       return false;
@@ -159,110 +157,116 @@ async function promptUpdateChoice({
   return promise;
 }
 
-async function runNpmInstallGlobal(installSpec: string): Promise<boolean> {
-  process.stdout.write(`\n⬇  Running npm install -g ${installSpec}...\n\n`);
-  const { promise, resolve } = Promise.withResolvers<boolean>();
-  const child = spawnNpm(["install", "-g", installSpec], {
-    stdio: "inherit",
-  });
-  child.on("error", (error) => {
-    process.stderr.write(`Failed to start npm install: ${error.message}\n`);
-    resolve(false);
-  });
-  child.on("close", (code) => {
-    if (code === 0) {
-      resolve(true);
-      return;
-    }
-    process.stderr.write(`npm install exited with code ${code ?? "unknown"}.\n`);
-    resolve(false);
-  });
-  return promise;
-}
+// ─── GitHub API ────────────────────────────────────────────────────────────────
 
-async function fetchLatestNpmVersion(packageName: string): Promise<string | null> {
-  const result = await runNpmViewLatestVersion(packageName, NPM_VIEW_TIMEOUT_MS);
-  if (!result.ok) {
-    return null;
-  }
-  return parseNpmViewVersion(result.stdout);
-}
-
-function runNpmViewLatestVersion(
-  packageName: string,
-  timeoutMs: number
-): Promise<{ ok: true; stdout: string } | { ok: false }> {
-  const { promise, resolve } = Promise.withResolvers<{ ok: true; stdout: string } | { ok: false }>();
-  const args = ["view", packageName, "dist-tags.latest", "--json"];
-  const child = spawnNpm(args, {
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  let stdout = "";
-  let settled = false;
-  const finish = (result: { ok: true; stdout: string } | { ok: false }): void => {
-    if (settled) {
-      return;
-    }
-    settled = true;
-    clearTimeout(timer);
-    resolve(result);
-  };
-
-  const timer = setTimeout(() => {
-    if (typeof child.pid === "number") {
-      killProcessTree(child.pid, "SIGTERM", { killGroupOnNonWindows: false });
-    } else {
-      child.kill();
-    }
-    finish({ ok: false });
-  }, timeoutMs);
-
-  child.stdout?.on("data", (chunk: string | Buffer) => {
-    if (stdout.length >= MAX_NPM_VIEW_OUTPUT_CHARS) {
-      return;
-    }
-    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
-    stdout += text.slice(0, MAX_NPM_VIEW_OUTPUT_CHARS - stdout.length);
-  });
-
-  child.on("error", () => finish({ ok: false }));
-  child.on("close", (code) => {
-    finish(code === 0 ? { ok: true, stdout } : { ok: false });
-  });
-  return promise;
-}
-
-function spawnNpm(args: string[], options: SpawnOptions): ChildProcess {
-  if (process.platform === "win32") {
-    return spawn(["npm", ...args.map(quoteCmdArg)].join(" "), [], {
-      ...options,
-      shell: true,
-    });
-  }
-
-  return spawn("npm", args, {
-    ...options,
-    shell: false,
-  });
-}
-
-function quoteCmdArg(arg: string): string {
-  return `"${String(arg).replace(/"/g, '\\"')}"`;
-}
-
-export function parseNpmViewVersion(output: string): string | null {
-  const trimmed = output.trim();
-  if (!trimmed) {
-    return null;
-  }
+async function fetchLatestGitHubVersion(githubToken?: string): Promise<string | null> {
   try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    return typeof parsed === "string" && parsed.trim() ? parsed.trim() : null;
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (githubToken) {
+      headers["Authorization"] = `Bearer ${githubToken}`;
+    }
+    const response = await fetch("https://api.github.com/repos/andrelncampos/dscode-public/releases/latest", {
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { tag_name?: string };
+    if (typeof data.tag_name !== "string") return null;
+    return data.tag_name.replace(/^v/, "");
   } catch {
-    return trimmed.split(/\r?\n/)[0]?.trim() || null;
+    return null;
   }
 }
+
+function getAssetName(): string {
+  const osMap: Record<string, string> = { win32: "win", linux: "linux", darwin: "macos" };
+  const archMap: Record<string, string> = { x64: "x64", arm64: "arm64" };
+  const osName = osMap[process.platform] ?? process.platform;
+  const archName = archMap[process.arch] ?? process.arch;
+  const ext = process.platform === "win32" ? ".exe" : "";
+  return `dscode-${osName}-${archName}${ext}`;
+}
+
+async function downloadAndInstallFromGitHub(version: string, githubToken?: string): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (githubToken) {
+      headers["Authorization"] = `Bearer ${githubToken}`;
+    }
+
+    const releaseResp = await fetch(
+      `https://api.github.com/repos/andrelncampos/dscode-public/releases/tags/v${version}`,
+      { headers, signal: AbortSignal.timeout(15000) }
+    );
+    if (!releaseResp.ok) return false;
+    const release = (await releaseResp.json()) as {
+      assets?: Array<{ name: string; browser_download_url: string; size: number }>;
+    };
+
+    const assetName = getAssetName();
+    const asset = (release.assets ?? []).find((a) => a.name === assetName);
+    if (!asset) {
+      process.stderr.write(`No binary available for ${assetName}.\n`);
+      return false;
+    }
+
+    const homeDir = os.homedir();
+    const updatesDir = path.join(homeDir, ".dscode", "updates");
+    fs.mkdirSync(updatesDir, { recursive: true });
+    const destPath = path.join(updatesDir, `dscode-v${version}${process.platform === "win32" ? ".exe" : ""}`);
+
+    process.stdout.write(`\n⬇  Downloading dscode v${version} for ${assetName}...\n\n`);
+
+    const downloadResp = await fetch(asset.browser_download_url, {
+      signal: AbortSignal.timeout(300000),
+      redirect: "follow",
+    });
+    if (!downloadResp.ok) return false;
+    const buffer = Buffer.from(await downloadResp.arrayBuffer());
+    fs.writeFileSync(destPath, buffer);
+
+    // Atomic replacement
+    const currentPath = process.execPath;
+    const oldPath = currentPath + ".old";
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        fs.renameSync(currentPath, oldPath);
+        break;
+      } catch {
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1000));
+        } else {
+          process.stderr.write("Could not replace binary. Close other instances and try again.\n");
+          return false;
+        }
+      }
+    }
+
+    try {
+      fs.copyFileSync(destPath, currentPath);
+    } catch {
+      try {
+        fs.renameSync(oldPath, currentPath);
+      } catch {
+        /* rollback best-effort */
+      }
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── State management ──────────────────────────────────────────────────────────
 
 function readUpdateState(): UpdateState {
   const statePath = getUpdateStatePath();

@@ -53,15 +53,45 @@ After all tasks are done:
 2. Read through the changed files to spot any obvious issues.
 3. Run `npm run check` or equivalent project validation if applicable.
 
-### Step 5: Update Roadmap
+### Step 5: Build Validation
+
+After all tasks are done and final validation is complete, verify that the project compiles:
+
+1. Run `npx tsc --noEmit` using the Bash tool:
+   - **command:** `npx tsc --noEmit`
+   - **description:** `"TypeScript type-check (no emit)"`
+   - **sideEffects:** `[]`
+
+2. If exit code is 0 (success):
+   - Proceed to Step 6 (Update Roadmap).
+
+3. If exit code is not 0 (errors found):
+   - Read the error output carefully. Each error line follows the format:
+     `src/path/file.ts(line,col): error TSXXXX: message`
+   - Fix ALL reported errors by editing the affected files. Prefer the `edit` tool for existing files.
+   - After fixing, re-run `npx tsc --noEmit`.
+   - You have a maximum of 3 total attempts (initial run + 2 retries).
+
+4. If after 3 attempts errors still remain:
+   - Report: `Build validation failed after 3 attempts. Remaining errors: <count>. Spec NOT marked implemented.`
+   - STOP. Do NOT proceed to Step 6. Do NOT update the roadmap.
+   - The user will need to fix the remaining errors manually.
+
+5. Important rules:
+   - Do NOT skip errors. Every `error TS...` line must be resolved or the spec must not be marked implemented.
+   - Do NOT simulate or guess the tsc result. Execute the command and report the actual exit code.
+   - Include the exit code in your final report (e.g., "tsc --noEmit exited with code 0").
+
+### Step 6: Update Roadmap
 
 Update the roadmap entry for spec #<%= specNumber %> to status `implemented`.
 
-### Step 6: Report
+### Step 7: Report
 
 Report:
 1. Number of tasks executed.
 2. Files created and modified.
 3. Any deviations from the design (and why).
-4. Confirmation that the spec is now `implemented`.
-5. Recommendation: run `/spec-audit <%= specNumber %>` next to validate the implementation.
+4. Build validation result: `tsc --noEmit` exit code and status.
+5. Confirmation that the spec is now `implemented` (only if build validation passed).
+6. Recommendation: run `/spec-audit <%= specNumber %>` next to validate the implementation.

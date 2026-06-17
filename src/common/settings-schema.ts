@@ -99,6 +99,7 @@ export const deepcodingSettingsSchema = z.strictObject({
   memory: memorySettingsSchema,
   budget: budgetSettingsSchema.optional(),
   terminalTitleTemplate: z.string().optional(),
+  githubToken: z.string().optional(),
   topP: z.number().min(0).max(1).optional(),
   repositoryVisibility: z.enum(["public", "private"]).optional(),
   locale: z.enum(["en", "pt", "es"]).optional(),

@@ -21,6 +21,11 @@ const ptDictionary = {
   "cmd.spec-verify": "Verificar completude, determinismo e alinhamento com a vis\u00e3o da spec",
   "cmd.spec-implement": "Implementar todas as tarefas de uma spec sequencialmente",
   "cmd.spec-audit": "Auditar qualidade e corretude da implementa\u00e7\u00e3o de uma spec",
+  "cmd.spec-pipe":
+    "Executar pipeline SDD completo para um ou mais specs: new → verify → implement → audit (números separados por vírgula)",
+  "cmd.spec-plan-begin": "Iniciar um bloco de brainstorming para planejamento de specs",
+  "cmd.spec-plan-end": "Finalizar brainstorming e consolidar em visão + roadmap",
+  "cmd.spec-plan-reset": "Descartar brainstorming atual e sair do modo de elicitação",
   "cmd.spec-list": "Listar todas as specs com seus status do roadmap",
   "cmd.spec-status": "Mostrar status detalhado de uma spec espec\u00edfica ou de todas",
   "cmd.quit-dscode": "Sair do DsCode CLI",
@@ -121,6 +126,10 @@ const ptDictionary = {
   "help.spec-verify-cmd": "Verificar consist\u00eancia da spec",
   "help.spec-implement-cmd": "Implementar uma spec",
   "help.spec-audit-cmd": "Auditar implementa\u00e7\u00e3o de spec",
+  "help.spec-pipe-cmd": "Pipeline SDD completo (new → verify → implement → audit)",
+  "help.spec-plan-begin-cmd": "Iniciar bloco de brainstorming",
+  "help.spec-plan-end-cmd": "Finalizar brainstorming e planejar specs",
+  "help.spec-plan-reset-cmd": "Descartar brainstorming",
   "help.spec-list-cmd": "Listar todas as specs e status",
   "help.spec-status-cmd": "Mostrar detalhes do status da spec",
   "help.model-list-cmd": "Listar modelos dispon\u00edveis",
@@ -150,6 +159,9 @@ const ptDictionary = {
   "error.permission-hint": "Verifique suas configura\u00e7\u00f5es de permiss\u00e3o com /permissions.",
   "error.generic-label": "Erro",
   "error.generic-hint": "Pressione Enter para continuar.",
+  "error.no-spec-plan-begin":
+    "Nenhum marcador /spec-plan-begin encontrado. Use /spec-plan-begin primeiro para iniciar uma sessão de brainstorming, depois /spec-plan-end para consolidar.",
+  "error.spec-plan-reset-no-begin": "Nenhum /spec-plan-begin ativo para resetar.",
 
   // Model command output labels
   "model.status-key": "chave",

@@ -324,12 +324,16 @@ const BUFFER_TEXT_COMMANDS: Set<SlashCommandKind> = new Set([
   "budget",
   "context",
   "clear",
+  "spec-pipe",
 ]);
 
 const FIXED_TEXT_COMMANDS: Partial<Record<SlashCommandKind, string>> = {
   "steering-list": "/steering-list",
   "spec-init": "/spec-init",
   "spec-list": "/spec-list",
+  "spec-plan-begin": "/spec-plan-begin",
+  "spec-plan-end": "/spec-plan-end",
+  "spec-plan-reset": "/spec-plan-reset",
 };
 
 export function executeSlashCommand(item: SlashCommandItem, ctx: CommandContext): boolean {

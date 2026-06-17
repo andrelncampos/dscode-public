@@ -36,6 +36,7 @@ import { ViewKind } from "../types";
 import { RawMode, useRawModeContext } from "./RawModeContext";
 import type { PromptDraft, PromptSubmission } from "../views/PromptInput";
 import type { UndoRestoreMode } from "../views/UndoSelector";
+import { runSpecPipelineBatch } from "../core/spec-pipeline";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ export interface AppStore {
   errorLog: Map<string, McpErrorRecord[]>;
   showProcessStdout: boolean;
   helpVisible: boolean;
+  elicitationMode: boolean;
 
   // Screen
   screenWidth: number;
@@ -244,6 +246,7 @@ export function AppStateProvider({
   const [errorLog, setErrorLog] = useState<Map<string, McpErrorRecord[]>>(new Map());
   const [showProcessStdout, setShowProcessStdout] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
+  const [elicitationMode, setElicitationMode] = useState(false);
 
   // Helper to set view and hide welcome
   const navigateToSubView = useCallback(
@@ -298,6 +301,28 @@ export function AppStateProvider({
       onMcpStatusChanged: () => callbacksRef.current.onMcpStatusChanged(),
       onProcessStdout: (pid, chunk) => callbacksRef.current.onProcessStdout(pid, chunk),
       terminalTitleTemplate: resolveCurrentSettings(projectRoot).terminalTitleTemplate,
+      onSpecPlanReset: () => {
+        const sid = sessionManager.getActiveSessionId();
+        if (!sid) return "No active session.";
+        const msgs = sessionManager.listSessionMessages(sid);
+        let beginIdx = -1;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "user" && (msgs[i].content ?? "").trim() === "/spec-plan-begin") {
+            beginIdx = i;
+            break;
+          }
+        }
+        if (beginIdx === -1) {
+          const t = getActiveTFunction();
+          return t("error.spec-plan-reset-no-begin");
+        }
+        for (let i = beginIdx; i < msgs.length; i++) {
+          if (msgs[i].role === "user") {
+            sessionManager.compactMessage(sid, msgs[i].id);
+          }
+        }
+        return "\u21A9\uFE0F Spec-plan brainstorming discarded. Elicitation mode exited. Normal operation resumed.";
+      },
     });
   }, [projectRoot]);
 
@@ -407,6 +432,10 @@ export function AppStateProvider({
   useEffect(() => {
     createOpenAIClient(projectRoot);
   }, [projectRoot]);
+
+  useEffect(() => {
+    sessionManager.setElicitationMode(elicitationMode);
+  }, [elicitationMode, sessionManager]);
 
   // ── Compound actions ──
 
@@ -610,6 +639,65 @@ export function AppStateProvider({
         navigateToSubView(ViewKind.McpStatus);
         return;
       }
+      if (submission.command === "spec-pipe") {
+        const match = (submission.text ?? "").match(/^\/spec-pipe\s+(\d+(?:\s*,\s*\d+)*),?\s*$/);
+        if (!match) {
+          setErrorLine("Usage: /spec-pipe <spec-number>[,<spec-number>...]");
+          return;
+        }
+        const raw = match[1];
+        const specNumbers = [
+          ...new Set(
+            raw
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+              .map((s) => parseInt(s, 10))
+          ),
+        ];
+        setBusy(true);
+        setErrorLine(null);
+        try {
+          const result = await runSpecPipelineBatch(specNumbers, sessionManager);
+          const sysMsg: SessionMessage = {
+            id: crypto.randomUUID(),
+            sessionId: sessionManager.getActiveSessionId() ?? "",
+            role: "system",
+            content: result,
+            contentParams: null,
+            messageParams: null,
+            compacted: false,
+            visible: true,
+            createTime: new Date().toISOString(),
+            updateTime: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, sysMsg]);
+        } catch (error) {
+          setErrorLine(error instanceof Error ? error.message : String(error));
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
+
+      // Elicitation mode dispatch
+      if (submission.command === "spec-plan-begin") {
+        setElicitationMode(true);
+      }
+      if (submission.command === "spec-plan-end" || submission.command === "spec-plan-reset") {
+        setElicitationMode(false);
+      }
+
+      if (submission.command === "spec-plan-end") {
+        const sessionId = sessionManager.getActiveSessionId();
+        const messages = sessionId ? sessionManager.listSessionMessages(sessionId) : [];
+        const hasBegin = messages.some((m) => m.role === "user" && (m.content ?? "").trim() === "/spec-plan-begin");
+        if (!hasBegin) {
+          const t = getActiveTFunction();
+          setErrorLine(t("error.no-spec-plan-begin"));
+          return;
+        }
+      }
 
       const prompt = {
         text: submission.text,
@@ -730,6 +818,7 @@ export function AppStateProvider({
     errorLog,
     showProcessStdout,
     helpVisible,
+    elicitationMode,
     screenWidth,
     screenHeight,
   };

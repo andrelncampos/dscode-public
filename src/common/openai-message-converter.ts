@@ -2,6 +2,24 @@ import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "open
 import type { SessionMessage } from "../session";
 import { isMultimodalModel } from "./model-capabilities";
 
+const SPEC_PLAN_BEGIN_ELICITATION_PROMPT = [
+  "The user just typed /spec-plan-begin to start a brainstorming block.",
+  "",
+  "You are now in brainstorming elicitation mode. Your ONLY task is to explore, ask clarifying",
+  "questions, and understand what the user wants to build.",
+  "",
+  "CRITICAL RESTRICTIONS (do NOT violate these):",
+  "- Do NOT read vision.md, roadmap.md, arch.md, adr.md, or lessons.md.",
+  "- Do NOT plan specs, estimate sizes, split specs, or update the roadmap.",
+  "- Do NOT execute any step of /spec-plan-end — that is a separate command the user will type later.",
+  "- Do NOT write code, create files, or modify the codebase.",
+  "- Do NOT treat previous conversation content as completed brainstorming.",
+  "",
+  "Your behavior: Just ask questions, propose alternatives, and help the user refine their ideas",
+  "into clear feature requirements. When the user is ready, they will type /spec-plan-end to",
+  "trigger consolidation — you must wait for that explicit command before doing any planning.",
+].join("\n");
+
 export type OpenAIMessageConverterOptions = {
   /** Optional callback to render the /init command prompt template. */
   renderInitPrompt?: () => string;
@@ -29,6 +47,8 @@ export type OpenAIMessageConverterOptions = {
   renderSpecListPrompt?: () => string;
   /** Optional callback to render the /spec-status command prompt template. */
   renderSpecStatusPrompt?: (specNumber: number | null) => string;
+  /** Optional callback to handle /spec-plan-reset — compacts begin marker + intervening messages. */
+  onSpecPlanReset?: () => string;
 };
 
 /**
@@ -55,6 +75,38 @@ export class OpenAIMessageConverter {
     for (let index = 0; index < activeMessages.length; index += 1) {
       const message = activeMessages[index];
       if (message.role === "tool") {
+        continue;
+      }
+
+      // Handle /spec-plan-begin: inject elicitation system prompt
+      if (message.role === "user" && (message.content ?? "").trim() === "/spec-plan-begin") {
+        openAIMessages.push({
+          role: "system",
+          content: SPEC_PLAN_BEGIN_ELICITATION_PROMPT,
+        } as ChatCompletionMessageParam);
+        continue;
+      }
+
+      // Handle /spec-plan-end: extract block, feed to spec-plan template
+      if (message.role === "user" && (message.content ?? "").trim() === "/spec-plan-end") {
+        const planText = this.extractSpecPlanBlock(activeMessages, index);
+        // Should not happen — AppStateContext checks precondition before LLM call (ADR-310-003)
+        // Defensive fallback: treat missing begin as empty block
+        const prompt = this.options.renderSpecPlanPrompt?.(planText ?? "") ?? "";
+        openAIMessages.push({
+          role: "system",
+          content: prompt,
+        } as ChatCompletionMessageParam);
+        continue;
+      }
+
+      // Handle /spec-plan-reset: compact begin marker + intervening messages
+      if (message.role === "user" && (message.content ?? "").trim() === "/spec-plan-reset") {
+        const resetMessage = this.options.onSpecPlanReset?.() ?? "";
+        openAIMessages.push({
+          role: "system",
+          content: resetMessage || "↩️ Spec-plan brainstorming discarded. Elicitation mode exited.",
+        } as ChatCompletionMessageParam);
         continue;
       }
 
@@ -375,5 +427,34 @@ export class OpenAIMessageConverter {
       null,
       2
     );
+  }
+
+  /**
+   * Walk backward from endIndex to find the most recent /spec-plan-begin marker
+   * and extract all user messages between them. Returns concatenated text or null
+   * if no begin marker is found.
+   */
+  private extractSpecPlanBlock(messages: SessionMessage[], endIndex: number): string | null {
+    // Walk backward to find the begin marker
+    let beginIndex = -1;
+    for (let i = endIndex - 1; i >= 0; i -= 1) {
+      const msg = messages[i];
+      if (msg.role === "user" && (msg.content ?? "").trim() === "/spec-plan-begin") {
+        beginIndex = i;
+        break;
+      }
+    }
+    if (beginIndex === -1) return null;
+
+    // Collect user messages between begin and end (exclusive of both markers)
+    const parts: string[] = [];
+    for (let i = beginIndex + 1; i < endIndex; i += 1) {
+      const msg = messages[i];
+      if (msg.role === "user" && msg.content !== null && msg.content.trim() !== "") {
+        parts.push(msg.content);
+      }
+    }
+
+    return parts.join("\n\n");
   }
 }

@@ -6,6 +6,7 @@ import type { ModelUsage } from "../session";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import {
   buildDiffPreview,
+  backupSpecFile,
   hasFileChangedSinceState,
   readTextFileWithMetadata,
   writeTextFile,
@@ -319,6 +320,7 @@ export async function handleEditTool(
 
         const updated = applyReplacement(raw, replacementOldString, replacementNewString, matches, replaceAll);
         const diffPreview = buildDiffPreview(filePath, raw, updated);
+        backupSpecFile(filePath);
         context.onBeforeFileMutation?.(filePath);
         writeTextFile(filePath, updated, metadata.encoding, metadata.lineEndings);
         context.onAfterFileMutation?.(filePath);

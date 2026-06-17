@@ -348,6 +348,7 @@ type SessionManagerOptions = {
   onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
+  onSpecPlanReset?: () => string;
   terminalTitleTemplate?: string;
 };
 
@@ -365,6 +366,31 @@ export type LlmStreamProgress = {
   /** Name of the most recent tool call (e.g. "glob", "read"). */
   toolCallName?: string;
 };
+
+type LoopDetector = {
+  feed: (fingerprint: string | null) => boolean;
+  reset: () => void;
+};
+
+function createLoopDetector(): LoopDetector {
+  const ring: (string | null)[] = [null, null, null];
+  return {
+    feed(fingerprint: string | null) {
+      ring[0] = ring[1];
+      ring[1] = ring[2];
+      ring[2] = fingerprint;
+      if (ring[0] !== null && ring[0] === ring[1] && ring[1] === ring[2]) {
+        return true;
+      }
+      return false;
+    },
+    reset() {
+      ring[0] = null;
+      ring[1] = null;
+      ring[2] = null;
+    },
+  };
+}
 
 export class SessionManager {
   private readonly projectRoot: string;
@@ -407,6 +433,7 @@ export class SessionManager {
   private readonly terminalTitleTemplate: string | undefined;
   private specMcpActive = false;
   private specMcpNumber = 0;
+  private loopDetector: LoopDetector = createLoopDetector();
   private readonly titleManager: TerminalTitleManager | null = null;
   private lastCallCacheMetrics: { hit: number; miss: number } | null = null;
 
@@ -465,6 +492,7 @@ export class SessionManager {
       renderSpecAuditPrompt: (specNumber: number) => this.renderSpecAuditPrompt(specNumber),
       renderSpecListPrompt: () => this.renderSpecListPrompt(),
       renderSpecStatusPrompt: (specNumber: number | null) => this.renderSpecStatusPrompt(specNumber),
+      onSpecPlanReset: options.onSpecPlanReset,
     };
     this.converterOptions = converterOptions;
     this.messageConverter = new OpenAIMessageConverter(converterOptions);
@@ -497,6 +525,18 @@ export class SessionManager {
 
   getMcpManager(): McpManager {
     return this.mcpLifecycle.getMcpManager();
+  }
+
+  setElicitationMode(enabled: boolean): void {
+    this.toolExecutor.setElicitationMode(enabled);
+  }
+
+  compactMessage(sessionId: string, messageId: string): void {
+    const messages = this.listSessionMessages(sessionId);
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx !== -1) {
+      messages[idx] = { ...messages[idx], compacted: true, updateTime: new Date().toISOString() };
+    }
   }
 
   async disableMcpServer(name: string): Promise<void> {
@@ -1003,6 +1043,9 @@ export class SessionManager {
 
     try {
       // ── Budget command dispatch ──────────────────────────────
+      // Reset loop detector on each new user message
+      this.loopDetector.reset();
+
       // Handled here (before session routing) so it never consumes LLM tokens,
       // regardless of whether this is the first message or a reply.
       if (userPrompt.text && userPrompt.text.trim() === "/budget") {

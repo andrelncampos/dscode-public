@@ -1,17 +1,38 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, unlinkSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { render } from "ink";
 import { setShellIfWindows } from "./common/shell-utils";
-import { checkForNpmUpdate, promptForPendingUpdate, type PackageInfo } from "./common/update-check";
+import { checkForUpdate, promptForPendingUpdate, type PackageInfo } from "./common/update-check";
 import { migrateAllLevels } from "./common/dscode-paths";
 import { setAuditMode } from "./common/audit-mode";
 import { AppContainer } from "./ui";
+
+// Clean up stale .old binary from a previous update
+const oldBinary = process.execPath + ".old";
+if (existsSync(oldBinary)) {
+  try {
+    unlinkSync(oldBinary);
+  } catch {
+    /* best-effort */
+  }
+}
 import { detectTerminalRuntime } from "./ui/core/terminal-runtime";
 
 const args = process.argv.slice(2);
 const packageInfo = readPackageInfo();
+
+function getGitHubToken(): string | undefined {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), ".dscode", "settings.json"), "utf8")) as {
+      githubToken?: string;
+    };
+    return pkg.githubToken || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const isAuditMode = args.includes("--audit") || args.includes("--safe");
 
@@ -85,12 +106,12 @@ if (args.includes("--help") || args.includes("-h")) {
 
 if (args.includes("--update")) {
   process.stdout.write(`dscode ${packageInfo.version || "unknown"} — checking for updates...\n`);
-  const found = await checkForNpmUpdate(packageInfo);
+  const found = await checkForUpdate(packageInfo, getGitHubToken());
   if (!found) {
     process.stdout.write("DsCode is up to date.\n");
     process.exit(0);
   }
-  const result = await promptForPendingUpdate(packageInfo);
+  const result = await promptForPendingUpdate(packageInfo, getGitHubToken());
   if (result.installed) {
     process.exit(0);
   }
@@ -134,7 +155,7 @@ if (migratedPaths.length > 0) {
 void main();
 
 async function main(): Promise<void> {
-  const updatePromptResult = await promptForPendingUpdate(packageInfo);
+  const updatePromptResult = await promptForPendingUpdate(packageInfo, getGitHubToken());
   if (updatePromptResult.installed) {
     process.exit(0);
   }
@@ -144,9 +165,9 @@ async function main(): Promise<void> {
   {
     const UPDATE_CHECK_TIMEOUT_MS = 3_000;
     const timeout = new Promise<void>((resolve) => setTimeout(resolve, UPDATE_CHECK_TIMEOUT_MS));
-    const found = await Promise.race([checkForNpmUpdate(packageInfo), timeout.then(() => false)]);
+    const found = await Promise.race([checkForUpdate(packageInfo, getGitHubToken()), timeout.then(() => false)]);
     if (found) {
-      const updatePromptResult = await promptForPendingUpdate(packageInfo);
+      const updatePromptResult = await promptForPendingUpdate(packageInfo, getGitHubToken());
       if (updatePromptResult.installed) {
         process.exit(0);
       }

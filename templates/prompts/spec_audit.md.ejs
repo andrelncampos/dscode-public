@@ -20,13 +20,25 @@ All MCP tools are available during audit. The spec declares these as relevant:
 <%= mcpTools %>
 <% } %>
 
-### Step 2: Verify Task Completion
+### Step 2: Run Traceability Check
+
+Before manual audit, run the traceability tool:
+
+```bash
+node src/tools/spec-tracer.mjs --trace <%= specNumber %>
+```
+
+- Read the output table carefully.
+- For each FR marked as `NOT FOUND`, investigate whether the code reference exists but uses different naming, or the FR is genuinely unimplemented.
+- The traceability report is evidence — include it in your audit report.
+
+### Step 3: Verify Task Completion
 
 - [ ] Are ALL tasks marked as `[x] done`?
 - [ ] For each task, does the actual code match what the task described?
 - [ ] Are there any tasks still marked `[ ] pending`? If so, the implementation is incomplete — flag this.
 
-### Step 3: Verify Requirements Coverage
+### Step 4: Verify Requirements Coverage
 
 Go through EVERY requirement in `requirements.md`:
 
@@ -36,7 +48,7 @@ Go through EVERY requirement in `requirements.md`:
 
 If any requirement is not fulfilled, implement the missing functionality NOW.
 
-### Step 4: Verify Design Adherence
+### Step 5: Verify Design Adherence
 
 - [ ] Does the code follow the design in `design.md`?
 - [ ] Are the component interfaces correct?
@@ -48,7 +60,7 @@ If the code deviates from the design, determine if:
 - The design was wrong → update design.md to match the correct implementation.
 - The implementation was wrong → fix the code to match the design.
 
-### Step 5: Verify Code Quality
+### Step 6: Verify Code Quality
 
 - [ ] Does the code follow KISS? Is it the simplest possible implementation?
 - [ ] Is there any unnecessary abstraction, indirection, or complexity?
@@ -58,25 +70,25 @@ If the code deviates from the design, determine if:
 
 If quality issues are found, fix them NOW using `edit`.
 
-### Step 6: Run Tests
+### Step 7: Run Tests
 
 If the project has tests, run them:
 - Run `npm test` or equivalent.
 - If any tests fail, fix the code and re-run until all pass.
 - If new code lacks tests, add tests for critical paths.
 
-### Step 7: Fix All Issues Found
+### Step 8: Fix All Issues Found
 
 For EVERY issue found in steps 2-6:
 1. Fix the code using `edit` or `write`.
 2. Update design.md or task.md if the fix changes the design or tasks.
 3. Re-verify after fixing.
 
-### Step 8: Update Roadmap
+### Step 9: Update Roadmap
 
 Update the roadmap entry for spec #<%= specNumber %> to status `audited`.
 
-### Step 9: Report
+### Step 10: Report
 
 Report:
 1. Number of issues found and fixed (by category: task completion, requirements coverage, design adherence, code quality).

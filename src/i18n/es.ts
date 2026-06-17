@@ -21,6 +21,11 @@ const esDictionary = {
   "cmd.spec-verify": "Verificar completitud, determinismo y alineaci\u00f3n con la visi\u00f3n de la spec",
   "cmd.spec-implement": "Implementar todas las tareas de una spec secuencialmente",
   "cmd.spec-audit": "Auditar calidad y correcci\u00f3n de la implementaci\u00f3n de una spec",
+  "cmd.spec-pipe":
+    "Ejecutar pipeline SDD completo para uno o más specs: new → verify → implement → audit (números separados por coma)",
+  "cmd.spec-plan-begin": "Iniciar un bloque de brainstorming para planificación de specs",
+  "cmd.spec-plan-end": "Finalizar brainstorming y consolidar en visión + roadmap",
+  "cmd.spec-plan-reset": "Descartar lluvia de ideas actual y salir del modo de elicitación",
   "cmd.spec-list": "Listar todas las specs con sus estados del roadmap",
   "cmd.spec-status": "Mostrar estado detallado de una spec espec\u00edfica o de todas",
   "cmd.quit-dscode": "Salir de DsCode CLI",
@@ -121,6 +126,10 @@ const esDictionary = {
   "help.spec-verify-cmd": "Verificar consistencia de spec",
   "help.spec-implement-cmd": "Implementar una spec",
   "help.spec-audit-cmd": "Auditar implementación de spec",
+  "help.spec-pipe-cmd": "Pipeline SDD completo (new → verify → implement → audit)",
+  "help.spec-plan-begin-cmd": "Iniciar bloque de brainstorming",
+  "help.spec-plan-end-cmd": "Finalizar brainstorming y planear specs",
+  "help.spec-plan-reset-cmd": "Descartar lluvia de ideas",
   "help.spec-list-cmd": "Listar todas las specs y estados",
   "help.spec-status-cmd": "Mostrar detalles de estado de spec",
   "help.model-list-cmd": "Listar modelos disponibles",
@@ -150,6 +159,9 @@ const esDictionary = {
   "error.permission-hint": "Verifique su configuraci\u00f3n de permisos con /permissions.",
   "error.generic-label": "Error",
   "error.generic-hint": "Presione Enter para continuar.",
+  "error.no-spec-plan-begin":
+    "No se encontró el marcador /spec-plan-begin. Use /spec-plan-begin primero para iniciar una sesión de brainstorming, luego /spec-plan-end para consolidar.",
+  "error.spec-plan-reset-no-begin": "No hay /spec-plan-begin activo para reiniciar.",
 
   // Model command output labels
   "model.status-key": "clave",

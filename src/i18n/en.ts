@@ -19,6 +19,11 @@ const enDictionary = {
   "cmd.spec-verify": "Verify spec completeness, determinism, and alignment with vision",
   "cmd.spec-implement": "Implement all tasks from a spec sequentially",
   "cmd.spec-audit": "Audit implementation quality and correctness for a spec",
+  "cmd.spec-pipe":
+    "Run the full SDD pipeline for one or more specs: new → verify → implement → audit (comma-separated numbers)",
+  "cmd.spec-plan-begin": "Start a brainstorming block for spec planning",
+  "cmd.spec-plan-end": "End brainstorming and consolidate into vision + roadmap",
+  "cmd.spec-plan-reset": "Discard current brainstorming and exit elicitation mode",
   "cmd.spec-list": "List all specs with their statuses from the roadmap",
   "cmd.spec-status": "Show detailed status of a specific spec or all specs",
   "cmd.quit-dscode": "Quit DsCode CLI",
@@ -119,6 +124,10 @@ const enDictionary = {
   "help.spec-verify-cmd": "Verify spec consistency",
   "help.spec-implement-cmd": "Implement a spec",
   "help.spec-audit-cmd": "Audit a spec implementation",
+  "help.spec-pipe-cmd": "Full SDD pipeline (new → verify → implement → audit)",
+  "help.spec-plan-begin-cmd": "Start brainstorming block",
+  "help.spec-plan-end-cmd": "End brainstorming and plan specs",
+  "help.spec-plan-reset-cmd": "Discard brainstorming",
   "help.spec-list-cmd": "List all specs and statuses",
   "help.spec-status-cmd": "Show spec status details",
   "help.model-list-cmd": "List available models",
@@ -148,6 +157,9 @@ const enDictionary = {
   "error.permission-hint": "Check your permission settings with /permissions.",
   "error.generic-label": "Error",
   "error.generic-hint": "Press Enter to continue.",
+  "error.no-spec-plan-begin":
+    "No /spec-plan-begin marker found. Use /spec-plan-begin first to start a brainstorming session, then /spec-plan-end to consolidate.",
+  "error.spec-plan-reset-no-begin": "No active /spec-plan-begin to reset.",
 
   // Model command output labels (76 keys)
   "model.status-key": "key",

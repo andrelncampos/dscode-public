@@ -134,6 +134,31 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     description: "cmd.spec-audit",
   },
   {
+    kind: "spec-pipe",
+    name: "spec-pipe",
+    label: "/spec-pipe",
+    args: ["<spec-number>[,<spec-number>...]"],
+    description: "cmd.spec-pipe",
+  },
+  {
+    kind: "spec-plan-begin",
+    name: "spec-plan-begin",
+    label: "/spec-plan-begin",
+    description: "cmd.spec-plan-begin",
+  },
+  {
+    kind: "spec-plan-end",
+    name: "spec-plan-end",
+    label: "/spec-plan-end",
+    description: "cmd.spec-plan-end",
+  },
+  {
+    kind: "spec-plan-reset",
+    name: "spec-plan-reset",
+    label: "/spec-plan-reset",
+    description: "cmd.spec-plan-reset",
+  },
+  {
     kind: "spec-list",
     name: "spec-list",
     label: "/spec-list",

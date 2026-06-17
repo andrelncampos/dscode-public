@@ -640,3 +640,90 @@ also need a quick way to reset the conversation when the context becomes clutter
   connections). Requires explicit "yes" confirmation to prevent accidental data loss.
 
 **Delivered by:** Spec 360 (context-status-and-clear).
+
+---
+
+### V33: SDD Workflow UX — Planejamento com Demarcação Explícita
+
+O fluxo SDD depende de comandos que o usuário precisa descobrir e usar no momento certo. O `/spec-plan` atual tem ambiguidade de UX: o usuário não sabe se deve fazer brainstorming primeiro e depois chamar o comando, ou chamar o comando primeiro e depois fazer brainstorming. O modo sem argumentos depende de "analisar o histórico da conversa", o que é frágil quando a conversa mistura brainstorming com código, debug ou outras tarefas.
+
+- **`/spec-plan-begin`:** Marca o início de um bloco de brainstorming. Opcionalmente injeta um system prompt leve instruindo o LLM a entrar em modo de elicitação — explorar, perguntar, entender o que o usuário quer construir, sem implementar nada.
+- **`/spec-plan-end`:** Extrai as mensagens entre `begin` e `end` do histórico da sessão, consolida como `planText` e alimenta o template existente `spec_plan.md.ejs`, que executa os Steps 1-6 normalmente (ler documentos → alinhar com visão → planejar specs → estimar/dividir → atualizar roadmap → reportar).
+- **`/spec-plan <texto>`:** Modo rápido existente preservado — para quando o usuário já sabe exatamente o que quer e não precisa de conversa exploratória.
+
+**Design decisions:**
+- O template `spec_plan.md.ejs` não muda — a diferença é apenas a origem do `planText` (texto direto vs. bloco extraído do histórico).
+- `begin` e `end` são marcadores armazenados como mensagens do usuário na sessão — zero estado novo para persistir.
+- O bloco entre `begin` e `end` é extraído deterministicamente (primeira mensagem após `begin` até a mensagem imediatamente anterior a `end`).
+
+**Delivered by:** Spec 310 (spec-plan-demarcation).
+
+---
+
+### V34: Validação de Build Automática
+
+O `/spec-implement` frequentemente reporta "tsc passa ✅" sem ter executado o compilador — o LLM deduz que passou porque seguiu o design. Isso gera surpresas quando o usuário tenta compilar depois.
+
+- **`tsc --noEmit` ao final do `/spec-implement`:** O sistema executa `tsc --noEmit` uma vez após todas as tasks. Se houver erros, injeta o output como feedback e o LLM corrige (loop de até 3 tentativas, similar ao verify/audit). Só depois de `tsc` passar marca `implemented`.
+- **Escopo mínimo:** Apenas `tsc` — não `eslint`, não testes. Uma validação, uma vez, no final. Custo: ~3s por spec.
+- **Auto-correção reativa:** Se falhar, o LLM recebe o erro real do compilador e corrige. Se for irrecuperável após 3 tentativas, reporta e para.
+
+**Delivered by:** Spec 370 (build-validation).
+
+---
+
+### V35: Resiliência Operacional
+
+Mecanismos de segurança que protegem o usuário contra comportamentos indesejados do LLM durante sessões longas.
+
+- **Detecção de loops:** O sistema guarda um fingerprint das últimas 3 respostas do assistant (tool calls + erro). Se forem idênticas, interrompe automaticamente e reporta: "Detectei 3 tentativas iguais falhando — mudei de abordagem?". Evita queimar tokens em ciclos infinitos.
+- **`elicitationMode`:** Estado no `AppStateContext` ativado por `/spec-plan-begin`. Enquanto ativo, tool calls de `write`, `edit` e `bash` com side effects de escrita são bloqueadas no executor — o LLM **não consegue** modificar arquivos. Resolve o problema de o LLM executar o fluxo de `/spec-plan-end` antes da hora. Desativado por `/spec-plan-end` ou `/spec-plan-reset`.
+- **`/spec-plan-reset`:** Novo comando que descarta um brainstorming em andamento: compacta o marcador `/spec-plan-begin` (some do contexto ativo, permanece no arquivo de sessão), sai do `elicitationMode`, e não consolida nada. O histórico da sessão fica preservado para auditoria.
+
+**Delivered by:** Spec 380 (operational-resilience).
+
+---
+
+### V36: Rastreabilidade e Integridade de Specs
+
+Ferramentas programáticas que garantem a qualidade dos documentos SDD sem depender exclusivamente do julgamento do LLM.
+
+- **Tracing FR→Component→Task→Código:** Durante `/spec-audit`, o sistema parseia `requirements.md`, `design.md` e `task.md`, e faz grep no código por referências. Verifica: cada FR tem pelo menos um componente no design? Cada componente tem pelo menos uma task? Cada FR tem código que a implementa? Roda offline, ~200ms.
+- **Backup de specs:** Antes de qualquer `write`/`edit` em arquivos dentro de `management/specs/`, o sistema cria um backup com timestamp (`.bak.YYYY-MM-DDTHH-mm-ss`). Se o LLM reescrever algo errado, o anterior está preservado.
+- **Validação estrutural de docs:** Durante `/spec-verify`, um parser verifica se os documentos de spec têm: YAML frontmatter válido, seções obrigatórias (`## Functional Requirements`, `## Non-Functional Requirements`, `## Constraints`, `## Edge Cases`), e se FRs seguem o formato `### FR-XXX: Nome`. Roda offline, ~100ms.
+
+**Delivered by:** Spec 390 (spec-traceability).
+
+---
+
+### V37: Auto-Update via GitHub Releases
+
+O sistema atual de update-check usa `npm view` + `npm install -g`, que não funciona para distribuição binária. O DsCode é distribuído como binário standalone (Node SEA `.exe`), não via npm.
+
+- **Consulta via GitHub Releases API:** `GET /repos/andrelncampos/dscode-public/releases/latest` — detecta `tag_name` e compara com a versão instalada. Sem dependência de npm, sem token necessário (releases públicas, 60 req/h por IP — 1 chamada por startup, impossível estourar).
+- **Download de binário:** Detecta OS/arch (`win-x64`, `linux-x64`) e baixa o asset correspondente do release. Salva em `~/.dscode/updates/dscode-v<version>.<ext>`.
+- **Substituição atômica:** No Windows e Linux, é possível renomear um binário em execução. Fluxo: baixa novo → renomeia atual para `.old` → move novo para o lugar do atual → usuário reinicia. No próximo startup, deleta o `.old`.
+- **Prompt interativo preservado:** Mesmo esquema atual (Install / Ignore Once / Ignore Version), com a diferença que Install baixa o binário do GitHub ao invés de rodar npm.
+- **Token opcional:** Suporte a `githubToken` em `settings.json` para evitar rate limit em ambientes com muitos reinícios. Se ausente, usa acesso anônimo.
+
+**Delivered by:** Spec 400 (github-auto-update).
+
+---
+
+### V38: Pipeline SDD Multi-Spec
+
+O `/spec-pipe` atual executa o ciclo SDD completo (new → verify → implement → audit) para **um único spec** por vez. Para projetos com múltiplos specs independentes, o usuário precisa rodar o comando manualmente para cada um, aguardando a conclusão de cada ciclo.
+
+- **Lista de specs:** `/spec-pipe 400,401,402` aceita uma sequência de números separados por vírgula. O pipeline executa o ciclo completo para cada spec em ordem sequencial.
+- **Sumário de resultados:** Ao final, reporta quantos specs foram concluídos com sucesso e quais falharam (ex: `"3/4 concluídos. Spec 402 falhou na verificação."`).
+- **Parada parcial:** Se um spec falha (verify nunca passa, implement quebra, audit nunca passa), o pipeline **continua** para o próximo spec. Nenhum spec individual bloqueia os demais.
+- **Ordem determinística:** Os specs são processados na ordem informada. O usuário é responsável por ordenar specs com dependências entre si.
+- **Backward compatible:** `/spec-pipe 42` (spec único) continua funcionando exatamente como antes — a mudança é uma extensão, não uma substituição.
+
+**Design decisions:**
+- A função `runSpecPipeline` existente não é alterada — um loop externo a chama para cada spec.
+- O parsing da lista é feito no `AppStateContext.tsx` (regex que aceita `\d+(,\d+)*`).
+- Números duplicados são processados uma única vez (deduplicação no parser).
+- O formato de report é Markdown para consumo tanto pelo LLM (durante `/spec-audit`) quanto pelo usuário.
+
+**Delivered by:** Spec 410 (multi-spec-pipeline).

@@ -49,9 +49,9 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
-  // Build and release scripts: Node.js environment
+  // Build, release scripts and standalone .mjs tools: Node.js environment
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "src/tools/**/*.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",
@@ -67,5 +67,5 @@ export default tseslint.config(
     },
   },
   // Prettier config: disable conflicting ESLint rules, MUST be last
-  prettierConfig,
+  prettierConfig
 );

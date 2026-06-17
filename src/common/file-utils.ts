@@ -210,3 +210,16 @@ export async function atomicWriteJsonFile(filePath: string, data: unknown): Prom
   const json = `${JSON.stringify(data, null, 2)}\n`;
   await atomicWriteFile(filePath, Buffer.from(json, "utf8"));
 }
+
+/**
+ * Create a timestamped backup of a spec document before modification.
+ * Only backs up files within management/specs/. No-op for other paths.
+ */
+export function backupSpecFile(filePath: string): void {
+  const normalized = filePath.split(path.sep).join("/");
+  if (!normalized.includes("/management/specs/")) return;
+  if (!fs.existsSync(filePath)) return;
+  const ts = new Date().toISOString().replace(/:/g, "-").replace(/\..+/, "");
+  const backupPath = `${filePath}.bak.${ts}`;
+  fs.copyFileSync(filePath, backupPath);
+}

@@ -56,6 +56,12 @@
 | 340 | mcp-lifecycle-extract | audited | V31 (child of 320) |
 | 350 | session-cleanup | audited | V31 (child of 320) |
 | 360 | context-status-and-clear | audited | V32 |
+| 310 | spec-plan-demarcation | audited | V33 |
+| 370 | build-validation | audited | V34 |
+| 380 | operational-resilience | audited | V35 |
+| 390 | spec-traceability | audited | V36 |
+| 400 | github-auto-update | audited | V37 |
+| 410 | multi-spec-pipeline | audited | V38 |
 
 ---
 
@@ -167,6 +173,26 @@ Spec 320 (session-module-split)
 
 Spec 360 (context-status-and-clear)
   (standalone — new /context and /clear local commands, zero LLM calls)
+
+Spec 310 (spec-plan-demarcation)
+  (standalone — new /spec-plan-begin and /spec-plan-end commands,
+   message extraction from session history between markers,
+   feeds into existing spec_plan.md.ejs template unchanged)
+
+Spec 370 (build-validation)
+  (standalone — adds tsc --noEmit check at end of /spec-implement)
+
+Spec 380 (operational-resilience)
+  (standalone — loop detection, elicitationMode, /spec-plan-reset)
+
+Spec 390 (spec-traceability)
+  (standalone — FR→Component→Task→Code tracing, spec backup, doc validation)
+
+Spec 400 (github-auto-update)
+  (standalone — replaces npm-based update check with GitHub Releases API)
+
+Spec 410 (multi-spec-pipeline)
+  (standalone — extends /spec-pipe to accept comma-separated spec numbers; wraps existing runSpecPipeline in a loop)
 ```
 
 ---
