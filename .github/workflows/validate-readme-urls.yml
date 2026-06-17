@@ -1,0 +1,21 @@
+name: Validate README URLs
+
+on:
+  push:
+    paths:
+      - "README*.md"
+      - "docs/**/*.md"
+      - ".github/workflows/validate-readme-urls.yml"
+  pull_request:
+    paths:
+      - "README*.md"
+      - "docs/**/*.md"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate README URLs
+        run: bash scripts/validate-readme-urls.sh
