@@ -154,6 +154,7 @@ DsCode अपनी कॉन्फ़िगरेशन `~/.dscode/settings.jso
 | `modelPricing` | object | कस्टम मॉडल प्राइसिंग ओवरराइड | *(DeepSeek V4 डिफ़ॉल्ट)* |
 | `cacheMode` | string | कैश रणनीति: `"aware"` (डिफ़ॉल्ट, KV Cache के लिए प्रीफ़िक्स अनुकूलित), `"strict"` (aware + हैश सत्यापन), `"off"` (अक्षम)। केवल DeepSeek | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | रिपॉजिटरी दृश्यता। `"public"` होने पर `/management/` और `/.agents/` को `.gitignore` में स्वतः जोड़ता है | `"private"` |
+| `githubToken` | string | GitHub रिलीज़ API कॉल के प्रमाणीकरण के लिए टोकन (वैकल्पिक — बार-बार पुनरारंभ वाले वातावरण में 60 req/h की दर सीमा से बचाता है) | *(कोई नहीं)* |
 
 ### मॉडल प्राइसिंग (`modelPricing`)
 
@@ -346,10 +347,14 @@ Type `/` in the prompt to open the menu. There are **37 built-in commands** + dy
 |---|---|
 | `/spec-init` | Initialize SDD structure: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Plan specs from a brainstorm, align with vision, and update roadmap |
+| `/spec-plan-begin` | Start a brainstorming session to elicit requirements for new specs |
+| `/spec-plan-end` | End the brainstorming session and consolidate planned specs into the roadmap |
+| `/spec-plan-reset` | Discard the current brainstorming session without consolidating anything |
 | `/spec-new <n>` | Create a new spec with requirements, design, and tasks |
 | `/spec-verify <n>` | Verify and **auto-fix** gaps in requirements and design (idempotent — run as many times as you want) |
 | `/spec-implement <n>` | Implement all spec tasks sequentially |
 | `/spec-audit <n>` | Audit and **auto-fix** implementation bugs, tests, and design deviations (idempotent — each pass improves without degrading) |
+| `/spec-pipe <n>` | Shortcut: run the full SDD pipeline for one or more specs (comma-separated numbers): new → verify → implement → audit |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
 

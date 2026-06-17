@@ -148,6 +148,7 @@ DsCode lee su configuración de `~/.dscode/settings.json` (usuario) y `.dscode/s
 | `modelPricing` | object | Precios personalizados por modelo | *(precios por defecto DeepSeek V4)* |
 | `cacheMode` | string | Estrategia de caché: `"aware"` (defecto, optimiza prefijo para KV Cache), `"strict"` (aware + verificación hash), `"off"` (desactiva). Solo DeepSeek | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Visibilidad del repositorio. `"public"` añade `/management/` y `/.agents/` a `.gitignore` automáticamente | `"private"` |
+| `githubToken` | string | Token de GitHub para autenticar llamadas a la API de releases (opcional — evita el rate limit de 60 req/h en entornos con muchos reinicios) | *(ninguno)* |
 
 ### Precios de modelo (`modelPricing`)
 
@@ -336,10 +337,14 @@ Escribe `/` en el prompt para abrir el menú. Son **37 comandos built-in** + ski
 |---|---|
 | `/spec-init` | Inicializar estructura SDD: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Planear specs a partir de brainstorm, alinear con visión y actualizar roadmap |
+| `/spec-plan-begin` | Iniciar una sesión de brainstorming para elicitar requisitos de nuevas specs |
+| `/spec-plan-end` | Finalizar el brainstorming y consolidar los specs planeados en el roadmap |
+| `/spec-plan-reset` | Descartar el brainstorming actual sin consolidar nada |
 | `/spec-new <n>` | Crear nuevo spec con requisitos, diseño y tareas |
 | `/spec-verify <n>` | Verificar y **autocorregir** fallos en requisitos y diseño (idempotente — ejecuta cuantas veces quieras) |
 | `/spec-implement <n>` | Implementar todas las tareas del spec secuencialmente |
 | `/spec-audit <n>` | Auditar y **autocorregir** bugs, tests y desvíos de diseño (idempotente — cada pasada mejora sin degradar) |
+| `/spec-pipe <n>` | Atajo: ejecutar el pipeline SDD completo para uno o más specs (números separados por coma): new → verify → implement → audit |
 | `/spec-list` | Listar todos los specs con estado del roadmap |
 | `/spec-status [n]` | Mostrar estado detallado de un spec específico o de todos |
 

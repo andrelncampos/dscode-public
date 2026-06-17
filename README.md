@@ -211,6 +211,7 @@ O DsCode lê configurações de `~/.dscode/settings.json` (usuário) e `.dscode/
 | `modelPricing` | object | Preços customizados por modelo | *(preços padrão DeepSeek V4)* |
 | `cacheMode` | string | Estratégia de cache: `"aware"` (padrão, otimiza prefixo para KV Cache), `"strict"` (aware + verificação de hash), `"off"` (desativa). Exclusivo para DeepSeek | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Visibilidade do repositório. `"public"` adiciona `/management/` e `/.agents/` ao `.gitignore` automaticamente | `"private"` |
+| `githubToken` | string | Token GitHub para autenticar chamadas à API de releases (opcional — evita o rate limit de 60 req/h em ambientes com muitos reinícios) | *(nenhum)* |
 
 ### Preços de modelo (`modelPricing`)
 
@@ -407,10 +408,14 @@ Digite `/` no prompt para abrir o menu. São **37 comandos built-in** + skills d
 |---|---|
 | `/spec-init` | Inicializar estrutura SDD: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Planejar specs a partir de brainstorm, alinhar com visão e atualizar roadmap |
+| `/spec-plan-begin` | Iniciar uma sessão de brainstorming para elicitar requisitos de novas specs |
+| `/spec-plan-end` | Finalizar o brainstorming e consolidar os specs planejados no roadmap |
+| `/spec-plan-reset` | Descartar o brainstorming atual sem consolidar nada |
 | `/spec-new <n>` | Criar novo spec com requisitos, design e tarefas |
 | `/spec-verify <n>` | Verificar completude e alinhamento com a visão — **corrige automaticamente** as falhas encontradas (idempotente: rode quantas vezes quiser) |
 | `/spec-implement <n>` | Implementar todas as tarefas do spec sequencialmente |
 | `/spec-audit <n>` | Auditar qualidade e corretude da implementação — **corrige automaticamente** bugs, testes e desvios de design (idempotente: cada passagem melhora sem degradar) |
+| `/spec-pipe <n>` | Atalho: executar o pipeline SDD completo para um ou mais specs (números separados por vírgula): new → verify → implement → audit |
 | `/spec-list` | Listar todos os specs com status do roadmap |
 | `/spec-status [n]` | Mostrar status detalhado de um spec específico ou de todos |
 

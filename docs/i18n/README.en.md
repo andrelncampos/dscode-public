@@ -148,6 +148,7 @@ DsCode reads its configuration from `~/.dscode/settings.json` (user) and `.dscod
 | `modelPricing` | object | Custom model pricing overrides | *(DeepSeek V4 defaults)* |
 | `cacheMode` | string | Cache strategy: `"aware"` (default, optimizes prefix for KV Cache), `"strict"` (aware + hash verification), `"off"` (disables). DeepSeek only | `"aware"` |
 | `repositoryVisibility` | `"public"` \| `"private"` | Repository visibility. `"public"` adds `/management/` and `/.agents/` to `.gitignore` automatically | `"private"` |
+| `githubToken` | string | GitHub token for authenticating releases API calls (optional — avoids 60 req/h rate limit in high-restart environments) | *(none)* |
 
 ### Model pricing (`modelPricing`)
 
@@ -336,10 +337,14 @@ Type `/` in the prompt to open the menu. There are **37 built-in commands** + dy
 |---|---|
 | `/spec-init` | Initialize SDD structure: `vision.md`, `arch.md`, `roadmap.md`, `adr.md`, `lessons.md` |
 | `/spec-plan` | Plan specs from a brainstorm, align with vision, and update roadmap |
+| `/spec-plan-begin` | Start a brainstorming session to elicit requirements for new specs |
+| `/spec-plan-end` | End the brainstorming session and consolidate planned specs into the roadmap |
+| `/spec-plan-reset` | Discard the current brainstorming session without consolidating anything |
 | `/spec-new <n>` | Create a new spec with requirements, design, and tasks |
 | `/spec-verify <n>` | Verify and **auto-fix** gaps in requirements and design (idempotent — run as many times as you want) |
 | `/spec-implement <n>` | Implement all spec tasks sequentially |
 | `/spec-audit <n>` | Audit and **auto-fix** implementation bugs, tests, and design deviations (idempotent — each pass improves without degrading) |
+| `/spec-pipe <n>` | Shortcut: run the full SDD pipeline for one or more specs (comma-separated numbers): new → verify → implement → audit |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
 
