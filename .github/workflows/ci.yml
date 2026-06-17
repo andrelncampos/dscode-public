@@ -34,3 +34,6 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Validate README URLs
+        run: bash scripts/validate-readme-urls.sh

@@ -36,11 +36,14 @@ mkdir -p "$WORKDIR/public/docs/i18n"
 for f in docs/i18n/README.*.md; do
   cp "$f" "$WORKDIR/public/docs/i18n/$(basename "$f")"
 
-  # Fix URLs in translated files
+  # Fix URLs in translated files.
+  # IMPORTANT: only match "dscode" when NOT already "dscode-public" — prevents
+  # "dscode-public" → "dscode-public-public" on repeated syncs (idempotency).
   sed -i 's|github.com/andrelncampos/dscode/releases|github.com/andrelncampos/dscode-public/releases|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
   sed -i 's|github.com/andrelncampos/dscode/issues|github.com/andrelncampos/dscode-public/issues|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
   sed -i 's|github.com/andrelncampos/dscode/blob/main/LICENSE|github.com/andrelncampos/dscode-public/blob/master/LICENSE|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
-  sed -i 's|github.com/andrelncampos/dscode|github.com/andrelncampos/dscode-public|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
+  # Catch-all: remaining dscode/ URLs → dscode-public/ (only on lines without dscode-public)
+  sed -i '/dscode-public/!s|github.com/andrelncampos/dscode|github.com/andrelncampos/dscode-public|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
   sed -i 's|(../../LICENSE)|(../LICENSE)|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
   sed -i 's|(../../NOTICE)|(../CHANGELOG.md)|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
   sed -i 's|(../../SECURITY.md)|(../SECURITY.md)|g' "$WORKDIR/public/docs/i18n/$(basename "$f")"
