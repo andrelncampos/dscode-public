@@ -36,17 +36,17 @@ export type OpenAIMessageConverterOptions = {
   /** Optional callback to render the /spec-plan command prompt template. */
   renderSpecPlanPrompt?: (planText: string) => string;
   /** Optional callback to render the /spec-new command prompt template. */
-  renderSpecNewPrompt?: (specNumber: number) => string;
+  renderSpecNewPrompt?: (specNumber: string) => string;
   /** Optional callback to render the /spec-verify command prompt template. */
-  renderSpecVerifyPrompt?: (specNumber: number) => string;
+  renderSpecVerifyPrompt?: (specNumber: string) => string;
   /** Optional callback to render the /spec-implement command prompt template. */
-  renderSpecImplementPrompt?: (specNumber: number) => string;
+  renderSpecImplementPrompt?: (specNumber: string) => string;
   /** Optional callback to render the /spec-audit command prompt template. */
-  renderSpecAuditPrompt?: (specNumber: number) => string;
+  renderSpecAuditPrompt?: (specNumber: string) => string;
   /** Optional callback to render the /spec-list command prompt template. */
   renderSpecListPrompt?: () => string;
   /** Optional callback to render the /spec-status command prompt template. */
-  renderSpecStatusPrompt?: (specNumber: number | null) => string;
+  renderSpecStatusPrompt?: (specNumber: string | null) => string;
   /** Optional callback to handle /spec-plan-reset — compacts begin marker + intervening messages. */
   onSpecPlanReset?: () => string;
 };
@@ -255,36 +255,36 @@ export class OpenAIMessageConverter {
       }
     }
     if (message.role === "user") {
-      const specNewMatch = message.content?.match(/^\/spec-new\s+(\d+)$/);
+      const specNewMatch = message.content?.match(/^\/spec-new\s+(\d+[A-Z]?)$/);
       if (specNewMatch) {
-        return this.options.renderSpecNewPrompt?.(parseInt(specNewMatch[1], 10)) ?? "";
+        return this.options.renderSpecNewPrompt?.(specNewMatch[1]) ?? "";
       }
     }
     if (message.role === "user") {
-      const specVerifyMatch = message.content?.match(/^\/spec-verify\s+(\d+)$/);
+      const specVerifyMatch = message.content?.match(/^\/spec-verify\s+(\d+[A-Z]?)$/);
       if (specVerifyMatch) {
-        return this.options.renderSpecVerifyPrompt?.(parseInt(specVerifyMatch[1], 10)) ?? "";
+        return this.options.renderSpecVerifyPrompt?.(specVerifyMatch[1]) ?? "";
       }
     }
     if (message.role === "user") {
-      const specImplementMatch = message.content?.match(/^\/spec-implement\s+(\d+)$/);
+      const specImplementMatch = message.content?.match(/^\/spec-implement\s+(\d+[A-Z]?)$/);
       if (specImplementMatch) {
-        return this.options.renderSpecImplementPrompt?.(parseInt(specImplementMatch[1], 10)) ?? "";
+        return this.options.renderSpecImplementPrompt?.(specImplementMatch[1]) ?? "";
       }
     }
     if (message.role === "user") {
-      const specAuditMatch = message.content?.match(/^\/spec-audit\s+(\d+)$/);
+      const specAuditMatch = message.content?.match(/^\/spec-audit\s+(\d+[A-Z]?)$/);
       if (specAuditMatch) {
-        return this.options.renderSpecAuditPrompt?.(parseInt(specAuditMatch[1], 10)) ?? "";
+        return this.options.renderSpecAuditPrompt?.(specAuditMatch[1]) ?? "";
       }
     }
     if (message.role === "user" && message.content === "/spec-list") {
       return this.options.renderSpecListPrompt?.() ?? "";
     }
     if (message.role === "user") {
-      const specStatusMatch = message.content?.match(/^\/spec-status(?:\s+(\d+))?$/);
+      const specStatusMatch = message.content?.match(/^\/spec-status(?:\s+(\d+[A-Z]?))?$/);
       if (specStatusMatch) {
-        const specNum = specStatusMatch[1] ? parseInt(specStatusMatch[1], 10) : null;
+        const specNum = specStatusMatch[1] ?? null;
         return this.options.renderSpecStatusPrompt?.(specNum) ?? "";
       }
     }

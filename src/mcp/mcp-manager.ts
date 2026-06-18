@@ -598,7 +598,7 @@ export class McpManager {
     name: string,
     args: Record<string, unknown>,
     timeoutMs = MCP_CALL_TOOL_TIMEOUT_MS,
-    auditContext?: { specNumber: number }
+    auditContext?: { specNumber: string }
   ): Promise<{ ok: boolean; name: string; output?: string; error?: string }> {
     const auditStartMs = auditContext ? Date.now() : 0;
     const tool = this.tools.find((t) => t.namespacedName === name);

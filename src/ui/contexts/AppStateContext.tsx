@@ -640,7 +640,7 @@ export function AppStateProvider({
         return;
       }
       if (submission.command === "spec-pipe") {
-        const match = (submission.text ?? "").match(/^\/spec-pipe\s+(\d+(?:\s*,\s*\d+)*),?\s*$/);
+        const match = (submission.text ?? "").match(/^\/spec-pipe\s+(\d+[A-Z]?(?:\s*,\s*\d+[A-Z]?)*),?\s*$/);
         if (!match) {
           setErrorLine("Usage: /spec-pipe <spec-number>[,<spec-number>...]");
           return;
@@ -652,7 +652,6 @@ export function AppStateProvider({
               .split(",")
               .map((s) => s.trim())
               .filter((s) => s.length > 0)
-              .map((s) => parseInt(s, 10))
           ),
         ];
         setBusy(true);

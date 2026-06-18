@@ -15,7 +15,7 @@ const AUDIT_DONE_MARKER = "No issues found — 0 changes made.";
  *
  * Returns a status message describing the result.
  */
-export async function runSpecPipeline(specNumber: number, sessionManager: SessionManager): Promise<string> {
+export async function runSpecPipeline(specNumber: string, sessionManager: SessionManager): Promise<string> {
   const sessionId = sessionManager.getActiveSessionId();
   if (!sessionId) {
     return "No active session. Start a session first with /new.";
@@ -74,7 +74,7 @@ export async function runSpecPipeline(specNumber: number, sessionManager: Sessio
  * Formats batch results into a deterministic Markdown summary string.
  * Exported for testability — external callers should use runSpecPipelineBatch instead.
  */
-export function buildBatchSummary(ok: number[], failed: { spec: number; reason: string }[]): string {
+export function buildBatchSummary(ok: string[], failed: { spec: string; reason: string }[]): string {
   const total = ok.length + failed.length;
 
   // Single spec — return simple format (backward compat)
@@ -115,7 +115,7 @@ const PIPELINE_SUCCESS_MARKER = "pipeline completed";
  * Single spec is a degenerate case (array with one element).
  * Returns an aggregated result string (Markdown for batch, simple for single).
  */
-export async function runSpecPipelineBatch(specNumbers: number[], sessionManager: SessionManager): Promise<string> {
+export async function runSpecPipelineBatch(specNumbers: string[], sessionManager: SessionManager): Promise<string> {
   if (specNumbers.length === 0) {
     return "No spec numbers provided.";
   }
@@ -125,8 +125,8 @@ export async function runSpecPipelineBatch(specNumbers: number[], sessionManager
     return "No active session. Start a session first with /new.";
   }
 
-  const ok: number[] = [];
-  const failed: { spec: number; reason: string }[] = [];
+  const ok: string[] = [];
+  const failed: { spec: string; reason: string }[] = [];
 
   for (const specNumber of specNumbers) {
     try {

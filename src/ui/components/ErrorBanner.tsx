@@ -115,7 +115,7 @@ const ErrorBanner = React.memo(function ErrorBanner({
         {/* Footer */}
         <Box>
           <Text dimColor>{hint}</Text>
-          {" ".repeat(footerGap)}
+          <Text>{" ".repeat(footerGap)}</Text>
           {dismissable && <Text dimColor>[Dismiss]</Text>}
         </Box>
       </Box>

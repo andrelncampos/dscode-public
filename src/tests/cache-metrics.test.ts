@@ -138,22 +138,22 @@ describe("computeCacheSavings", () => {
 
 describe("formatCacheMetrics", () => {
   test("null hitRate returns null", () => {
-    assert.equal(formatCacheMetrics(null, 0.42), null);
+    assert.equal(formatCacheMetrics(null, 10), null);
   });
 
-  test("91.24% hit, $0.42 saved", () => {
-    assert.equal(formatCacheMetrics(91.24, 0.42), "Cache: 91.2% hit | saved $0.42");
+  test("91.2% hit, 10x cheaper", () => {
+    assert.equal(formatCacheMetrics(91.24, 10), "Cache: 91.2% hit | 10x cheaper");
   });
 
-  test("100% hit, $1.00 saved (no decimal for 100)", () => {
-    assert.equal(formatCacheMetrics(100, 1.0), "Cache: 100% hit | saved $1.00");
+  test("100% hit, 120x cheaper (no decimal for 100)", () => {
+    assert.equal(formatCacheMetrics(100, 120), "Cache: 100% hit | 120x cheaper");
   });
 
-  test("0% hit, $0.00 saved (shows $0.00)", () => {
-    assert.equal(formatCacheMetrics(0, 0), "Cache: 0% hit | saved $0.00");
+  test("0% hit, no multiplier (shows just rate)", () => {
+    assert.equal(formatCacheMetrics(0, undefined), "Cache: 0% hit");
   });
 
-  test("50% hit, $0.004 saved (shows 50.0% and <$0.01)", () => {
-    assert.equal(formatCacheMetrics(50, 0.004), "Cache: 50.0% hit | saved <$0.01");
+  test("50% hit, multiplier <= 1 not shown", () => {
+    assert.equal(formatCacheMetrics(50, 1), "Cache: 50.0% hit");
   });
 });

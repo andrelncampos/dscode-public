@@ -432,7 +432,7 @@ export class SessionManager {
   private fileHistoryCheckpointCount = 0;
   private readonly terminalTitleTemplate: string | undefined;
   private specMcpActive = false;
-  private specMcpNumber = 0;
+  private specMcpNumber: string = "";
   private loopDetector: LoopDetector = createLoopDetector();
   private readonly titleManager: TerminalTitleManager | null = null;
   private lastCallCacheMetrics: { hit: number; miss: number } | null = null;
@@ -486,12 +486,12 @@ export class SessionManager {
         this.renderSteeringAlterCommandPrompt(position, replacementText),
       renderSpecInitPrompt: () => this.renderSpecInitPrompt(),
       renderSpecPlanPrompt: (planText: string) => this.renderSpecPlanPrompt(planText),
-      renderSpecNewPrompt: (specNumber: number) => this.renderSpecNewPrompt(specNumber),
-      renderSpecVerifyPrompt: (specNumber: number) => this.renderSpecVerifyPrompt(specNumber),
-      renderSpecImplementPrompt: (specNumber: number) => this.renderSpecImplementPrompt(specNumber),
-      renderSpecAuditPrompt: (specNumber: number) => this.renderSpecAuditPrompt(specNumber),
+      renderSpecNewPrompt: (specNumber: string) => this.renderSpecNewPrompt(specNumber),
+      renderSpecVerifyPrompt: (specNumber: string) => this.renderSpecVerifyPrompt(specNumber),
+      renderSpecImplementPrompt: (specNumber: string) => this.renderSpecImplementPrompt(specNumber),
+      renderSpecAuditPrompt: (specNumber: string) => this.renderSpecAuditPrompt(specNumber),
       renderSpecListPrompt: () => this.renderSpecListPrompt(),
-      renderSpecStatusPrompt: (specNumber: number | null) => this.renderSpecStatusPrompt(specNumber),
+      renderSpecStatusPrompt: (specNumber: string | null) => this.renderSpecStatusPrompt(specNumber),
       onSpecPlanReset: options.onSpecPlanReset,
     };
     this.converterOptions = converterOptions;
@@ -1542,6 +1542,16 @@ export class SessionManager {
           return;
         }
 
+        // Clamp maxTokens to fit within remaining context window (prevents API 400 errors)
+        const effectiveMaxTokens = (() => {
+          if (!maxTokens || maxTokens <= 0) return undefined;
+          const caps = getModelCapabilities(model);
+          if (!caps?.contextWindow || caps.contextWindow <= 0) return maxTokens;
+          const remaining = caps.contextWindow - session.activeTokens;
+          if (remaining <= 0) return 1;
+          return maxTokens > remaining ? remaining : maxTokens;
+        })();
+
         // Emit stream progress start
         const requestId = crypto.randomUUID();
         const streamStartedAt = new Date().toISOString();
@@ -1558,7 +1568,7 @@ export class SessionManager {
           messages: this.listSessionMessages(sessionId),
           tools: cachedTools,
           temperature: thinkingEnabled ? undefined : temperature,
-          maxTokens: (maxTokens ?? 0) > 0 ? maxTokens : undefined,
+          maxTokens: effectiveMaxTokens,
           signal: sessionController.signal,
           providerOptions: { thinkingEnabled, reasoningEffort: currentReasoningEffort },
         });
@@ -2942,14 +2952,14 @@ export class SessionManager {
     return ejs.render(template, { planText });
   }
 
-  private renderSpecNewPrompt(specNumber: number): string {
+  private renderSpecNewPrompt(specNumber: string): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_new.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     this.setupSpecMcp(specNumber, false); // start servers, no filter (discovery)
     return ejs.render(template, { specNumber });
   }
 
-  private renderSpecVerifyPrompt(specNumber: number): string {
+  private renderSpecVerifyPrompt(specNumber: string): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_verify.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     const mcpConfig = this.setupSpecMcp(specNumber);
@@ -2957,7 +2967,7 @@ export class SessionManager {
     return ejs.render(template, { specNumber, mcpTools });
   }
 
-  private renderSpecImplementPrompt(specNumber: number): string {
+  private renderSpecImplementPrompt(specNumber: string): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_implement.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     const mcpConfig = this.setupSpecMcp(specNumber);
@@ -2965,7 +2975,7 @@ export class SessionManager {
     return ejs.render(template, { specNumber, mcpTools });
   }
 
-  private renderSpecAuditPrompt(specNumber: number): string {
+  private renderSpecAuditPrompt(specNumber: string): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_audit.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     this.setupSpecMcp(specNumber, false); // start servers, no filter (audit shows all)
@@ -2979,7 +2989,7 @@ export class SessionManager {
     return ejs.render(template, {});
   }
 
-  private renderSpecStatusPrompt(specNumber: number | null): string {
+  private renderSpecStatusPrompt(specNumber: string | null): string {
     const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "spec_status.md.ejs");
     const template = fs.readFileSync(templatePath, "utf8");
     return ejs.render(template, { specNumber });
@@ -3124,7 +3134,7 @@ export class SessionManager {
   }
 
   /** Start MCP servers declared by a spec. Returns the config for prompt building. */
-  setupSpecMcp(specNumber: number, applyFilter = true): Record<string, McpServerConfig> | undefined {
+  setupSpecMcp(specNumber: string, applyFilter = true): Record<string, McpServerConfig> | undefined {
     if (this.specMcpActive) this.teardownSpecMcp();
 
     // Find the spec directory by prefix.
@@ -3161,7 +3171,7 @@ export class SessionManager {
     this.mcpManager.setSpecMcpFilter(null);
     this.toolExecutor.setMcpAuditContext(undefined);
     this.specMcpActive = false;
-    this.specMcpNumber = 0;
+    this.specMcpNumber = "";
   }
 
   /** Build a compact MCP tools listing string for spec command prompts. */

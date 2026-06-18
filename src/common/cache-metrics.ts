@@ -95,11 +95,11 @@ export function computeCacheSavings(cachedTokens: number, pricing: ModelPricing)
  * Format cache metrics into a compact display string.
  * Returns null when hitRate is null (no cache data).
  */
-export function formatCacheMetrics(hitRate: number | null, savings: number): string | null {
+export function formatCacheMetrics(hitRate: number | null, multiplier?: number): string | null {
   if (hitRate === null) return null;
   const rateStr = hitRate === 100 || hitRate === 0 ? `${Math.round(hitRate)}` : hitRate.toFixed(1);
-  const savingsStr = savings < 0.01 && savings > 0 ? "<$0.01" : `$${savings.toFixed(2)}`;
-  return `Cache: ${rateStr}% hit | saved ${savingsStr}`;
+  if (!multiplier || multiplier <= 1) return `Cache: ${rateStr}% hit`;
+  return `Cache: ${rateStr}% hit | ${multiplier.toFixed(0)}x cheaper`;
 }
 
 /**
@@ -134,6 +134,7 @@ export function computeCacheLine(
   }
   if (!pricing) return null;
 
-  const savings = computeCacheSavings(totalHit, pricing);
-  return formatCacheMetrics(hitRate, savings);
+  const multiplier =
+    pricing.cacheReadPrice && pricing.cacheReadPrice > 0 ? pricing.inputPrice / pricing.cacheReadPrice : undefined;
+  return formatCacheMetrics(hitRate, multiplier);
 }

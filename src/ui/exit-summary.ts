@@ -4,7 +4,7 @@ import type { ModelUsage, SessionEntry } from "../session";
 import { computeSessionCost, formatCost, DEFAULT_MODEL_PRICING } from "../common/model-capabilities";
 import type { ModelPricing } from "../common/model-capabilities";
 import { getBudgetCosts } from "../common/budget-tracker";
-import { computeCacheHitRate, computeCacheSavings, formatCacheMetrics } from "../common/cache-metrics";
+import { computeCacheHitRate, formatCacheMetrics } from "../common/cache-metrics";
 import type { I18nTFunction } from "../i18n/translate";
 
 type ExitSummaryInput = {
@@ -197,6 +197,8 @@ function buildCacheEfficiencyLine(usagePerModel: Record<string, ModelUsage> | nu
   if (hitRate === null) return null;
 
   const pricing: ModelPricing | undefined = DEFAULT_MODEL_PRICING[Object.keys(usagePerModel)[0]];
-  const savings = computeCacheSavings(totalHit, pricing ?? { inputPrice: 0, outputPrice: 0, cacheReadPrice: 0 });
-  return `Cache (session): ${formatCacheMetrics(hitRate, savings)?.replace("Cache: ", "") ?? ""}`;
+  const multiplier =
+    pricing?.cacheReadPrice && pricing.cacheReadPrice > 0 ? pricing.inputPrice / pricing.cacheReadPrice : undefined;
+  const metrics = formatCacheMetrics(hitRate, multiplier);
+  return metrics ? `Cache (session): ${metrics.replace("Cache: ", "")}` : null;
 }

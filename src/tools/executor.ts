@@ -142,7 +142,7 @@ export class ToolExecutor {
   private readonly mcpManager?: McpManager;
   private readonly mcpPolicy?: McpPolicy;
   private readonly toolHandlers = new Map<string, ToolHandler>();
-  private mcpAuditContext?: { specNumber: number };
+  private mcpAuditContext?: { specNumber: string };
   private repairMetrics: ToolCallRepairMetrics;
   private readonly toolRegistry: ToolRegistry;
   private elicitationMode: boolean = false;
@@ -163,7 +163,7 @@ export class ToolExecutor {
   }
 
   /** Set audit context for MCP tool calls during spec commands. */
-  setMcpAuditContext(ctx: { specNumber: number } | undefined): void {
+  setMcpAuditContext(ctx: { specNumber: string } | undefined): void {
     this.mcpAuditContext = ctx;
   }
 
