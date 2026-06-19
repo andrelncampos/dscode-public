@@ -15,6 +15,20 @@ const FLASH_DURATION_MS = 3000;
 const BLINK_INTERVAL_MS = 400;
 
 function ColoredFooter({ text }: { text: string }): React.ReactElement {
+  const lines = text.split("\n");
+  if (lines.length === 1) {
+    return <ColoredLine text={text} />;
+  }
+  return (
+    <Box flexDirection="column">
+      {lines.map((line, i) => (
+        <ColoredLine key={i} text={line} />
+      ))}
+    </Box>
+  );
+}
+
+function ColoredLine({ text }: { text: string }): React.ReactElement {
   const parts = text.split(" · ");
   return (
     <Text>

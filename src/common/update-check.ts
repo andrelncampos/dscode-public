@@ -2,6 +2,7 @@ import React from "react";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 import { render, type Instance } from "ink";
 import { UpdatePrompt, type UpdatePromptChoice } from "../ui";
 
@@ -181,16 +182,32 @@ async function fetchLatestGitHubVersion(githubToken?: string): Promise<string | 
   }
 }
 
-function getAssetName(): string {
-  const osMap: Record<string, string> = { win32: "win", linux: "linux", darwin: "macos" };
-  const archMap: Record<string, string> = { x64: "x64", arm64: "arm64" };
-  const osName = osMap[process.platform] ?? process.platform;
-  const archName = archMap[process.arch] ?? process.arch;
-  const ext = process.platform === "win32" ? ".exe" : "";
-  return `dscode-${osName}-${archName}${ext}`;
+// Matches package-binary.mjs platform naming: dscode-v{VERSION}-{platformTag}.{ext}
+function getPlatformTag(): string {
+  const platform = process.platform;
+  const arch = process.arch;
+  if (platform === "win32") return "windows-x64";
+  if (platform === "linux") return "linux-x64";
+  if (platform === "darwin" && arch === "arm64") return "macos-arm64";
+  if (platform === "darwin") return "macos-x64";
+  return `${platform}-${arch}`;
+}
+
+function getAssetName(version: string): string {
+  const platformTag = getPlatformTag();
+  const ext = process.platform === "win32" ? "zip" : "tar.gz";
+  return `dscode-v${version}-${platformTag}.${ext}`;
+}
+
+function getBinaryName(): string {
+  return process.platform === "win32" ? "dscode.exe" : "dscode";
 }
 
 async function downloadAndInstallFromGitHub(version: string, githubToken?: string): Promise<boolean> {
+  const homeDir = os.homedir();
+  const updatesDir = path.join(homeDir, ".dscode", "updates");
+  fs.mkdirSync(updatesDir, { recursive: true });
+
   try {
     const headers: Record<string, string> = {
       Accept: "application/vnd.github+json",
@@ -209,19 +226,20 @@ async function downloadAndInstallFromGitHub(version: string, githubToken?: strin
       assets?: Array<{ name: string; browser_download_url: string; size: number }>;
     };
 
-    const assetName = getAssetName();
+    const assetName = getAssetName(version);
     const asset = (release.assets ?? []).find((a) => a.name === assetName);
     if (!asset) {
-      process.stderr.write(`No binary available for ${assetName}.\n`);
+      process.stderr.write(`No binary available for ${assetName}. Available assets:\n`);
+      for (const a of release.assets ?? []) {
+        process.stderr.write(`  - ${a.name}\n`);
+      }
       return false;
     }
 
-    const homeDir = os.homedir();
-    const updatesDir = path.join(homeDir, ".dscode", "updates");
-    fs.mkdirSync(updatesDir, { recursive: true });
-    const destPath = path.join(updatesDir, `dscode-v${version}${process.platform === "win32" ? ".exe" : ""}`);
+    const archivePath = path.join(updatesDir, assetName);
+    const extractDir = path.join(updatesDir, `dscode-v${version}-extract`);
 
-    process.stdout.write(`\n⬇  Downloading dscode v${version} for ${assetName}...\n\n`);
+    process.stdout.write(`\n⬇  Downloading dscode v${version} (${assetName})...\n\n`);
 
     const downloadResp = await fetch(asset.browser_download_url, {
       signal: AbortSignal.timeout(300000),
@@ -229,7 +247,43 @@ async function downloadAndInstallFromGitHub(version: string, githubToken?: strin
     });
     if (!downloadResp.ok) return false;
     const buffer = Buffer.from(await downloadResp.arrayBuffer());
-    fs.writeFileSync(destPath, buffer);
+    fs.writeFileSync(archivePath, buffer);
+
+    // Extract the binary from the archive
+    const binaryName = getBinaryName();
+    const extractMarker = path.join(extractDir, binaryName);
+
+    if (!fs.existsSync(extractMarker)) {
+      process.stdout.write(`📦 Extracting ${binaryName} from archive...\n`);
+      // Clean previous extraction if any
+      try {
+        fs.rmSync(extractDir, { recursive: true, force: true });
+      } catch {
+        /* ok */
+      }
+      fs.mkdirSync(extractDir, { recursive: true });
+
+      if (assetName.endsWith(".zip")) {
+        if (process.platform === "win32") {
+          execSync(
+            `powershell -NoProfile -Command "Expand-Archive -Path '${archivePath}' -DestinationPath '${extractDir}' -Force"`,
+            { stdio: "pipe" }
+          );
+        } else {
+          execSync(`unzip -o "${archivePath}" -d "${extractDir}"`, { stdio: "pipe" });
+        }
+      } else {
+        execSync(`tar -xzf "${archivePath}" -C "${extractDir}"`, { stdio: "pipe" });
+      }
+
+      if (!fs.existsSync(extractMarker)) {
+        process.stderr.write(`Binary ${binaryName} not found after extraction.\n`);
+        return false;
+      }
+    }
+
+    const destPath = path.join(updatesDir, `dscode-v${version}${process.platform === "win32" ? ".exe" : ""}`);
+    fs.copyFileSync(extractMarker, destPath);
 
     // Atomic replacement
     const currentPath = process.execPath;

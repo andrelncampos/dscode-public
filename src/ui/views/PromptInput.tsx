@@ -240,18 +240,22 @@ export const PromptInput = React.memo(function PromptInput({
       if (loadingText && loadingText.trim()) return `${loadingText}${processOrPasteHint}`;
       return `esc to interrupt · ctrl+c to cancel input${processOrPasteHint}`;
     }
-    // Build stats suffix
+    // Build stats suffix (second line)
     let stats = "";
     if (sessionActiveTokens > 0 && sessionContextWindow && sessionContextWindow > 0) {
       const pct = Math.round((sessionActiveTokens / sessionContextWindow) * 100);
-      stats += ` · 🪟 ${formatTokenCount(sessionActiveTokens)}/${formatTokenCount(sessionContextWindow)} (${pct}%)`;
+      stats += `🪟 ${formatTokenCount(sessionActiveTokens)}/${formatTokenCount(sessionContextWindow)} (${pct}%)`;
     }
     if (sessionTokens > 0) {
       stats += ` · ⚡ ${formatTokenCount(sessionTokens)}`;
     }
     if (sessionCost !== null) stats += ` · ⏱️ ${formatCost(sessionCost)}`;
     if (cacheLine) stats += ` · ${cacheLine}`;
-    return `${newlineHint} · # skills · / commands · ctrl+d exit${stats}${processOrPasteHint}`;
+    const shortcutLine = `${newlineHint} · # skills · / commands · ctrl+d exit`;
+    if (stats) {
+      return `${shortcutLine}\n${stats}${processOrPasteHint}`;
+    }
+    return `${shortcutLine}${processOrPasteHint}`;
   })();
   const showFooterText = useMemo(
     () =>
