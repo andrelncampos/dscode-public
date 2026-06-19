@@ -31,6 +31,7 @@ const ptDictionary = {
   "cmd.quit-dscode": "Sair do DsCode CLI",
   "cmd.clear-screen": "Limpar a tela do terminal",
   "cmd.image-paste": "Colar uma imagem da área de transferência no prompt atual",
+  "cmd.image-upload": "Anexar um arquivo de imagem do disco ao prompt atual",
   "cmd.model-list": "Listar provedores LLM configurados com seus modelos e pre\u00e7os",
   "cmd.model-add": "Adicionar um novo provedor LLM com chave API e URL base",
   "cmd.model-remove": "Remover um provedor LLM configurado",

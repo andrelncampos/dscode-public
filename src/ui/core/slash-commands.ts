@@ -190,6 +190,13 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     description: "cmd.image-paste",
   },
   {
+    kind: "image-upload",
+    name: "image-upload",
+    label: "/image-upload",
+    args: ["<file-path>"],
+    description: "cmd.image-upload",
+  },
+  {
     kind: "model-list",
     name: "model-list",
     label: "/model-list",

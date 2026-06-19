@@ -50,6 +50,7 @@ export const COMMAND_KINDS = [
   "context",
   "clear",
   "image-paste",
+  "image-upload",
   "spec-pipe",
   "spec-plan-begin",
   "spec-plan-end",

@@ -1,7 +1,7 @@
 import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
-import { readClipboardImageAsync } from "./clipboard";
+import { readClipboardImageAsync, readImageFile } from "./clipboard";
 import {
   createNote,
   listNotes,
@@ -106,6 +106,21 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       .catch(() => {
         ctx.setStatusMessage("Failed to read clipboard");
       });
+  },
+  "image-upload": (_item, ctx) => {
+    ctx.clearSlashToken();
+    const filePath = ctx.buffer.text.replace(/^\/image-upload\s*/, "").trim();
+    if (!filePath) {
+      ctx.setStatusMessage("Usage: /image-upload <file-path>");
+      return;
+    }
+    const image = readImageFile(filePath);
+    if (image) {
+      ctx.addImageUrl(image.dataUrl);
+      ctx.setStatusMessage(`Attached image: ${filePath}`);
+    } else {
+      ctx.setStatusMessage(`File not found or not a supported image: ${filePath}`);
+    }
   },
   cls: (_item, ctx) => {
     process.stdout.write("\x1b[2J\x1b[H");

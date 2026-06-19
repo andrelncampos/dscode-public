@@ -50,7 +50,7 @@ function tryRunStatus(command: string, args: string[]): boolean {
   }
 }
 
-function readImageFile(filePath: string): ClipboardImage | null {
+export function readImageFile(filePath: string): ClipboardImage | null {
   try {
     if (!isImageFilePath(filePath)) {
       return null;
