@@ -3,6 +3,7 @@ import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
 import { readClipboardImageAsync, readImageFile } from "./clipboard";
 import { isMultimodalModel } from "../../common/model-capabilities";
+import { recognizeTextFromDataUrl } from "./ocr";
 import {
   createNote,
   listNotes,
@@ -98,29 +99,65 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   },
   "image-paste": (_item, ctx) => {
     const argText = ctx.buffer.text.replace(/^\/image-paste\s*/, "").trim();
+    const supportsVision = isMultimodalModel(ctx.currentModel);
     ctx.setStatusMessage("Reading clipboard...");
     readClipboardImageAsync()
-      .then((image) => {
-        if (image) {
-          const modelWarning = isMultimodalModel(ctx.currentModel)
-            ? ""
-            : ` — ⚠️ current model (${ctx.currentModel}) does NOT support images`;
-          if (argText) {
-            // Submit immediately with the question text and image
-            ctx.onSubmit({
-              text: argText,
-              imageUrls: [image.dataUrl],
-              selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
-            });
-            ctx.resetPromptInput();
-          } else {
-            ctx.setBufferText("");
-            ctx.addImageUrl(image.dataUrl);
-            ctx.setStatusMessage(`Attached image from clipboard${modelWarning}`);
-          }
-        } else {
+      .then(async (image) => {
+        if (!image) {
           ctx.setBufferText(argText);
           ctx.setStatusMessage("No image found in clipboard");
+          return;
+        }
+
+        // When the user typed a question: submit immediately.
+        if (argText) {
+          let finalText = argText;
+          if (!supportsVision) {
+            ctx.setStatusMessage("Running OCR on image...");
+            try {
+              const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
+              if (ocrText) {
+                finalText = `[Image content extracted via OCR —\nmodel ${ctx.currentModel} cannot process images directly]:\n\n${ocrText}\n\n---\n\n${argText}`;
+              }
+            } catch {
+              // OCR failed — fall through with text-only submission.
+            }
+          }
+          ctx.onSubmit({
+            text: finalText,
+            imageUrls: [image.dataUrl],
+            selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
+          });
+          ctx.resetPromptInput();
+          return;
+        }
+
+        // No question text — attach image to the prompt so the user
+        // can type a question afterwards.
+        ctx.setBufferText("");
+        ctx.addImageUrl(image.dataUrl);
+
+        if (supportsVision) {
+          ctx.setStatusMessage("Attached image from clipboard");
+          return;
+        }
+
+        // Non-multimodal model: run OCR and place text in the prompt buffer.
+        ctx.setStatusMessage("Running OCR on image...");
+        try {
+          const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
+          if (ocrText) {
+            ctx.setBufferText(ocrText);
+            ctx.setStatusMessage(
+              `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${ctx.currentModel} does NOT support images`
+            );
+          } else {
+            ctx.setStatusMessage(
+              `Attached image from clipboard — ⚠️ ${ctx.currentModel} does NOT support images (no text found via OCR)`
+            );
+          }
+        } catch {
+          ctx.setStatusMessage(`Attached image from clipboard — ⚠️ ${ctx.currentModel} does NOT support images`);
         }
       })
       .catch(() => {
@@ -136,17 +173,38 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       return;
     }
     const image = readImageFile(filePath);
-    if (image) {
-      const modelWarning = isMultimodalModel(ctx.currentModel)
-        ? ""
-        : ` — ⚠️ current model (${ctx.currentModel}) does NOT support images`;
-      ctx.setBufferText("");
-      ctx.addImageUrl(image.dataUrl);
-      ctx.setStatusMessage(`Attached image: ${filePath}${modelWarning}`);
-    } else {
+    if (!image) {
       ctx.setBufferText(filePath);
       ctx.setStatusMessage(`File not found or not a supported image: ${filePath}`);
+      return;
     }
+
+    ctx.setBufferText("");
+    ctx.addImageUrl(image.dataUrl);
+
+    if (isMultimodalModel(ctx.currentModel)) {
+      ctx.setStatusMessage(`Attached image: ${filePath}`);
+      return;
+    }
+
+    // Non-multimodal model: run OCR and place text in the prompt buffer.
+    ctx.setStatusMessage("Running OCR on image...");
+    recognizeTextFromDataUrl(image.dataUrl)
+      .then((ocrText) => {
+        if (ocrText) {
+          ctx.setBufferText(ocrText);
+          ctx.setStatusMessage(
+            `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${ctx.currentModel} does NOT support images`
+          );
+        } else {
+          ctx.setStatusMessage(
+            `Attached image: ${filePath} — ⚠️ ${ctx.currentModel} does NOT support images (no text found via OCR)`
+          );
+        }
+      })
+      .catch(() => {
+        ctx.setStatusMessage(`Attached image: ${filePath} — ⚠️ ${ctx.currentModel} does NOT support images`);
+      });
   },
   cls: (_item, ctx) => {
     process.stdout.write("\x1b[2J\x1b[H");

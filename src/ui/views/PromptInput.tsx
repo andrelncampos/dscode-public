@@ -454,12 +454,33 @@ export const PromptInput = React.memo(function PromptInput({
       if (key.ctrl && (input === "v" || input === "V")) {
         setStatusMessage("Reading clipboard...");
         readClipboardImageAsync()
-          .then((image) => {
-            if (image) {
-              setImageUrls((prev) => [...prev, image.dataUrl]);
-              setStatusMessage("Attached image from clipboard");
-            } else {
+          .then(async (image) => {
+            if (!image) {
               setStatusMessage("No image found in clipboard");
+              return;
+            }
+            setImageUrls((prev) => [...prev, image.dataUrl]);
+            if (isMultimodalModel(modelConfig.model)) {
+              setStatusMessage("Attached image from clipboard");
+              return;
+            }
+            // Non-multimodal model: run OCR and place text in the buffer.
+            setStatusMessage("Running OCR on image...");
+            try {
+              const { recognizeTextFromDataUrl } = await import("../core/ocr");
+              const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
+              if (ocrText) {
+                setBuffer({ text: ocrText, cursor: ocrText.length });
+                setStatusMessage(
+                  `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${modelConfig.model} does NOT support images`
+                );
+              } else {
+                setStatusMessage(
+                  `Attached image from clipboard — ⚠️ ${modelConfig.model} does NOT support images (no text found via OCR)`
+                );
+              }
+            } catch {
+              setStatusMessage(`Attached image from clipboard — ⚠️ ${modelConfig.model} does NOT support images`);
             }
           })
           .catch(() => {
@@ -894,7 +915,10 @@ export const PromptInput = React.memo(function PromptInput({
           </Box>
           {!isMultimodalModel(modelConfig.model) ? (
             <Box>
-              <Text color="yellow">⚠️ Model "{modelConfig.model}" does NOT support images — switch via /model</Text>
+              <Text color="yellow">
+                ⚠️ Model "{modelConfig.model}" does NOT support images. Text will be extracted via OCR on send. Switch
+                via /model for full vision.
+              </Text>
             </Box>
           ) : null}
         </Box>
