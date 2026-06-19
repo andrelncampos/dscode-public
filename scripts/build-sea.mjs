@@ -137,7 +137,7 @@ function buildPortable() {
   copyFileSync(NODE_BIN, resolve(portableDir, nodeDest));
   console.log(`[sea] ${nodeDest} copied.`);
 
-  // Use the fully-bundled ESM file (external: []) — self-contained, no node_modules needed.
+  // Use the fully-bundled ESM file (external: tesseract.js) — self-contained, node_modules/tesseract.js copied above.
   if (!existsSync(BUNDLE_FILE)) {
     console.error("[sea] ERROR: Bundle not found. Run build:bundle first.");
     process.exit(1);
@@ -154,6 +154,17 @@ function buildPortable() {
     { stdio: "pipe" }
   );
   console.log("[sea] templates/ copied.");
+
+  // Copy tesseract.js (external in the bundle — needed for OCR).
+  const tesseractSrc = resolve(root, "node_modules", "tesseract.js");
+  const tesseractDest = resolve(portableDir, "node_modules", "tesseract.js");
+  if (existsSync(tesseractDest)) rmSync(tesseractDest, { recursive: true, force: true });
+  mkdirSync(resolve(portableDir, "node_modules"), { recursive: true });
+  execSync(
+    isWindows ? `xcopy /E /I /Q "${tesseractSrc}" "${tesseractDest}"` : `cp -r "${tesseractSrc}" "${tesseractDest}"`,
+    { stdio: "pipe" }
+  );
+  console.log("[sea] node_modules/tesseract.js copied.");
 
   if (isWindows) {
     const cmdPath = resolve(portableDir, "dscode.cmd");

@@ -30,8 +30,8 @@ await build({
   outfile: OUT_FILE,
   jsx: "automatic",
   jsxImportSource: "react",
-  // Bundle everything except Node built-ins (which need CJS require in ESM).
-  external: [],
+  // Bundle everything except Node built-ins and tesseract.js (which uses CJS require() in ESM).
+  external: ["tesseract.js"],
   banner: {
     js: [`import { createRequire } from "node:module";`, `const require = createRequire(import.meta.url);`].join("\n"),
   },

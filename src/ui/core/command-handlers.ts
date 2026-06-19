@@ -3,7 +3,6 @@ import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
 import { readClipboardImageAsync, readImageFile } from "./clipboard";
 import { isMultimodalModel } from "../../common/model-capabilities";
-import { recognizeTextFromDataUrl } from "./ocr";
 import {
   createNote,
   listNotes,
@@ -124,6 +123,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
           if (!supportsVision) {
             ctx.setStatusMessage("Running OCR on image...");
             try {
+              const { recognizeTextFromDataUrl } = await import("./ocr");
               ocrText = (await recognizeTextFromDataUrl(image.dataUrl)) || undefined;
             } catch {
               // OCR failed — fall through with text-only submission.
@@ -152,6 +152,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
         // Non-multimodal model: run OCR and store text internally (NOT in the buffer).
         ctx.setStatusMessage("Running OCR on image...");
         try {
+          const { recognizeTextFromDataUrl } = await import("./ocr");
           const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
           if (ocrText) {
             ctx.setOcrText(ocrText);
@@ -196,7 +197,8 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
 
     // Non-multimodal model: run OCR and store text internally (NOT in the buffer).
     ctx.setStatusMessage("Running OCR on image...");
-    recognizeTextFromDataUrl(image.dataUrl)
+    import("./ocr")
+      .then(({ recognizeTextFromDataUrl }) => recognizeTextFromDataUrl(image.dataUrl))
       .then((ocrText) => {
         if (ocrText) {
           ctx.setOcrText(ocrText);
