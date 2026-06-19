@@ -356,6 +356,20 @@ jobs:
           name: checksums-linux-x64
           path: release-artifacts/checksums-linux
 
+      - name: Download macOS ARM checksums (optional)
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        continue-on-error: true
+        with:
+          name: checksums-macos-arm64
+          path: release-artifacts/checksums-macos-arm
+
+      - name: Download macOS Intel checksums (optional)
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        continue-on-error: true
+        with:
+          name: checksums-macos-x64
+          path: release-artifacts/checksums-macos-intel
+
       - name: Merge checksums
         run: |
           mkdir -p release-out
