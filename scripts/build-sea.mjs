@@ -155,8 +155,9 @@ function buildPortable() {
   );
   console.log("[sea] templates/ copied.");
 
-  // Copy tesseract.js + its dependencies (external in the bundle — needed for OCR).
-  // tesseract.js is CJS and uses require() for its deps (regenerator-runtime, etc.).
+  // Copy tesseract.js + ALL transitive dependencies (external in the bundle — needed for OCR).
+  // tesseract.js is CJS and uses require() for its deps, which may have their own deps.
+  // Recursively collect the full dependency tree from the project's node_modules.
   const tesseractSrc = resolve(root, "node_modules", "tesseract.js");
   const tesseractDest = resolve(portableDir, "node_modules", "tesseract.js");
   if (existsSync(tesseractDest)) rmSync(tesseractDest, { recursive: true, force: true });
@@ -165,22 +166,34 @@ function buildPortable() {
     isWindows ? `xcopy /E /I /Q "${tesseractSrc}" "${tesseractDest}"` : `cp -r "${tesseractSrc}" "${tesseractDest}"`,
     { stdio: "pipe" }
   );
-  // Copy tesseract.js transitive dependencies so require() resolves at runtime.
+
+  function collectAllDeps(pkgNames, seen = new Set()) {
+    for (const name of pkgNames) {
+      if (seen.has(name)) continue;
+      const pkgJson = resolve(root, "node_modules", name, "package.json");
+      if (!existsSync(pkgJson)) {
+        console.warn(`[sea] WARNING: dep not found: ${name}`);
+        continue;
+      }
+      seen.add(name);
+      const pkg = JSON.parse(readFileSync(pkgJson, "utf8"));
+      const deps = Object.keys(pkg.dependencies || {});
+      if (deps.length) collectAllDeps(deps, seen);
+    }
+    return seen;
+  }
+
   const tesseractPkg = JSON.parse(readFileSync(resolve(tesseractSrc, "package.json"), "utf8"));
-  const tesseractDeps = Object.keys(tesseractPkg.dependencies || {});
-  for (const dep of tesseractDeps) {
+  const allDeps = collectAllDeps(Object.keys(tesseractPkg.dependencies || {}));
+  for (const dep of allDeps) {
     const depSrc = resolve(root, "node_modules", dep);
     const depDest = resolve(portableDir, "node_modules", dep);
-    if (!existsSync(depSrc)) {
-      console.warn(`[sea] WARNING: tesseract.js dependency not found: ${dep}`);
-      continue;
-    }
     if (existsSync(depDest)) rmSync(depDest, { recursive: true, force: true });
     execSync(isWindows ? `xcopy /E /I /Q "${depSrc}" "${depDest}"` : `cp -r "${depSrc}" "${depDest}"`, {
       stdio: "pipe",
     });
   }
-  console.log(`[sea] node_modules/tesseract.js + ${tesseractDeps.length} deps copied.`);
+  console.log(`[sea] node_modules/tesseract.js + ${allDeps.size} transitive deps copied.`);
 
   if (isWindows) {
     const cmdPath = resolve(portableDir, "dscode.cmd");
