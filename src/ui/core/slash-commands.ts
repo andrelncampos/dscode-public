@@ -184,6 +184,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
     description: "cmd.clear-screen",
   },
   {
+    kind: "image-paste",
+    name: "image-paste",
+    label: "/image-paste",
+    description: "cmd.image-paste",
+  },
+  {
     kind: "model-list",
     name: "model-list",
     label: "/model-list",

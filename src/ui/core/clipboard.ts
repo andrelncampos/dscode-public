@@ -133,7 +133,7 @@ export function readClipboardImage(): ClipboardImage | null {
       "if ($img) { $ms = New-Object System.IO.MemoryStream;" +
       "$img.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png);" +
       "[Console]::OpenStandardOutput().Write($ms.ToArray(), 0, $ms.Length); }";
-    const out = tryRun("powershell", ["-NoProfile", "-Command", script]);
+    const out = tryRun("powershell", ["-NoProfile", "-STA", "-Command", script]);
     if (out && out.length > 0) {
       return { dataUrl: bufferToDataUrl(out, PNG_MIME), mimeType: PNG_MIME };
     }

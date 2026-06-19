@@ -28,6 +28,7 @@ const enDictionary = {
   "cmd.spec-status": "Show detailed status of a specific spec or all specs",
   "cmd.quit-dscode": "Quit DsCode CLI",
   "cmd.clear-screen": "Clear the terminal screen",
+  "cmd.image-paste": "Paste an image from the clipboard into the current prompt",
   "cmd.model-list": "List configured LLM providers with their models and pricing",
   "cmd.model-add": "Add a new LLM provider with API key and base URL",
   "cmd.model-remove": "Remove a configured LLM provider",

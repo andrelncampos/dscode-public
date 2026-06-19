@@ -49,6 +49,7 @@ export const COMMAND_KINDS = [
   "notes-delete",
   "context",
   "clear",
+  "image-paste",
   "spec-pipe",
   "spec-plan-begin",
   "spec-plan-end",

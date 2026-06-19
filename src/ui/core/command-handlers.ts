@@ -1,6 +1,7 @@
 import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
+import { readClipboardImageAsync } from "./clipboard";
 import {
   createNote,
   listNotes,
@@ -30,6 +31,8 @@ export type CommandContext = {
   setShowModelDropdown: (show: boolean) => void;
   setOpenRawModelDropdown: (show: boolean) => void;
   setStatusMessage: (msg: string) => void;
+  /** Add an image (data URL) to the current prompt's attached images. */
+  addImageUrl: (url: string) => void;
   /** Write command output as a system message in the chat flow (Static component). */
   writeOutput: (text: string) => void;
 };
@@ -87,6 +90,22 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   },
   exit: (_item, ctx) => {
     ctx.onSubmit({ text: "/exit", imageUrls: [], command: "exit" });
+  },
+  "image-paste": (_item, ctx) => {
+    ctx.clearSlashToken();
+    ctx.setStatusMessage("Reading clipboard...");
+    readClipboardImageAsync()
+      .then((image) => {
+        if (image) {
+          ctx.addImageUrl(image.dataUrl);
+          ctx.setStatusMessage("Attached image from clipboard");
+        } else {
+          ctx.setStatusMessage("No image found in clipboard");
+        }
+      })
+      .catch(() => {
+        ctx.setStatusMessage("Failed to read clipboard");
+      });
   },
   cls: (_item, ctx) => {
     process.stdout.write("\x1b[2J\x1b[H");

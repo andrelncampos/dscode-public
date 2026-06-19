@@ -30,6 +30,7 @@ const esDictionary = {
   "cmd.spec-status": "Mostrar estado detallado de una spec espec\u00edfica o de todas",
   "cmd.quit-dscode": "Salir de DsCode CLI",
   "cmd.clear-screen": "Limpiar la pantalla del terminal",
+  "cmd.image-paste": "Pegar una imagen del portapapeles en el prompt actual",
   "cmd.model-list": "Listar proveedores LLM configurados con sus modelos y precios",
   "cmd.model-add": "Agregar un nuevo proveedor LLM con clave API y URL base",
   "cmd.model-remove": "Eliminar un proveedor LLM configurado",

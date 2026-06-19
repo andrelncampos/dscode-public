@@ -767,6 +767,7 @@ export const PromptInput = React.memo(function PromptInput({
       setShowModelDropdown,
       setOpenRawModelDropdown,
       setStatusMessage,
+      addImageUrl: (url: string) => setImageUrls((prev) => [...prev, url]),
       writeOutput: (text: string) => onCommandOutput?.(text),
     };
     executeSlashCommand(item, ctx);
