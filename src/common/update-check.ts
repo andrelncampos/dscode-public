@@ -321,6 +321,35 @@ async function downloadAndInstallFromGitHub(version: string, githubToken?: strin
       } catch {
         /* best-effort */
       }
+
+      // Portable package: copy companion files (dscode.mjs, node, templates/, etc.)
+      // alongside the binary so the launcher can find them.
+      const jsFile = path.join(extractDir, "dscode.mjs");
+      if (fs.existsSync(jsFile)) {
+        const targetDir = path.dirname(currentPath);
+        for (const entry of fs.readdirSync(extractDir)) {
+          if (entry === binaryName) continue; // already replaced above
+          const src = path.join(extractDir, entry);
+          const dest = path.join(targetDir, entry);
+          try {
+            if (fs.statSync(src).isDirectory()) {
+              fs.rmSync(dest, { recursive: true, force: true });
+              fs.cpSync(src, dest, { recursive: true });
+            } else {
+              fs.copyFileSync(src, dest);
+              if (process.platform !== "win32" && entry === "node") {
+                try {
+                  fs.chmodSync(dest, 0o755);
+                } catch {
+                  /* best-effort */
+                }
+              }
+            }
+          } catch {
+            /* best-effort — companion file copy is non-fatal */
+          }
+        }
+      }
     } catch {
       try {
         fs.renameSync(oldPath, currentPath);
