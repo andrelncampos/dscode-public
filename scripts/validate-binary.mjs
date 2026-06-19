@@ -7,7 +7,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-const version = pkg.version;
+// Tag is the source of truth for release assets (e.g., v1.0.42 → 1.0.42).
+// Fall back to package.json version for local builds.
+const version = (() => {
+  const tag = process.env.GITHUB_REF_NAME;
+  if (tag && tag.startsWith("v")) return tag.slice(1);
+  return pkg.version;
+})();
 
 const platform = process.platform;
 const arch = process.arch;

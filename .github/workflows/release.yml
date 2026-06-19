@@ -174,8 +174,9 @@ jobs:
 
   build-macos-arm:
     name: Build macOS ARM64
-    if: ${{ github.actor != 'dependabot[bot]' && github.event_name == 'workflow_dispatch' && inputs.build_macos_arm == true }}
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_macos_arm == true)) }}
     runs-on: macos-latest
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -242,8 +243,9 @@ jobs:
 
   build-macos-intel:
     name: Build macOS x64
-    if: ${{ github.actor != 'dependabot[bot]' && github.event_name == 'workflow_dispatch' && inputs.build_macos_intel == true }}
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_macos_intel == true)) }}
     runs-on: macos-13
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -314,6 +316,8 @@ jobs:
     needs:
       - build-windows
       - build-linux
+      - build-macos-arm
+      - build-macos-intel
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

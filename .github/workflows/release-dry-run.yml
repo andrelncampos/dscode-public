@@ -24,6 +24,12 @@ jobs:
           - platform: linux-x64
             runner: ubuntu-latest
             node-version: "24"
+          - platform: macos-arm64
+            runner: macos-latest
+            node-version: "24"
+          - platform: macos-x64
+            runner: macos-13
+            node-version: "24"
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
