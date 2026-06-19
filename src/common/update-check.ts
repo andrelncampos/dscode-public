@@ -280,10 +280,21 @@ async function downloadAndInstallFromGitHub(version: string, githubToken?: strin
         process.stderr.write(`Binary ${binaryName} not found after extraction.\n`);
         return false;
       }
+      // Ensure binary is executable (copyFileSync does not preserve mode on POSIX)
+      try {
+        fs.chmodSync(extractMarker, 0o755);
+      } catch {
+        /* best-effort */
+      }
     }
 
     const destPath = path.join(updatesDir, `dscode-v${version}${process.platform === "win32" ? ".exe" : ""}`);
     fs.copyFileSync(extractMarker, destPath);
+    try {
+      fs.chmodSync(destPath, 0o755);
+    } catch {
+      /* best-effort */
+    }
 
     // Atomic replacement
     const currentPath = process.execPath;
@@ -305,6 +316,11 @@ async function downloadAndInstallFromGitHub(version: string, githubToken?: strin
 
     try {
       fs.copyFileSync(destPath, currentPath);
+      try {
+        fs.chmodSync(currentPath, 0o755);
+      } catch {
+        /* best-effort */
+      }
     } catch {
       try {
         fs.renameSync(oldPath, currentPath);
