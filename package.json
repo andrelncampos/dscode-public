@@ -1,6 +1,6 @@
 {
   "name": "@andrelncampos/dscode",
-  "version": "1.0.41",
+  "version": "1.0.42",
   "description": "dscode CLI - AI coding assistant optimized for DeepSeek V4 in your terminal",
   "license": "MIT",
   "type": "module",
