@@ -344,6 +344,18 @@ jobs:
           name: macos-x64
           path: release-artifacts/macos-x64
 
+      - name: Download Windows checksums
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: checksums-windows-x64
+          path: release-artifacts/checksums-windows
+
+      - name: Download Linux checksums
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: checksums-linux-x64
+          path: release-artifacts/checksums-linux
+
       - name: Merge checksums
         run: |
           mkdir -p release-out
