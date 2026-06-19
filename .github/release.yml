@@ -1,14 +1,14 @@
-# Configuração das release notes geradas automaticamente pelo GitHub
-# Usado pelo workflow release.yml na etapa "gh release create --generate-notes"
+# GitHub auto-generated release notes configuration
+# Used by release.yml workflow via "gh release create --generate-notes"
 #
-# Labels que precisam existir no repositório:
-#   feature, enhancement  → 🚀 Novidades
-#   bug, fix              → 🐛 Correções
-#   documentation, docs   → 📚 Documentação
-#   chore, dependencies   → 🔧 Manutenção
+# Labels required in the repository:
+#   feature, enhancement  → 🚀 Features
+#   bug, fix              → 🐛 Bug Fixes
+#   documentation, docs   → 📚 Documentation
+#   chore, dependencies   → 🔧 Maintenance
 #   breaking              → ⚠️ Breaking Changes
 #
-# PRs sem label caem em "Outras Mudanças".
+# Unlabeled PRs fall into "Other Changes".
 
 changelog:
   exclude:
@@ -22,24 +22,24 @@ changelog:
       - dependabot[bot]
 
   categories:
-    - title: 🚀 Novidades
+    - title: 🚀 Features
       labels:
         - feature
         - enhancement
         - feat
 
-    - title: 🐛 Correções
+    - title: 🐛 Bug Fixes
       labels:
         - bug
         - fix
         - bugfix
 
-    - title: 📚 Documentação
+    - title: 📚 Documentation
       labels:
         - documentation
         - docs
 
-    - title: 🔧 Manutenção
+    - title: 🔧 Maintenance
       labels:
         - chore
         - maintenance
@@ -52,6 +52,6 @@ changelog:
         - breaking-change
         - major
 
-    - title: Outras Mudanças
+    - title: Other Changes
       labels:
         - "*"
