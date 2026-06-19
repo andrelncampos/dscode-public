@@ -317,7 +317,6 @@ jobs:
       - build-windows
       - build-linux
       - build-macos-arm
-      - build-macos-intel
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
