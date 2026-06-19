@@ -41,6 +41,9 @@ export type CommandContext = {
   writeOutput: (text: string) => void;
   /** Current model name (e.g. "deepseek-v4-pro"), used to detect multimodal support. */
   currentModel: string;
+  /** Store OCR-extracted text from an attached image (non-multimodal fallback).
+   *  The text is NOT shown in the buffer — it's prepended to the user's question on submit. */
+  setOcrText: (text: string) => void;
 };
 
 type CommandHandler = (item: SlashCommandItem, ctx: CommandContext) => void;
@@ -142,14 +145,14 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
           return;
         }
 
-        // Non-multimodal model: run OCR and place text in the prompt buffer.
+        // Non-multimodal model: run OCR and store text internally (NOT in the buffer).
         ctx.setStatusMessage("Running OCR on image...");
         try {
           const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
           if (ocrText) {
-            ctx.setBufferText(ocrText);
+            ctx.setOcrText(ocrText);
             ctx.setStatusMessage(
-              `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${ctx.currentModel} does NOT support images`
+              `Sua LLM não suporta imagem. O DsCode fez o OCR da imagem para você. — texto extraído da imagem. Digite sua pergunta.`
             );
           } else {
             ctx.setStatusMessage(
@@ -187,14 +190,14 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
       return;
     }
 
-    // Non-multimodal model: run OCR and place text in the prompt buffer.
+    // Non-multimodal model: run OCR and store text internally (NOT in the buffer).
     ctx.setStatusMessage("Running OCR on image...");
     recognizeTextFromDataUrl(image.dataUrl)
       .then((ocrText) => {
         if (ocrText) {
-          ctx.setBufferText(ocrText);
+          ctx.setOcrText(ocrText);
           ctx.setStatusMessage(
-            `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${ctx.currentModel} does NOT support images`
+            `Sua LLM não suporta imagem. O DsCode fez o OCR da imagem para você. — texto extraído da imagem. Digite sua pergunta.`
           );
         } else {
           ctx.setStatusMessage(

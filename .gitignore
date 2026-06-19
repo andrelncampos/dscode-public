@@ -23,3 +23,4 @@ EXTERNAL/
 # pnpm (project uses npm; pnpm files are local-only)
 pnpm-lock.yaml
 pnpm-workspace.yaml
+eng.traineddata

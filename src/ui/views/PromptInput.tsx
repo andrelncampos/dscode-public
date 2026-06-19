@@ -160,6 +160,7 @@ export const PromptInput = React.memo(function PromptInput({
   const { stdout } = useStdout();
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [ocrText, setOcrText] = useState<string | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<SkillInfo[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [pendingExit, setPendingExit] = useState(false);
@@ -347,6 +348,7 @@ export const PromptInput = React.memo(function PromptInput({
     appliedDraftNonceRef.current = promptDraft.nonce;
     setBuffer({ text: promptDraft.text, cursor: promptDraft.text.length });
     setImageUrls(promptDraft.imageUrls);
+    setOcrText(null);
     setSelectedSkills([]);
     setShowSkillsDropdown(false);
     setOpenRawModelDropdown(false);
@@ -464,15 +466,15 @@ export const PromptInput = React.memo(function PromptInput({
               setStatusMessage("Attached image from clipboard");
               return;
             }
-            // Non-multimodal model: run OCR and place text in the buffer.
+            // Non-multimodal model: run OCR and store text internally (NOT in the buffer).
             setStatusMessage("Running OCR on image...");
             try {
               const { recognizeTextFromDataUrl } = await import("../core/ocr");
               const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
               if (ocrText) {
-                setBuffer({ text: ocrText, cursor: ocrText.length });
+                setOcrText(ocrText);
                 setStatusMessage(
-                  `OCR complete — text extracted. Add your question and press Enter. ⚠️ ${modelConfig.model} does NOT support images`
+                  `Sua LLM não suporta imagem. O DsCode fez o OCR da imagem para você. — texto extraído da imagem. Digite sua pergunta.`
                 );
               } else {
                 setStatusMessage(
@@ -490,8 +492,9 @@ export const PromptInput = React.memo(function PromptInput({
       }
 
       if (isClearImageAttachmentsShortcut(input, key)) {
-        if (imageUrls.length > 0) {
+        if (imageUrls.length > 0 || ocrText) {
           setImageUrls([]);
+          setOcrText(null);
           setStatusMessage("Cleared attached images");
         } else {
           setStatusMessage("No attached images to clear");
@@ -766,6 +769,7 @@ export const PromptInput = React.memo(function PromptInput({
     setBuffer(EMPTY_BUFFER);
     clearUndoRedoStacks();
     setImageUrls([]);
+    setOcrText(null);
     setSelectedSkills([]);
     setShowSkillsDropdown(false);
     exitHistoryBrowsing();
@@ -792,6 +796,7 @@ export const PromptInput = React.memo(function PromptInput({
       setBufferText: (text: string) => setBuffer({ text, cursor: text.length }),
       writeOutput: (text: string) => onCommandOutput?.(text),
       currentModel: modelConfig.model,
+      setOcrText: (text: string) => setOcrText(text),
     };
     executeSlashCommand(item, ctx);
   }
@@ -831,8 +836,15 @@ export const PromptInput = React.memo(function PromptInput({
       }
     }
 
+    let submitText = expandPasteMarkers(buffer.text, pastesRef.current);
+
+    // If OCR text was stored from a non-multimodal model, prepend it.
+    if (ocrText) {
+      submitText = `[Image content extracted via OCR —\nmodel ${modelConfig.model} cannot process images directly]:\n\n${ocrText}\n\n---\n\n${submitText}`;
+    }
+
     onSubmit({
-      text: expandPasteMarkers(buffer.text, pastesRef.current),
+      text: submitText,
       imageUrls,
       selectedSkills,
     });
@@ -913,11 +925,17 @@ export const PromptInput = React.memo(function PromptInput({
             <Text color="magenta">{formatImageAttachmentStatus(imageUrls.length)}</Text>
             <Text dimColor>{` (${IMAGE_ATTACHMENT_CLEAR_HINT})`}</Text>
           </Box>
-          {!isMultimodalModel(modelConfig.model) ? (
+          {ocrText ? (
+            <Box>
+              <Text color="green">
+                OCR: "{ocrText.length > 120 ? ocrText.slice(0, 117) + "..." : ocrText}" ({ocrText.length} caracteres) —
+                digite sua pergunta e pressione Enter
+              </Text>
+            </Box>
+          ) : !isMultimodalModel(modelConfig.model) ? (
             <Box>
               <Text color="yellow">
-                ⚠️ Model "{modelConfig.model}" does NOT support images. Text will be extracted via OCR on send. Switch
-                via /model for full vision.
+                ⚠️ Model "{modelConfig.model}" does NOT support images. Switch via /model for full vision.
               </Text>
             </Box>
           ) : null}
