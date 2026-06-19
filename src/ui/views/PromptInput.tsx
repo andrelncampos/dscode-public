@@ -65,7 +65,7 @@ import {
   useBracketedPaste,
   useTerminalFocusReporting,
 } from "../hooks";
-import { formatCost, formatTokenCount } from "../../common/model-capabilities";
+import { formatCost, formatTokenCount, isMultimodalModel } from "../../common/model-capabilities";
 import { detectTerminalRuntime } from "../core/terminal-runtime";
 import SlashCommandMenu, { isSkillSelected } from "./SlashCommandMenu";
 import type { ModelConfigSelection } from "../../settings";
@@ -770,6 +770,7 @@ export const PromptInput = React.memo(function PromptInput({
       addImageUrl: (url: string) => setImageUrls((prev) => [...prev, url]),
       setBufferText: (text: string) => setBuffer({ text, cursor: text.length }),
       writeOutput: (text: string) => onCommandOutput?.(text),
+      currentModel: modelConfig.model,
     };
     executeSlashCommand(item, ctx);
   }
@@ -886,9 +887,16 @@ export const PromptInput = React.memo(function PromptInput({
   return (
     <Box flexDirection="column">
       {imageUrls.length > 0 ? (
-        <Box>
-          <Text color="magenta">{formatImageAttachmentStatus(imageUrls.length)}</Text>
-          <Text dimColor>{` (${IMAGE_ATTACHMENT_CLEAR_HINT})`}</Text>
+        <Box flexDirection="column">
+          <Box>
+            <Text color="magenta">{formatImageAttachmentStatus(imageUrls.length)}</Text>
+            <Text dimColor>{` (${IMAGE_ATTACHMENT_CLEAR_HINT})`}</Text>
+          </Box>
+          {!isMultimodalModel(modelConfig.model) ? (
+            <Box>
+              <Text color="yellow">⚠️ Model "{modelConfig.model}" does NOT support images — switch via /model</Text>
+            </Box>
+          ) : null}
         </Box>
       ) : null}
       {selectedSkills.length > 0 ? (

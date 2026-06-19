@@ -2,6 +2,7 @@ import type { SlashCommandKind, SlashCommandItem } from "./slash-commands";
 import type { SkillInfo } from "../../session";
 import { getActiveTFunction } from "../../i18n/context";
 import { readClipboardImageAsync, readImageFile } from "./clipboard";
+import { isMultimodalModel } from "../../common/model-capabilities";
 import {
   createNote,
   listNotes,
@@ -37,6 +38,8 @@ export type CommandContext = {
   setBufferText: (text: string) => void;
   /** Write command output as a system message in the chat flow (Static component). */
   writeOutput: (text: string) => void;
+  /** Current model name (e.g. "deepseek-v4-pro"), used to detect multimodal support. */
+  currentModel: string;
 };
 
 type CommandHandler = (item: SlashCommandItem, ctx: CommandContext) => void;
@@ -99,6 +102,9 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     readClipboardImageAsync()
       .then((image) => {
         if (image) {
+          const modelWarning = isMultimodalModel(ctx.currentModel)
+            ? ""
+            : ` — ⚠️ current model (${ctx.currentModel}) does NOT support images`;
           if (argText) {
             // Submit immediately with the question text and image
             ctx.onSubmit({
@@ -110,7 +116,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
           } else {
             ctx.setBufferText("");
             ctx.addImageUrl(image.dataUrl);
-            ctx.setStatusMessage("Attached image from clipboard");
+            ctx.setStatusMessage(`Attached image from clipboard${modelWarning}`);
           }
         } else {
           ctx.setBufferText(argText);
@@ -131,9 +137,12 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     }
     const image = readImageFile(filePath);
     if (image) {
+      const modelWarning = isMultimodalModel(ctx.currentModel)
+        ? ""
+        : ` — ⚠️ current model (${ctx.currentModel}) does NOT support images`;
       ctx.setBufferText("");
       ctx.addImageUrl(image.dataUrl);
-      ctx.setStatusMessage(`Attached image: ${filePath}`);
+      ctx.setStatusMessage(`Attached image: ${filePath}${modelWarning}`);
     } else {
       ctx.setBufferText(filePath);
       ctx.setStatusMessage(`File not found or not a supported image: ${filePath}`);
