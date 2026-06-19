@@ -105,6 +105,9 @@ export type PromptSubmission = {
   permissions?: UserToolPermission[];
   alwaysAllows?: PermissionScope[];
   command?: PromptCommand;
+  /** OCR-extracted text from an attached image (non-multimodal fallback).
+   *  Sent to the LLM as context but NOT shown in the user's visible message. */
+  ocrText?: string;
 };
 
 export type PromptDraft = {

@@ -25,7 +25,13 @@ export type CommandContext = {
   buffer: { text: string };
   busy: boolean;
   selectedSkills: SkillInfo[];
-  onSubmit: (submission: { text: string; imageUrls: string[]; selectedSkills?: SkillInfo[]; command?: string }) => void;
+  onSubmit: (submission: {
+    text: string;
+    imageUrls: string[];
+    selectedSkills?: SkillInfo[];
+    command?: string;
+    ocrText?: string;
+  }) => void;
   resetPromptInput: () => void;
   clearSlashToken: () => void;
   addSelectedSkill: (skill: SkillInfo) => void;
@@ -114,22 +120,20 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
 
         // When the user typed a question: submit immediately.
         if (argText) {
-          let finalText = argText;
+          let ocrText: string | undefined;
           if (!supportsVision) {
             ctx.setStatusMessage("Running OCR on image...");
             try {
-              const ocrText = await recognizeTextFromDataUrl(image.dataUrl);
-              if (ocrText) {
-                finalText = `[Image content extracted via OCR —\nmodel ${ctx.currentModel} cannot process images directly]:\n\n${ocrText}\n\n---\n\n${argText}`;
-              }
+              ocrText = (await recognizeTextFromDataUrl(image.dataUrl)) || undefined;
             } catch {
               // OCR failed — fall through with text-only submission.
             }
           }
           ctx.onSubmit({
-            text: finalText,
+            text: argText,
             imageUrls: [image.dataUrl],
             selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
+            ocrText,
           });
           ctx.resetPromptInput();
           return;

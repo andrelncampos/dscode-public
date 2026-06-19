@@ -836,17 +836,13 @@ export const PromptInput = React.memo(function PromptInput({
       }
     }
 
-    let submitText = expandPasteMarkers(buffer.text, pastesRef.current);
-
-    // If OCR text was stored from a non-multimodal model, prepend it.
-    if (ocrText) {
-      submitText = `[Image content extracted via OCR —\nmodel ${modelConfig.model} cannot process images directly]:\n\n${ocrText}\n\n---\n\n${submitText}`;
-    }
+    const submitText = expandPasteMarkers(buffer.text, pastesRef.current);
 
     onSubmit({
       text: submitText,
       imageUrls,
       selectedSkills,
+      ocrText: ocrText ?? undefined,
     });
     resetPromptInput();
   }

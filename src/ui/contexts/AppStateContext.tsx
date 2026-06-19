@@ -698,8 +698,12 @@ export function AppStateProvider({
         }
       }
 
+      let promptText = submission.text;
+      if (submission.ocrText) {
+        promptText = `[Image content extracted via OCR —\nmodel does not support images directly]:\n\n${submission.ocrText}\n\n---\n\n${submission.text}`;
+      }
       const prompt = {
-        text: submission.text,
+        text: promptText,
         imageUrls: submission.imageUrls,
         skills:
           submission.selectedSkills && submission.selectedSkills.length > 0 ? submission.selectedSkills : undefined,
