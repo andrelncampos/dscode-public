@@ -44,8 +44,8 @@ await build({
   minify: false,
   keepNames: true,
 }).catch((err) => {
-  console.warn(`[bundle] Bundling failed (${err.message}). The SEA step will use dist/cli.js as fallback.`);
-  // Don't exit — let build:sea decide what to do
+  console.error(`[bundle] ERROR: Bundling failed: ${err.message}`);
+  process.exit(1);
 });
 
 console.log(`[bundle] Done → ${OUT_FILE}`);

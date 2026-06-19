@@ -1,4 +1,4 @@
-import { createWorker } from "tesseract.js";
+import type { Worker } from "tesseract.js";
 
 const SUPPORTED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/bmp"]);
 
@@ -47,7 +47,10 @@ export async function recognizeTextFromDataUrl(dataUrl: string): Promise<string 
 
   // Tesseract supports many languages; 'eng' covers the vast majority of
   // code / terminal / log screenshots the user is likely to paste.
-  const worker = await createWorker("eng");
+  // Dynamic import: tesseract.js is external in the bundle and must not
+  // be loaded at startup (it pulls in regenerator-runtime).
+  const { createWorker } = await import("tesseract.js");
+  const worker: Worker = await createWorker("eng");
 
   try {
     const {
