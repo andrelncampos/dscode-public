@@ -700,7 +700,7 @@ export function AppStateProvider({
 
       let promptText = submission.text;
       if (submission.ocrText) {
-        promptText = `[Image content extracted via OCR —\nmodel does not support images directly]:\n\n${submission.ocrText}\n\n---\n\n${submission.text}`;
+        promptText = `[Seu LLM não suporta imagem. O DsCode fez o OCR para você:]\n\n${submission.ocrText}\n\n---\n\n${submission.text}`;
       }
       const prompt = {
         text: promptText,
