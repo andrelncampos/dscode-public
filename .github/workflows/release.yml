@@ -308,7 +308,7 @@ jobs:
           gh release create "$TAG" release-out/* \
             --repo "$REPO" \
             --title "$TAG" \
-            --generate-notes \
+            --notes-file RELEASE_NOTES.md \
             --latest
 
           echo "=== Aguardando assets serem populados ==="
@@ -338,7 +338,7 @@ jobs:
           gh release create "$TAG" release-out/* \
             --repo "$PUBLIC_REPO" \
             --title "$TAG" \
-            --generate-notes \
+            --notes-file RELEASE_NOTES.md \
             --latest
 
           sleep 5
