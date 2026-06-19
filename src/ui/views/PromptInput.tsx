@@ -768,6 +768,7 @@ export const PromptInput = React.memo(function PromptInput({
       setOpenRawModelDropdown,
       setStatusMessage,
       addImageUrl: (url: string) => setImageUrls((prev) => [...prev, url]),
+      setBufferText: (text: string) => setBuffer({ text, cursor: text.length }),
       writeOutput: (text: string) => onCommandOutput?.(text),
     };
     executeSlashCommand(item, ctx);

@@ -1,8 +1,9 @@
 import type { ModelUsage } from "../session";
 
-// All currently supported DeepSeek V4+ models are multimodal (support image/vision inputs).
-// If a future model is added that does NOT support vision, add it here.
-const NON_MULTIMODAL_MODELS: Set<string> = new Set();
+// DeepSeek V4 models do NOT support image/vision inputs via the chat completions API.
+// The API returns "unknown variant `image_url`, expected `text`" when image_url blocks are sent.
+// If a future DeepSeek model adds vision support, remove it from this set.
+const NON_MULTIMODAL_MODELS: Set<string> = new Set(["deepseek-v4-pro", "deepseek-v4-flash"]);
 
 export function defaultsToThinkingMode(_model: string): boolean {
   return true;

@@ -33,6 +33,8 @@ export type CommandContext = {
   setStatusMessage: (msg: string) => void;
   /** Add an image (data URL) to the current prompt's attached images. */
   addImageUrl: (url: string) => void;
+  /** Replace the entire prompt buffer with the given text (cursor at end). */
+  setBufferText: (text: string) => void;
   /** Write command output as a system message in the chat flow (Static component). */
   writeOutput: (text: string) => void;
 };
@@ -92,33 +94,48 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
     ctx.onSubmit({ text: "/exit", imageUrls: [], command: "exit" });
   },
   "image-paste": (_item, ctx) => {
-    ctx.clearSlashToken();
+    const argText = ctx.buffer.text.replace(/^\/image-paste\s*/, "").trim();
     ctx.setStatusMessage("Reading clipboard...");
     readClipboardImageAsync()
       .then((image) => {
         if (image) {
-          ctx.addImageUrl(image.dataUrl);
-          ctx.setStatusMessage("Attached image from clipboard");
+          if (argText) {
+            // Submit immediately with the question text and image
+            ctx.onSubmit({
+              text: argText,
+              imageUrls: [image.dataUrl],
+              selectedSkills: ctx.selectedSkills.length > 0 ? ctx.selectedSkills : undefined,
+            });
+            ctx.resetPromptInput();
+          } else {
+            ctx.setBufferText("");
+            ctx.addImageUrl(image.dataUrl);
+            ctx.setStatusMessage("Attached image from clipboard");
+          }
         } else {
+          ctx.setBufferText(argText);
           ctx.setStatusMessage("No image found in clipboard");
         }
       })
       .catch(() => {
+        ctx.setBufferText(argText);
         ctx.setStatusMessage("Failed to read clipboard");
       });
   },
   "image-upload": (_item, ctx) => {
-    ctx.clearSlashToken();
     const filePath = ctx.buffer.text.replace(/^\/image-upload\s*/, "").trim();
     if (!filePath) {
+      ctx.setBufferText("");
       ctx.setStatusMessage("Usage: /image-upload <file-path>");
       return;
     }
     const image = readImageFile(filePath);
     if (image) {
+      ctx.setBufferText("");
       ctx.addImageUrl(image.dataUrl);
       ctx.setStatusMessage(`Attached image: ${filePath}`);
     } else {
+      ctx.setBufferText(filePath);
       ctx.setStatusMessage(`File not found or not a supported image: ${filePath}`);
     }
   },
