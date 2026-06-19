@@ -6,14 +6,14 @@
 import { spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { globSync } from "glob";
+import { globSync } from "node:fs";
 import { cpus } from "node:os";
 import { createInterface } from "node:readline";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cwd = resolve(__dirname, "..", "..");
 
-const files = globSync("*.test.ts", { cwd: __dirname, absolute: true });
+const files = globSync("*.test.ts", { cwd: __dirname }).map((f) => resolve(__dirname, f));
 
 if (files.length === 0) {
   process.stdout.write("No test files found.\n");
