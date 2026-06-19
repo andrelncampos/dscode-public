@@ -14,6 +14,14 @@ on:
         description: "Build Linux x64"
         type: boolean
         default: true
+      build_macos_arm:
+        description: "Build macOS ARM64 (Apple Silicon)"
+        type: boolean
+        default: true
+      build_macos_intel:
+        description: "Build macOS x64 (Intel)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -164,12 +172,150 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  build-macos-arm:
+    name: Build macOS ARM64
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_macos_arm == true)) }}
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeCheck + Lint + Format Check
+        run: npm run check
+
+      - name: Bundle
+        run: npm run bundle
+
+      - name: Build binary (SEA)
+        run: npm run build:binary
+
+      - name: Package binary
+        run: npm run package:binary
+
+      - name: Validate binary
+        run: npm run validate:binary
+
+      - name: Validate asset names match tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          BAD=0
+          for f in release/packages/*; do
+            if [[ "$f" != *"$VERSION"* ]]; then
+              echo "::error::Asset $f missing version $VERSION"
+              BAD=1
+            fi
+          done
+          for f in release/checksums/checksums.txt; do
+            if grep -qv "$VERSION" "$f"; then
+              echo "::error::checksums.txt references wrong version"
+              BAD=1
+            fi
+          done
+          if [ "$BAD" -ne 0 ]; then exit 1; fi
+          echo "All asset names match tag $TAG"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: release/packages/*
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-macos-arm64
+          path: release/checksums/checksums.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  build-macos-intel:
+    name: Build macOS x64
+    if: ${{ github.actor != 'dependabot[bot]' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_macos_intel == true)) }}
+    runs-on: macos-13
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeCheck + Lint + Format Check
+        run: npm run check
+
+      - name: Bundle
+        run: npm run bundle
+
+      - name: Build binary (SEA)
+        run: npm run build:binary
+
+      - name: Package binary
+        run: npm run package:binary
+
+      - name: Validate binary
+        run: npm run validate:binary
+
+      - name: Validate asset names match tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          BAD=0
+          for f in release/packages/*; do
+            if [[ "$f" != *"$VERSION"* ]]; then
+              echo "::error::Asset $f missing version $VERSION"
+              BAD=1
+            fi
+          done
+          for f in release/checksums/checksums.txt; do
+            if grep -qv "$VERSION" "$f"; then
+              echo "::error::checksums.txt references wrong version"
+              BAD=1
+            fi
+          done
+          if [ "$BAD" -ne 0 ]; then exit 1; fi
+          echo "All asset names match tag $TAG"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64
+          path: release/packages/*
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-macos-x64
+          path: release/checksums/checksums.txt
+          if-no-files-found: error
+          retention-days: 3
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs:
       - build-windows
       - build-linux
+      - build-macos-arm
+      - build-macos-intel
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -259,8 +405,8 @@ jobs:
           TAG="${{ github.ref_name }}"
           PUBLIC_REPO="andrelncampos/dscode-public"
           ASSETS=$(gh release view "$TAG" --repo "$PUBLIC_REPO" --json assets -q '.assets | length')
-          if [ "$ASSETS" -lt 2 ]; then
-            echo "ERRO: Release pública tem apenas $ASSETS assets. Esperado >= 2."
+          if [ "$ASSETS" -lt 4 ]; then
+            echo "ERRO: Release pública tem apenas $ASSETS assets. Esperado >= 4."
             exit 1
           fi
           echo "✅ Release pública verificada: $ASSETS assets."
