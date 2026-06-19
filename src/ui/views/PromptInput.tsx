@@ -49,7 +49,7 @@ import {
   scanFileMentionItems,
 } from "../core/file-mentions";
 import type { FileMentionItem } from "../core/file-mentions";
-import { readClipboardImageAsync } from "../core/clipboard";
+import { readClipboardImageAsync, detectAndReadFilePath } from "../core/clipboard";
 import {
   useTerminalInput,
   usePasteHandling,
@@ -449,6 +449,49 @@ export const PromptInput = React.memo(function PromptInput({
       }
 
       if (key.paste) {
+        // Drag-and-drop detection: if the pasted string is an absolute file path,
+        // process it as a file upload instead of inserting it as text.
+        const fileResult = detectAndReadFilePath(input);
+        if (fileResult) {
+          switch (fileResult.kind) {
+            case "image": {
+              setImageUrls((prev) => [...prev, fileResult.image.dataUrl]);
+              if (isMultimodalModel(modelConfig.model)) {
+                setStatusMessage("Imagem carregada do arquivo");
+                return;
+              }
+              setStatusMessage("Running OCR on image...");
+              import("../core/ocr")
+                .then(({ recognizeTextFromDataUrl }) => recognizeTextFromDataUrl(fileResult.image.dataUrl))
+                .then((ocrText) => {
+                  if (ocrText) {
+                    setOcrText(ocrText);
+                    setStatusMessage(
+                      `Sua LLM não suporta imagem. O DsCode fez o OCR da imagem para você. — texto extraído da imagem. Digite sua pergunta.`
+                    );
+                  } else {
+                    setStatusMessage(
+                      `Imagem carregada — ⚠️ ${modelConfig.model} does NOT support images (no text found via OCR)`
+                    );
+                  }
+                })
+                .catch(() => {
+                  setStatusMessage(`Imagem carregada — ⚠️ ${modelConfig.model} does NOT support images`);
+                });
+              return;
+            }
+            case "text": {
+              updateBuffer((s) => insertText(s, fileResult.content));
+              setStatusMessage(`Arquivo de texto carregado (${fileResult.content.length} caracteres)`);
+              return;
+            }
+            case "unsupported":
+            case "not-found": {
+              setStatusMessage(fileResult.message);
+              return;
+            }
+          }
+        }
         handlePaste(input);
         return;
       }
