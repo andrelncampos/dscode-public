@@ -3442,13 +3442,7 @@ export class SessionManager {
   }
 
   private cloneUserPromptForMeta(prompt: UserPromptContent): UserPromptContent {
-    return {
-      text: prompt.text,
-      imageUrls: prompt.imageUrls ? [...prompt.imageUrls] : undefined,
-      skills: prompt.skills ? prompt.skills.map((skill) => ({ ...skill })) : undefined,
-      permissions: prompt.permissions ? prompt.permissions.map((permission) => ({ ...permission })) : undefined,
-      alwaysAllows: prompt.alwaysAllows ? [...prompt.alwaysAllows] : undefined,
-    };
+    return structuredClone(prompt);
   }
 
   private hasTrailingPendingToolCalls(sessionId: string): boolean {
