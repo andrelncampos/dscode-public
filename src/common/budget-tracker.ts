@@ -11,6 +11,7 @@ import {
 import { atomicWriteFileSync } from "./file-utils";
 import { getProjectDscodeDir } from "./dscode-paths";
 import { normalizeCacheTokens } from "./cache-metrics";
+import { getErrorMessage } from "./error-utils.js";
 
 const BUDGET_FILE = "budget.md";
 
@@ -292,7 +293,7 @@ export function recordBudgetCost(
 
     return warning;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = getErrorMessage(err);
     process.stderr.write(`[budget] Failed to record cost: ${message}\n`);
     return null;
   }

@@ -1,4 +1,5 @@
 import type { SessionManager } from "../../session";
+import { getErrorMessage } from "../../common/error-utils.js";
 
 const MAX_VERIFY_ATTEMPTS = 5;
 const MAX_AUDIT_ATTEMPTS = 5;
@@ -137,7 +138,7 @@ export async function runSpecPipelineBatch(specNumbers: string[], sessionManager
         failed.push({ spec: specNumber, reason: result });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       failed.push({ spec: specNumber, reason: `Unexpected error: ${message}` });
     }
   }

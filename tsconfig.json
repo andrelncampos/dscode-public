@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "ignoreDeprecations": "6.0",
-    "lib": ["ES2025"],
+    "lib": ["ES2025", "ESNext"],
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,

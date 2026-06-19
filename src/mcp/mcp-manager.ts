@@ -5,6 +5,7 @@ import { McpClient, type McpToolDefinition, type McpPromptDefinition, type McpRe
 import { McpHttpClient } from "./mcp-http-client";
 import type { McpPolicy } from "./mcp-policy";
 import type { McpServerConfig } from "../settings";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MCP_STARTUP_TIMEOUT_MS = process.env.DEEPCODE_MCP_TIMEOUT
   ? parseInt(process.env.DEEPCODE_MCP_TIMEOUT, 10)
@@ -398,7 +399,7 @@ export class McpManager {
       });
     } catch (err) {
       client?.disconnect();
-      const message = err instanceof Error ? err.message : String(err);
+      const message = getErrorMessage(err);
       this.recordError(name, message);
       this.setStatus({
         name,
@@ -625,7 +626,7 @@ export class McpManager {
       }
       return r;
     } catch (err) {
-      const r = { ok: false, name, error: err instanceof Error ? err.message : String(err) };
+      const r = { ok: false, name, error: getErrorMessage(err) };
       this.recordExecution({
         timestamp: auditStartMs || Date.now(),
         toolName: name,
@@ -658,7 +659,7 @@ export class McpManager {
         .join("\n");
       return { ok: true, name, output: text || JSON.stringify(result) };
     } catch (err) {
-      return { ok: false, name, error: err instanceof Error ? err.message : String(err) };
+      return { ok: false, name, error: getErrorMessage(err) };
     }
   }
 
@@ -676,7 +677,7 @@ export class McpManager {
         .join("\n");
       return { ok: true, name, output: text || JSON.stringify(result.contents) };
     } catch (err) {
-      return { ok: false, name, error: err instanceof Error ? err.message : String(err) };
+      return { ok: false, name, error: getErrorMessage(err) };
     }
   }
 

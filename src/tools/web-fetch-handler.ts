@@ -1,4 +1,5 @@
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_OUTPUT_CHARS = 50000;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -135,7 +136,7 @@ export async function handleWebFetchTool(
         error: `Request to "${url}" timed out after ${DEFAULT_TIMEOUT_MS / 1000} seconds.`,
       };
     }
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       ok: false,
       name: "WebFetch",

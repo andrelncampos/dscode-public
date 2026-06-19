@@ -7,6 +7,7 @@ import { buildSkillDocumentsPrompt } from "../prompt";
 import type { SkillInfo, SessionMessage } from "../session";
 import type { McpManager } from "../mcp/mcp-manager";
 import type { McpServerConfig } from "../settings";
+import { getErrorMessage } from "../common/error-utils.js";
 
 export interface SessionSkillsDeps {
   projectRoot: string;
@@ -276,7 +277,7 @@ export class SessionSkills {
           // No mcp.json — not an error
         } else {
           console.warn(
-            `readSkillInfo: invalid JSON in ${path.join(path.dirname(skillPath), "mcp.json")}: ${err instanceof Error ? err.message : String(err)}`
+            `readSkillInfo: invalid JSON in ${path.join(path.dirname(skillPath), "mcp.json")}: ${getErrorMessage(err)}`
           );
         }
       }

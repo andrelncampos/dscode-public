@@ -9,6 +9,7 @@ import type { SessionMessage } from "./session";
 import type { SkillInfo } from "./session";
 import { findGitBashPath, resolveShellPath } from "./common/shell-utils";
 import { isMultimodalModel } from "./common/model-capabilities";
+import { getErrorMessage } from "./common/error-utils.js";
 
 const COMPACT_PROMPT_BASE = `Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
 This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
@@ -368,7 +369,7 @@ function getShellPathInfo(): string {
   try {
     return resolveShellPath();
   } catch (error) {
-    return error instanceof Error ? error.message : String(error);
+    return getErrorMessage(error);
   }
 }
 

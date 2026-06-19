@@ -2,6 +2,7 @@ import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import { recordBudgetCostWithCache } from "../common/budget-tracker";
 import type { ModelUsage } from "../session";
 import { getAuxiliaryModel } from "../common/model-catalog";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_OUTPUT_CHARS = 30000;
 
@@ -150,7 +151,7 @@ async function executeNativeWebSearch(
       metadata: { truncated },
     };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = getErrorMessage(error);
     return {
       ok: false,
       name: "WebSearch",

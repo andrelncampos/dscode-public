@@ -19,6 +19,7 @@ if (existsSync(oldBinary)) {
   }
 }
 import { detectTerminalRuntime } from "./ui/core/terminal-runtime";
+import { getErrorMessage } from "./common/error-utils.js";
 
 const args = process.argv.slice(2);
 const packageInfo = readPackageInfo();
@@ -213,7 +214,7 @@ function configureWindowsShell(): void {
   try {
     setShellIfWindows();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     process.stderr.write(`dscode: ${message}\n`);
     process.exit(1);
   }

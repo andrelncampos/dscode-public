@@ -12,6 +12,7 @@ import {
 } from "../common/file-utils";
 import { executeValidatedTool } from "../common/validate";
 import { getFileState, isAbsoluteFilePath, isFullFileView, normalizeFilePath, recordFileState } from "../common/state";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const writeSchema = z.strictObject({
   file_path: z.string().min(1, "file_path is required."),
@@ -53,7 +54,7 @@ export async function handleWriteTool(
         try {
           stat = fs.statSync(filePath);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message = getErrorMessage(error);
           return {
             ok: false,
             name: "write",
@@ -132,7 +133,7 @@ export async function handleWriteTool(
           },
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         return {
           ok: false,
           name: "write",

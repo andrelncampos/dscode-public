@@ -15,6 +15,7 @@ import { handleWebSearchTool } from "./web-search-handler";
 import { handleWebFetchTool } from "./web-fetch-handler";
 import * as crypto from "node:crypto";
 import { getBuiltInToolDefinitions } from "../prompt";
+import { getErrorMessage } from "../common/error-utils.js";
 
 export type ExploreSubagentOptions = {
   query: string;
@@ -312,7 +313,7 @@ export async function runSubagent(opts: SubagentOptions): Promise<string> {
 
     return "Explore error: No results produced.";
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = getErrorMessage(error);
     return `Explore error: ${msg}`;
   }
 }

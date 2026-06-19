@@ -92,6 +92,7 @@ import type {
 import * as ModelCommandHandlers from "./ui/core/model-command-handlers";
 import { getActiveTFunction } from "./i18n/context";
 import { MODEL_CATALOG } from "./common/model-catalog";
+import { getErrorMessage } from "./common/error-utils.js";
 
 export type { PermissionScope } from "./settings";
 export type {
@@ -924,7 +925,7 @@ export class SessionManager {
           // No mcp.json — not an error
         } else {
           console.warn(
-            `readSkillInfo: invalid JSON in ${path.join(path.dirname(skillPath), "mcp.json")}: ${err instanceof Error ? err.message : String(err)}`
+            `readSkillInfo: invalid JSON in ${path.join(path.dirname(skillPath), "mcp.json")}: ${getErrorMessage(err)}`
           );
         }
       }
@@ -1667,7 +1668,7 @@ export class SessionManager {
             category,
             error: {
               name: error instanceof Error ? error.name : "UnknownError",
-              message: error instanceof Error ? error.message : String(error),
+              message: getErrorMessage(error),
               stack: error instanceof Error ? error.stack : undefined,
             },
           });
@@ -1827,7 +1828,7 @@ export class SessionManager {
         false
       );
     } catch (error) {
-      const errMessage = error instanceof Error ? error.message : String(error);
+      const errMessage = getErrorMessage(error);
       const category = classifyApiError(error);
       const aborted = this.isAbortLikeError(error) || sessionController.signal.aborted;
       const timedOut = this.isTimeoutError(error);
@@ -2270,7 +2271,7 @@ export class SessionManager {
         process.stderr.write(`[memory] Failed to store turn transcript: ${result.error}\n`);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = getErrorMessage(err);
       process.stderr.write(`[memory] Error storing turn transcript: ${message}\n`);
     }
   }

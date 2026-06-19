@@ -8,6 +8,7 @@ import * as fs from "node:fs/promises";
 import * as crypto from "node:crypto";
 import type { MemorySettings, TurnTranscript } from "./turn-transcript-types";
 import { compressTurn, decompressTurn, atomicWrite, extensionForAlgorithm } from "./turn-compressor";
+import { getErrorMessage } from "../common/error-utils.js";
 
 // ── Paths ─────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export async function storeTurn(
 
     return { ok: true, turnId };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = getErrorMessage(err);
     return { ok: false, turnId, error: message };
   }
 }

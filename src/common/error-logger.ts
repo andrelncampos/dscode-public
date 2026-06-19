@@ -3,6 +3,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { maskSensitive, maskSensitiveString } from "./sensitive-data";
 import { ensureRestrictivePermissions, rotateLogIfNeeded, truncateStrings } from "./debug-logger";
+import { getErrorMessage } from "./error-utils";
 
 const LOG_DIR = path.join(os.homedir(), ".dscode", "logs");
 const ERROR_LOG_PATH = path.join(LOG_DIR, "error.log");
@@ -132,7 +133,7 @@ export function logApiError(entry: ApiErrorLogEntry): void {
     ensureRestrictivePermissions(ERROR_LOG_PATH);
   } catch (logErr: unknown) {
     try {
-      const msg = logErr instanceof Error ? logErr.message : String(logErr);
+      const msg = getErrorMessage(logErr);
       process.stderr.write(`[dscode] Failed to write to error log: ${msg}\n`);
     } catch {
       // Last resort: even stderr failed. Nothing more we can do.

@@ -10,6 +10,7 @@ import {
   markFileRead,
   normalizeFilePath,
 } from "../common/state";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const DEFAULT_LINE_LIMIT = 2000;
 const MAX_LINE_LENGTH = 2000;
@@ -126,7 +127,7 @@ export async function handleReadTool(
   try {
     stat = fs.statSync(filePath);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       ok: false,
       name: "read",
@@ -274,7 +275,7 @@ export async function handleReadTool(
         : undefined,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       ok: false,
       name: "read",

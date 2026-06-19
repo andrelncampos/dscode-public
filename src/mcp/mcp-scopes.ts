@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import type { McpServerConfig } from "../settings";
+import { getErrorMessage } from "../common/error-utils.js";
 
 export class McpScopeResolver {
   private globalPath: string;
@@ -105,9 +106,7 @@ export class McpScopeResolver {
         return null;
       }
       // JSON parse error or other I/O error
-      console.warn(
-        `McpScopeResolver: invalid JSON in ${filePath}: ${err instanceof Error ? err.message : String(err)}`
-      );
+      console.warn(`McpScopeResolver: invalid JSON in ${filePath}: ${getErrorMessage(err)}`);
       return null;
     }
   }

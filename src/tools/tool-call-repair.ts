@@ -1,5 +1,6 @@
 import type { ToolCall } from "./executor";
 import type { ToolDefinition } from "../prompt";
+import { getErrorMessage } from "../common/error-utils.js";
 
 // ── ToolRegistry ──────────────────────────────────────────────────────────────
 
@@ -330,7 +331,7 @@ function tryParseWithRecovery(raw: string): { ok: true; args: Record<string, unk
     }
     return { ok: false, error: "InputParseError: Tool arguments must be a JSON object." };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = getErrorMessage(err);
     return {
       ok: false,
       error: `InputParseError: Failed to parse tool arguments: ${message}. Ensure the tool call arguments are valid JSON.`,

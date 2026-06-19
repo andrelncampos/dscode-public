@@ -17,6 +17,7 @@ import { repairToolCall, createRepairMetrics } from "./tool-call-repair";
 import type { ToolCallRepairMetrics, ToolRegistry } from "./tool-call-repair";
 import { getBuiltInToolDefinitions } from "../prompt";
 import type { ToolDefinition } from "../prompt";
+import { getErrorMessage } from "../common/error-utils.js";
 
 export type CreateOpenAIClient = () => {
   client: OpenAI | null;
@@ -389,7 +390,7 @@ export class ToolExecutor {
         onAfterFileMutation: hooks?.onAfterFileMutation,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       return {
         ok: false,
         name: toolName,

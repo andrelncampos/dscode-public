@@ -3,6 +3,7 @@ import * as path from "node:path";
 import ignore from "ignore";
 import { minimatch } from "minimatch";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_RESULTS = 500;
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MB
@@ -65,7 +66,7 @@ export async function handleGrepTool(
   try {
     regex = new RegExp(pattern, "g");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       ok: false,
       name: "grep",

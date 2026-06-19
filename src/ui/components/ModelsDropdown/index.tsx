@@ -11,6 +11,7 @@ import {
   type ThinkingEffort,
 } from "../../../common/model-catalog";
 import { DEFAULT_MODEL_PRICING } from "../../../common/model-capabilities";
+import { getErrorMessage } from "../../../common/error-utils.js";
 
 type ModelStep = "model" | "thinking";
 
@@ -172,7 +173,7 @@ const ModelsDropdown: React.FC<Props> = ({
         if (message) onStatusMessage?.(message);
       })
       .catch((error) => {
-        const msg = error instanceof Error ? error.message : String(error);
+        const msg = getErrorMessage(error);
         onStatusMessage?.(`Failed to update model settings: ${msg}`);
       });
   }

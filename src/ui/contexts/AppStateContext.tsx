@@ -37,6 +37,7 @@ import { RawMode, useRawModeContext } from "./RawModeContext";
 import type { PromptDraft, PromptSubmission } from "../views/PromptInput";
 import type { UndoRestoreMode } from "../views/UndoSelector";
 import { runSpecPipelineBatch } from "../core/spec-pipeline";
+import { getErrorMessage } from "../../common/error-utils.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -525,7 +526,7 @@ export function AppStateProvider({
         try {
           sessionManager.restoreSessionCode(sessionId, target.message.id);
         } catch (error) {
-          errors.push(`Code restore failed: ${error instanceof Error ? error.message : String(error)}`);
+          errors.push(`Code restore failed: ${getErrorMessage(error)}`);
         }
       }
       let conversationRestored = false;
@@ -533,7 +534,7 @@ export function AppStateProvider({
         sessionManager.restoreSessionConversation(sessionId, target.message.id);
         conversationRestored = true;
       } catch (error) {
-        errors.push(`Conversation restore failed: ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(`Conversation restore failed: ${getErrorMessage(error)}`);
       }
       refreshSessionsList();
       await refreshSkills(sessionId);
@@ -672,7 +673,7 @@ export function AppStateProvider({
           };
           setMessages((prev) => [...prev, sysMsg]);
         } catch (error) {
-          setErrorLine(error instanceof Error ? error.message : String(error));
+          setErrorLine(getErrorMessage(error));
         } finally {
           setBusy(false);
         }
@@ -740,7 +741,7 @@ export function AppStateProvider({
         await refreshSkills();
         refreshSessionsList();
       } catch (error) {
-        setErrorLine(error instanceof Error ? error.message : String(error));
+        setErrorLine(getErrorMessage(error));
       } finally {
         setBusy(false);
         setStreamProgress(null);

@@ -21,6 +21,7 @@ import {
   normalizeFilePath,
   recordFileState,
 } from "../common/state";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_CANDIDATE_COUNT = 5;
 const REPLACE_ALL_MATCH_THRESHOLD = 5;
@@ -139,7 +140,7 @@ export async function handleEditTool(
       try {
         stat = fs.statSync(filePath);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         return {
           ok: false,
           name: "edit",
@@ -354,7 +355,7 @@ export async function handleEditTool(
           },
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         return {
           ok: false,
           name: "edit",
