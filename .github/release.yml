@@ -1,0 +1,57 @@
+# Configuração das release notes geradas automaticamente pelo GitHub
+# Usado pelo workflow release.yml na etapa "gh release create --generate-notes"
+#
+# Labels que precisam existir no repositório:
+#   feature, enhancement  → 🚀 Novidades
+#   bug, fix              → 🐛 Correções
+#   documentation, docs   → 📚 Documentação
+#   chore, dependencies   → 🔧 Manutenção
+#   breaking              → ⚠️ Breaking Changes
+#
+# PRs sem label caem em "Outras Mudanças".
+
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - duplicate
+      - invalid
+      - wontfix
+    authors:
+      - dependabot
+      - dependabot[bot]
+
+  categories:
+    - title: 🚀 Novidades
+      labels:
+        - feature
+        - enhancement
+        - feat
+
+    - title: 🐛 Correções
+      labels:
+        - bug
+        - fix
+        - bugfix
+
+    - title: 📚 Documentação
+      labels:
+        - documentation
+        - docs
+
+    - title: 🔧 Manutenção
+      labels:
+        - chore
+        - maintenance
+        - dependencies
+        - refactor
+
+    - title: ⚠️ Breaking Changes
+      labels:
+        - breaking
+        - breaking-change
+        - major
+
+    - title: Outras Mudanças
+      labels:
+        - "*"
