@@ -5,7 +5,7 @@ This guide describes how to create and publish a release manually. The `release.
 ## Prerequisites
 
 - Push access to the repository
-- Node.js 22+ installed locally
+- Node.js 24+ installed locally
 - Git configured with GPG signing (recommended for tags)
 
 ## Step by step
@@ -150,4 +150,4 @@ The workflow does NOT publish to npm automatically. npm publication remains a ma
 
 ## Platform note
 
-The distributed "binaries" are actually Node.js bundles (dist/cli.js) packaged with launcher scripts. This means the user still needs **Node.js 22+** installed on their system to run DsCode from release archives. The npm global install handles this automatically.
+The distributed "binaries" are actually Node.js bundles (dist/cli.js) packaged with launcher scripts. This means the user still needs **Node.js 24+** installed on their system to run DsCode from release archives. The npm global install handles this automatically.
