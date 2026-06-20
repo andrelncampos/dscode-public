@@ -66,9 +66,8 @@ export async function handleGrepTool(
   }
 
   // Validate regex eagerly so errors surface before any I/O.
-  let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "g");
+    new RegExp(pattern, "g");
   } catch (error) {
     const message = getErrorMessage(error);
     return {
