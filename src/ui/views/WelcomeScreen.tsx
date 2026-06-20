@@ -84,6 +84,13 @@ export function WelcomeScreen({ projectRoot, settings, skills, width }: WelcomeS
         </Text>
       </Box>
 
+      {/* Node 26 notice */}
+      <Box justifyContent="center" marginTop={1} paddingX={3} paddingY={1} borderStyle="round" borderColor="#f59e0b">
+        <Text bold color="#f59e0b">
+          {t("welcome.node26-notice")}
+        </Text>
+      </Box>
+
       {/* Random tip */}
       {tip ? (
         <Box justifyContent="center" marginTop={2}>

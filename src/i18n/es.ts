@@ -78,6 +78,7 @@ const esDictionary = {
   "welcome.non-thinking": "modo sin thinking",
   "welcome.label-by": "por",
   "welcome.version": "v{{version}}",
+  "welcome.node26-notice": "⚠️  A partir de Octubre/2026, DsCode requerirá Node.js 26. Actualice su runtime.",
 
   // Help modal
   "help.title": "Atajos de Teclado y Comandos",

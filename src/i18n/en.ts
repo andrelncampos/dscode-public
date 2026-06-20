@@ -76,6 +76,7 @@ const enDictionary = {
   "welcome.non-thinking": "non-thinking mode",
   "welcome.label-by": "by",
   "welcome.version": "v{{version}}",
+  "welcome.node26-notice": "⚠️  From October 2026, DsCode will require Node.js 26. Please upgrade your runtime.",
 
   // Help modal (32 keys)
   "help.title": "Keyboard Shortcuts & Commands",

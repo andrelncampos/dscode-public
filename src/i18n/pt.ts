@@ -78,6 +78,7 @@ const ptDictionary = {
   "welcome.non-thinking": "modo sem thinking",
   "welcome.label-by": "por",
   "welcome.version": "v{{version}}",
+  "welcome.node26-notice": "⚠️  A partir de Outubro/2026, o DsCode passará a exigir Node.js 26. Atualize seu runtime.",
 
   // Help modal
   "help.title": "Atalhos de Teclado e Comandos",
