@@ -17,14 +17,11 @@ const AUDIT_DONE_MARKER = "No issues found — 0 changes made.";
  * Returns a status message describing the result.
  */
 export async function runSpecPipeline(specNumber: string, sessionManager: SessionManager): Promise<string> {
-  const sessionId = sessionManager.getActiveSessionId();
-  if (!sessionId) {
-    return "No active session. Start a session first with /new.";
-  }
-
   const submit = (text: string) => sessionManager.handleUserPrompt({ text, imageUrls: [], skills: [] });
 
   const lastAssistantContent = (): string | undefined => {
+    const sessionId = sessionManager.getActiveSessionId();
+    if (!sessionId) return undefined;
     const messages = sessionManager.listSessionMessages(sessionId);
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant" && typeof messages[i].content === "string") {
@@ -119,11 +116,6 @@ const PIPELINE_SUCCESS_MARKER = "pipeline completed";
 export async function runSpecPipelineBatch(specNumbers: string[], sessionManager: SessionManager): Promise<string> {
   if (specNumbers.length === 0) {
     return "No spec numbers provided.";
-  }
-
-  const sessionId = sessionManager.getActiveSessionId();
-  if (!sessionId) {
-    return "No active session. Start a session first with /new.";
   }
 
   const ok: string[] = [];
