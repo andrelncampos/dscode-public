@@ -1,33 +1,35 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
-import ignore from "ignore";
-import { minimatch } from "minimatch";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_RESULTS = 500;
-const DEFAULT_IGNORE = [
-  "node_modules/",
-  ".git/",
-  "dist/",
-  "build/",
-  "out/",
-  ".next/",
-  ".nuxt/",
-  ".venv/",
-  "venv/",
-  "__pycache__/",
+
+// Safety net in case .gitignore is missing or incomplete.
+// fs.globSync respects .gitignore by default; these only apply when there is no
+// .gitignore or when it doesn't cover them.
+const EXCLUDE_PATTERNS = [
+  "node_modules/**",
+  ".git/**",
+  "dist/**",
+  "build/**",
+  "out/**",
+  ".next/**",
+  ".nuxt/**",
+  ".venv/**",
+  "venv/**",
+  "__pycache__/**",
+  ".pytest_cache/**",
+  ".mypy_cache/**",
+  ".ruff_cache/**",
+  ".gradle/**",
+  ".idea/**",
+  ".vscode/**",
+  "target/**",
   "*.pyc",
   "*.pyo",
-  ".pytest_cache/",
-  ".mypy_cache/",
-  ".ruff_cache/",
-  ".gradle/",
-  ".idea/",
-  ".vscode/",
   "*.class",
   "*.jar",
   "*.war",
-  "target/",
 ];
 
 type GlobResult = {
@@ -49,43 +51,32 @@ export async function handleGlobTool(
     };
   }
 
-  const matcher = loadGitignoreMatcher(context.projectRoot);
-  const matches: string[] = [];
-  const queue: string[] = [context.projectRoot];
+  // If the pattern has no directory component (no / or \), prepend **/ so it
+  // matches in any subdirectory — preserving the matchBase behavior the old
+  // minimatch-based implementation had.
+  const effectivePattern = /[/\\]/.test(pattern) ? pattern : `**/${pattern}`;
 
-  while (queue.length > 0 && matches.length < MAX_RESULTS + 1) {
-    const current = queue.pop();
-    if (!current) {
-      continue;
-    }
-
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-
-    for (const entry of entries) {
-      const fullPath = path.join(current, entry.name);
-      const relPath = path.relative(context.projectRoot, fullPath).replace(/\\/g, "/");
-
-      if (matcher(relPath, entry.isDirectory())) {
-        continue;
-      }
-
-      if (entry.isDirectory()) {
-        queue.push(fullPath);
-      } else if (entry.isFile() && minimatch(relPath, pattern, { matchBase: true })) {
-        matches.push(relPath);
-      }
-    }
+  let allMatches: string[];
+  try {
+    allMatches = fs.globSync(effectivePattern, {
+      cwd: context.projectRoot,
+      exclude: EXCLUDE_PATTERNS,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      name: "glob",
+      error: `Invalid glob pattern: ${getErrorMessage(error)}`,
+    };
   }
 
-  const truncated = matches.length > MAX_RESULTS;
+  // Normalize Windows backslashes to POSIX separators.
+  const normalized = allMatches.map((p) => p.replace(/\\/g, "/"));
+
+  const truncated = normalized.length > MAX_RESULTS;
   const result: GlobResult = {
     pattern,
-    matches: truncated ? matches.slice(0, MAX_RESULTS) : matches,
+    matches: truncated ? normalized.slice(0, MAX_RESULTS) : normalized,
     truncated,
   };
 
@@ -93,44 +84,5 @@ export async function handleGlobTool(
     ok: true,
     name: "glob",
     output: JSON.stringify(result, null, 2),
-  };
-}
-
-function loadGitignoreMatcher(projectRoot: string): (relPath: string, isDir: boolean) => boolean {
-  const gitignorePath = path.join(projectRoot, ".gitignore");
-  const ig = ignore();
-  ig.add(DEFAULT_IGNORE);
-
-  if (!fs.existsSync(gitignorePath)) {
-    return (relPath: string, isDir: boolean) => {
-      if (!relPath) {
-        return false;
-      }
-      const candidate = isDir ? `${relPath}/` : relPath;
-      return ig.ignores(candidate);
-    };
-  }
-
-  let content: string;
-  try {
-    content = fs.readFileSync(gitignorePath, "utf8");
-  } catch {
-    // Use only default ignores if .gitignore cannot be read.
-    return (relPath: string, isDir: boolean) => {
-      if (!relPath) {
-        return false;
-      }
-      const candidate = isDir ? `${relPath}/` : relPath;
-      return ig.ignores(candidate);
-    };
-  }
-
-  ig.add(content);
-  return (relPath: string, isDir: boolean) => {
-    if (!relPath) {
-      return false;
-    }
-    const candidate = isDir ? `${relPath}/` : relPath;
-    return ig.ignores(candidate);
   };
 }
