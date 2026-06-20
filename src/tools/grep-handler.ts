@@ -195,14 +195,16 @@ async function searchFileStreaming(
 
   // Read first 4KB to detect binary files.
   let headBuf: Buffer;
+  let detectFd: fs.promises.FileHandle | null = null;
   try {
-    const fd = await fs.promises.open(fullPath, "r");
+    detectFd = await fs.promises.open(fullPath, "r");
     headBuf = Buffer.alloc(4096);
-    const { bytesRead } = await fd.read(headBuf, 0, 4096, 0);
-    await fd.close();
+    const { bytesRead } = await detectFd.read(headBuf, 0, 4096, 0);
     headBuf = headBuf.subarray(0, bytesRead);
   } catch {
     return { matches: [], searched: false };
+  } finally {
+    await detectFd?.close();
   }
 
   if (isBinary(headBuf)) return { matches: [], searched: false };

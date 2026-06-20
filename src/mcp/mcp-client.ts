@@ -168,6 +168,7 @@ export class McpClient {
       this.pendingRequests.clear();
       this.reader?.close();
       this.reader = null;
+      this.process?.stdout?.destroy();
       this.process = null;
       if (!this.intentionallyDisconnected && this.disconnectHandler) {
         this.disconnectHandler(reason);
@@ -287,6 +288,8 @@ export class McpClient {
       this.reader = null;
     }
     if (this.process) {
+      this.process.stdout?.destroy();
+      this.process.stderr?.destroy();
       if (typeof this.process.pid === "number") {
         killProcessTree(this.process.pid, "SIGTERM", { killGroupOnNonWindows: false });
       } else {
