@@ -437,6 +437,10 @@ export class SessionManager {
   private loopDetector: LoopDetector = createLoopDetector();
   private readonly titleManager: TerminalTitleManager | null = null;
   private lastCallCacheMetrics: { hit: number; miss: number } | null = null;
+  private _cachedSessionsIndex: SessionsIndex | null = null;
+  private _cachedSessionsIndexMtime: number = 0;
+  private _projectDirEnsured: boolean = false;
+  private _projectDir: string = "";
 
   constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -721,13 +725,15 @@ export class SessionManager {
     const skillRoots = this.getSkillScanRoots();
     const skillsByName = new Map<string, SkillInfo>();
 
-    const collectSkills = (root: string, displayRoot: string): SkillInfo[] => {
-      if (!fs.existsSync(root)) {
+    const collectSkillsAsync = async (root: string, displayRoot: string): Promise<SkillInfo[]> => {
+      try {
+        await fs.promises.stat(root);
+      } catch {
         return [];
       }
       let entries: fs.Dirent[];
       try {
-        entries = fs.readdirSync(root, { withFileTypes: true });
+        entries = await fs.promises.readdir(root, { withFileTypes: true });
       } catch {
         // intentional: best-effort — error is non-critical
         return [];
@@ -741,23 +747,23 @@ export class SessionManager {
         const skillName = entry.name;
         const skillPath = path.join(root, skillName, "SKILL.md");
         try {
-          if (!fs.existsSync(skillPath)) {
-            continue;
-          }
-          const stat = fs.statSync(skillPath);
-          if (!stat.isFile()) {
+          const st = await fs.promises.stat(skillPath);
+          if (!st.isFile()) {
             continue;
           }
         } catch {
           continue;
         }
-        results.push(this.readSkillInfo(skillPath, `${displayRoot}/${skillName}/SKILL.md`, skillName));
+        results.push(await this.readSkillInfoAsync(skillPath, `${displayRoot}/${skillName}/SKILL.md`, skillName));
       }
       return results;
     };
 
-    for (const { root, displayRoot } of skillRoots) {
-      for (const skill of collectSkills(root, displayRoot)) {
+    const allResults = await Promise.all(
+      skillRoots.map(({ root, displayRoot }) => collectSkillsAsync(root, displayRoot))
+    );
+    for (const skills of allResults) {
+      for (const skill of skills) {
         if (!skillsByName.has(skill.name)) {
           skillsByName.set(skill.name, skill);
         }
@@ -767,21 +773,19 @@ export class SessionManager {
     // Collect built-in template skills (lower priority than user/project skills)
     const templateSkillNames = new Set<string>();
     const templatesDir = path.join(getExtensionRoot(), "templates", "skills");
-    if (fs.existsSync(templatesDir)) {
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(templatesDir, { withFileTypes: true });
-      } catch {
-        entries = [];
-      }
-      for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-        const skillPath = path.join(templatesDir, entry.name);
-        const skillName = entry.name.replace(/\.md$/, "");
-        templateSkillNames.add(skillName);
-        if (!skillsByName.has(skillName)) {
-          skillsByName.set(skillName, this.readSkillInfo(skillPath, skillPath, skillName));
-        }
+    let templateEntries: fs.Dirent[];
+    try {
+      templateEntries = await fs.promises.readdir(templatesDir, { withFileTypes: true });
+    } catch {
+      templateEntries = [];
+    }
+    for (const entry of templateEntries) {
+      if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+      const skillPath = path.join(templatesDir, entry.name);
+      const skillName = entry.name.replace(/\.md$/, "");
+      templateSkillNames.add(skillName);
+      if (!skillsByName.has(skillName)) {
+        skillsByName.set(skillName, await this.readSkillInfoAsync(skillPath, skillPath, skillName));
       }
     }
 
@@ -834,7 +838,7 @@ export class SessionManager {
     ]);
   }
 
-  private readSkillInfo(skillPath: string, displayPath: string, fallbackName: string): SkillInfo {
+  private async readSkillInfoAsync(skillPath: string, displayPath: string, fallbackName: string): Promise<SkillInfo> {
     const fallbackSkill: SkillInfo = {
       name: fallbackName.replace(/_/g, "-"),
       path: displayPath,
@@ -842,7 +846,7 @@ export class SessionManager {
     };
 
     try {
-      const skillMd = fs.readFileSync(skillPath, "utf8");
+      const skillMd = await fs.promises.readFile(skillPath, "utf8");
       const parsed = matter(skillMd);
       const rawInclusion = typeof parsed.data.inclusion === "string" ? parsed.data.inclusion.trim() : "";
       const inclusion: "auto" | "manual" | undefined =
@@ -907,7 +911,7 @@ export class SessionManager {
       let mcpServers: Record<string, McpServerConfig> | undefined;
       try {
         const mcpJsonPath = path.join(path.dirname(skillPath), "mcp.json");
-        const mcpRaw = fs.readFileSync(mcpJsonPath, "utf8");
+        const mcpRaw = await fs.promises.readFile(mcpJsonPath, "utf8");
         const mcpParsed = JSON.parse(mcpRaw);
         if (
           mcpParsed &&
@@ -1574,14 +1578,15 @@ export class SessionManager {
           providerOptions: { thinkingEnabled, reasoningEffort: currentReasoningEffort },
         });
 
-        let content = "";
-        let reasoningContent = "";
+        const contentParts: string[] = [];
+        const reasoningParts: string[] = [];
         let signature = "";
         let streamUsage: ModelUsage | null = null;
         const toolCallsByIndex = new Map<
           number,
           { id?: string; type?: string; function?: { name?: string; arguments?: string } }
         >();
+        const toolCallArgsParts = new Map<number, string[]>();
         let currentActivity: LlmStreamProgress["activity"] = undefined;
         let toolCallCount = 0;
 
@@ -1600,14 +1605,14 @@ export class SessionManager {
                 continue;
               }
               if (event.type === "text_delta") {
-                content += event.text;
+                contentParts.push(event.text);
                 trackText(event.text);
                 currentActivity = "generating";
                 emitActivity();
                 continue;
               }
               if (event.type === "reasoning_delta") {
-                reasoningContent += event.text;
+                reasoningParts.push(event.text);
                 trackText(event.text);
                 currentActivity = "reasoning";
                 emitActivity();
@@ -1620,6 +1625,7 @@ export class SessionManager {
                   type: "function",
                   function: { name: event.name, arguments: "" },
                 });
+                toolCallArgsParts.set(index, []);
                 trackText(event.name);
                 toolCallCount = index + 1;
                 this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "update", sessionId, {
@@ -1641,7 +1647,10 @@ export class SessionManager {
                 if (lastMatchedIndex >= 0) {
                   const tc = toolCallsByIndex.get(lastMatchedIndex);
                   if (tc) {
-                    tc.function!.arguments! += event.arguments;
+                    const argsParts = toolCallArgsParts.get(lastMatchedIndex);
+                    if (argsParts) {
+                      argsParts.push(event.arguments);
+                    }
                     trackText(event.arguments);
                   }
                 }
@@ -1677,6 +1686,16 @@ export class SessionManager {
         }
 
         this.emitLlmStreamProgress(requestId, streamStartedAt, estimatedTokens, "end", sessionId);
+
+        const content = contentParts.join("");
+        const reasoningContent = reasoningParts.join("");
+
+        for (const [index, argsParts] of toolCallArgsParts) {
+          const tc = toolCallsByIndex.get(index);
+          if (tc && tc.function) {
+            tc.function.arguments = argsParts.join("");
+          }
+        }
 
         const toolCallsArray = Array.from(toolCallsByIndex.entries())
           .sort(([a], [b]) => a - b)
@@ -2003,7 +2022,7 @@ export class SessionManager {
       updateTime: new Date().toISOString(),
     };
 
-    let compactedContent = "";
+    const compactionParts: string[] = [];
     let compactionUsage: ModelUsage | null = null;
     const stream = provider.chat({
       model: compactionModel,
@@ -2013,12 +2032,12 @@ export class SessionManager {
       providerOptions: { thinkingEnabled: false },
     });
     for await (const event of stream) {
-      if (event.type === "text_delta") compactedContent += event.text;
+      if (event.type === "text_delta") compactionParts.push(event.text);
       if (event.type === "usage") compactionUsage = event.usage;
     }
 
     this.throwIfAborted(signal);
-    const llmResponse = compactedContent;
+    const llmResponse = compactionParts.join("");
     let compactedSummary: string;
     try {
       const parsed = JSON.parse(llmResponse);
@@ -2033,11 +2052,11 @@ export class SessionManager {
     const now = new Date().toISOString();
     const responseUsage: ModelUsage | null =
       compactionUsage ??
-      (compactedContent.length > 0
+      (llmResponse.length > 0
         ? {
             prompt_tokens: 0,
-            completion_tokens: Math.ceil(compactedContent.length / 4),
-            total_tokens: Math.ceil(compactedContent.length / 4),
+            completion_tokens: Math.ceil(llmResponse.length / 4),
+            total_tokens: Math.ceil(llmResponse.length / 4),
           }
         : null);
 
@@ -2756,8 +2775,16 @@ export class SessionManager {
   }
 
   private ensureProjectDir(): string {
+    if (this._projectDirEnsured) {
+      if (fs.existsSync(this._projectDir)) {
+        return this._projectDir;
+      }
+      this._projectDirEnsured = false;
+    }
     const { projectDir } = this.getProjectStorage();
     fs.mkdirSync(projectDir, { recursive: true });
+    this._projectDirEnsured = true;
+    this._projectDir = projectDir;
     return projectDir;
   }
 
@@ -2765,21 +2792,37 @@ export class SessionManager {
     const { sessionsIndexPath } = this.getProjectStorage();
     this.ensureProjectDir();
 
+    if (this._cachedSessionsIndex !== null) {
+      try {
+        const st = fs.statSync(sessionsIndexPath);
+        if (st.mtimeMs <= this._cachedSessionsIndexMtime) {
+          return this._cachedSessionsIndex;
+        }
+      } catch {
+        // stat failed — file may have been deleted; reload below
+      }
+      this._cachedSessionsIndex = null;
+    }
+
     if (!fs.existsSync(sessionsIndexPath)) {
       return { version: 1, entries: [], originalPath: this.projectRoot };
     }
 
     try {
+      const st = fs.statSync(sessionsIndexPath);
       const raw = fs.readFileSync(sessionsIndexPath, "utf8");
       const parsed = JSON.parse(raw) as SessionsIndex;
       const entries = Array.isArray(parsed.entries)
         ? parsed.entries.map((entry) => this.normalizeSessionEntry(entry))
         : [];
-      return {
+      const result: SessionsIndex = {
         version: 1,
         entries,
         originalPath: parsed.originalPath || this.projectRoot,
       };
+      this._cachedSessionsIndex = result;
+      this._cachedSessionsIndexMtime = st.mtimeMs;
+      return result;
     } catch {
       // intentional: return empty state on parse failure
       return { version: 1, entries: [], originalPath: this.projectRoot };
@@ -2798,6 +2841,8 @@ export class SessionManager {
       originalPath: this.projectRoot,
     };
     atomicWriteJsonFileSync(sessionsIndexPath, normalized);
+    this._cachedSessionsIndex = index;
+    this._cachedSessionsIndexMtime = fs.statSync(sessionsIndexPath).mtimeMs;
   }
 
   private getSessionMessagesPath(sessionId: string): string {
@@ -2850,6 +2895,15 @@ export class SessionManager {
     fs.appendFileSync(messagePath, `${JSON.stringify(message)}\n`, "utf8");
   }
 
+  /**
+   * ⚠️ Full file rewrite — only call when messages[] has been mutated in-place.
+   * Use appendSessionMessage() for single-message append.
+   *
+   * Call sites:
+   * - compressSession (line ~2131): compaction mutates messages in-place
+   * - restoreSessionConversation (line ~2628): restore mutates messages in-place
+   * - updateLatestUserCheckpointHash (line ~2759): checkpoint hash mutation
+   */
   private saveSessionMessages(sessionId: string, messages: SessionMessage[]): void {
     this.ensureProjectDir();
     const messagePath = this.getSessionMessagesPath(sessionId);
@@ -3105,7 +3159,7 @@ export class SessionManager {
     for (const skill of skills) {
       if (skill.mcpServers && Object.keys(skill.mcpServers).length > 0) {
         this.mcpScopeResolver.addSkillServers(skill.name, skill.mcpServers);
-        this.mcpManager.initializeSkillServers(skill.name, skill.mcpServers); // fire-and-forget
+        void this.mcpManager.initializeSkillServers(skill.name, skill.mcpServers); // fire-and-forget
         this.skillMcpMap.set(skill.name, skill.mcpServers);
 
         // Auto-allow MCP tools from this skill's servers (FR-006)
@@ -3155,7 +3209,7 @@ export class SessionManager {
     this.specMcpActive = true;
     this.specMcpNumber = specNumber;
 
-    this.mcpManager.initializeSkillServers(`__spec__${specNumber}`, config);
+    void this.mcpManager.initializeSkillServers(`__spec__${specNumber}`, config);
 
     if (applyFilter) {
       this.mcpManager.setSpecMcpFilter(Object.keys(config));

@@ -198,7 +198,7 @@ async function main(): Promise<void> {
       startApp();
     };
 
-    inkInstance.waitUntilExit().then(() => {
+    void inkInstance.waitUntilExit().then(() => {
       if (!restarting) {
         restartRef.current = null;
         process.exit(0);

@@ -10,6 +10,13 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   // Custom project rules
   {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       // CLI project allows console
       "no-console": "off",
@@ -20,6 +27,8 @@ export default tseslint.config(
       "no-control-regex": "off",
       // Enforce consistent type imports
       "@typescript-eslint/consistent-type-imports": "warn",
+      // Prevent discarded Promises (e.g., async function called without await)
+      "@typescript-eslint/no-floating-promises": "error",
       // Unused vars: allow _-prefixed parameters
       "@typescript-eslint/no-unused-vars": [
         "warn",
@@ -47,6 +56,7 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-floating-promises": "off",
     },
   },
   // Build, release scripts and standalone .mjs tools: Node.js environment
@@ -64,6 +74,9 @@ export default tseslint.config(
         setInterval: "readonly",
         clearInterval: "readonly",
       },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
   // Prettier config: disable conflicting ESLint rules, MUST be last

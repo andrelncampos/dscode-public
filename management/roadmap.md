@@ -62,9 +62,10 @@
 | 390 | spec-traceability | audited | V36 |
 | 400 | github-auto-update | audited | V37 |
 | 410 | multi-spec-pipeline | audited | V38 |
-| 420 | session-io-optimization | planned | V40 |
-| 430 | startup-performance | planned | V40 |
-| 440 | compaction-and-memory-perf | planned | V40 |
+| 420 | session-io-optimization | audited | V40 |
+| 430 | startup-performance | audited | V40 |
+| 440 | compaction-and-memory-perf | audited | V40 |
+| 450 | v40-performance-hardening | audited | V40 |
 
 ---
 
@@ -209,6 +210,12 @@ Spec 440 (compaction-and-memory-perf)
   (standalone — incremental SHA-256 hash in findStablePrefixEndIndex,
    parallel turn decompression in readRecentTurns,
    async copyFile in backupSpecFile)
+
+Spec 450 (v40-performance-hardening)
+  (standalone — limited concurrency in readRecentTurns,
+   mtime-based cache invalidation for sessions index,
+   ENOENT recovery for project dir guard,
+   ESLint no-floating-promises rule)
 ```
 
 ---

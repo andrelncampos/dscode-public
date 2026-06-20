@@ -799,3 +799,33 @@ streaming de respostas, e leitura de histórico.
 - Spec 420 (session-io-optimization)
 - Spec 430 (startup-performance)
 - Spec 440 (compaction-and-memory-perf)
+
+**Correções pós-implementação (análise de 2026-06-20):**
+
+Análise de efeitos colaterais das specs 420/430/440 identificou pontos de atenção
+que não são regressões críticas, mas merecem hardening:
+
+- **`readRecentTurns` — concorrência limitada com parada antecipada:** O `Promise.all`
+  irrestrito da spec 440 lê e descomprime todos os arquivos candidatos em paralelo
+  antes de aplicar o budget (`maxContextChars`). Com `recentTurns` até 100, isso
+  desperdiça I/O e memória quando o budget é atingido nos primeiros arquivos.
+  Correção: processar em lotes (5-10) com aplicação progressiva do budget, parando
+  quando excedido. Preserva o ganho de paralelismo sem o desperdício.
+
+- **`_cachedSessionsIndex` — invalidação por mtime:** O cache write-through da spec
+  420 nunca invalida por mudança externa. No DsCode, é plausível ter dois terminais
+  abertos no mesmo projeto ou automação tocando `.dscode/`. Correção: verificar o
+  mtime do arquivo antes de usar o cache; se mais recente, recarregar.
+
+- **`_projectDirEnsured` — recuperação de ENOENT:** Se o diretório `.dscode/` for
+  deletado durante a sessão, a flag `true` impede a recriação. Cenário anormal, mas
+  a correção é simples: em falha `ENOENT` numa operação dependente, resetar a flag
+  e tentar recriar.
+
+- **ESLint `no-floating-promises`:** A spec 440 tornou `backupSpecFile` assíncrono.
+  TypeScript não garante detecção de Promise flutuante em call sites futuros —
+  apenas ESLint com a regra `@typescript-eslint/no-floating-promises` ativa. Verificar
+  e ativar a regra se ausente.
+
+**Delivered by:**
+- Spec 450 (v40-performance-hardening)

@@ -99,7 +99,7 @@ export async function handleWriteTool(
         const encoding = existingMetadata?.encoding ?? "utf8";
         const lineEndings = existingMetadata?.lineEndings ?? (input.content.includes("\r\n") ? "CRLF" : "LF");
         const diffPreview = buildDiffPreview(filePath, existingMetadata?.content ?? null, normalizedContent);
-        backupSpecFile(filePath);
+        await backupSpecFile(filePath);
         context.onBeforeFileMutation?.(filePath);
         const bytes = writeTextFile(filePath, normalizedContent, encoding, lineEndings);
         context.onAfterFileMutation?.(filePath);

@@ -108,6 +108,18 @@ export async function storeTurn(
  * and decompresses only the needed files.
  * Respects both recentTurns limit and maxContextChars.
  */
+/** Intermediate result from parallel turn file processing. */
+type ParsedTurn = {
+  fileName: string;
+  transcript: TurnTranscript;
+  charCount: number;
+};
+
+/** Number of turn files to read/decompress in parallel per batch.
+ *  Balances parallelism against wasted work when maxContextChars
+ *  budget stops early.  Covers default recentTurns=10 in 2 batches. */
+const TURN_READ_BATCH_SIZE = 8;
+
 export async function readRecentTurns(
   projectRoot: string,
   recentTurns: number,
@@ -130,33 +142,49 @@ export async function readRecentTurns(
   // Take the most recent N
   const candidateFiles = turnFiles.slice(-recentTurns);
 
-  // Read, decompress, and parse from most recent to oldest,
-  // stopping when maxContextChars is exceeded.
   const transcripts: TurnTranscript[] = [];
   let totalChars = 0;
 
-  for (let i = candidateFiles.length - 1; i >= 0; i--) {
-    const filePath = path.join(memDir, candidateFiles[i]);
-    try {
-      const compressed = await fs.readFile(filePath);
-      const algorithm = detectAlgorithm(candidateFiles[i]);
-      if (!algorithm) continue; // unknown extension — skip
-      const jsonString = await decompressTurn(compressed, algorithm);
-      const transcript = JSON.parse(jsonString) as TurnTranscript;
+  // Process candidate files in batches to limit wasted I/O when budget
+  // is reached early.  Within each batch, files are read in parallel.
+  for (let batchStart = 0; batchStart < candidateFiles.length; batchStart += TURN_READ_BATCH_SIZE) {
+    const batch = candidateFiles.slice(batchStart, batchStart + TURN_READ_BATCH_SIZE);
 
-      const turnChars = transcript.u.length + transcript.a.length + estimateTranscriptChars(transcript);
+    const promises = batch.map(async (fileName): Promise<ParsedTurn | null> => {
+      const filePath = path.join(memDir, fileName);
+      try {
+        const compressed = await fs.readFile(filePath);
+        const algorithm = detectAlgorithm(fileName);
+        if (!algorithm) return null;
+        const jsonString = await decompressTurn(compressed, algorithm);
+        const transcript = JSON.parse(jsonString) as TurnTranscript;
+        const charCount = transcript.u.length + transcript.a.length + estimateTranscriptChars(transcript);
+        return { fileName, transcript, charCount };
+      } catch {
+        return null;
+      }
+    });
 
-      if (totalChars + turnChars > maxContextChars && transcripts.length > 0) {
+    const results = (await Promise.all(promises)).filter((r): r is ParsedTurn => r !== null);
+
+    // Sort chronologically within batch, then apply budget from most recent
+    results.sort((a, b) => a.fileName.localeCompare(b.fileName));
+
+    for (let i = results.length - 1; i >= 0; i--) {
+      const { transcript: t, charCount } = results[i]!;
+
+      if (totalChars + charCount > maxContextChars && transcripts.length > 0) {
         continue;
       }
 
-      transcripts.unshift(transcript);
-      totalChars += turnChars;
+      transcripts.unshift(t);
+      totalChars += charCount;
 
       if (totalChars >= maxContextChars) break;
-    } catch {
-      continue;
     }
+
+    // Stop processing further batches if budget is exhausted
+    if (totalChars >= maxContextChars) break;
   }
 
   return transcripts;

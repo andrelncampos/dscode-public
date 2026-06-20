@@ -238,7 +238,7 @@ export function usePromptTerminalCursor(
       activePlacementRef.current = null;
       // Schedule a deferred re-position in case the layout effect does not
       // re-run (e.g. a dropdown closed without changing the buffer).
-      Promise.resolve().then(() => {
+      void Promise.resolve().then(() => {
         if (unmountingRef.current || activePlacementRef.current) {
           return;
         }

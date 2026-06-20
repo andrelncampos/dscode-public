@@ -778,7 +778,7 @@ export function AppStateProvider({
           const allMessages = activeSessionId ? loadVisibleMessages(sessionManager, activeSessionId) : [];
           renderRawModeMessages(allMessages, nextMode);
         } else if (activeSessionId) {
-          handleSelectSession(activeSessionId);
+          void handleSelectSession(activeSessionId);
         } else {
           setWelcomeNonce((n: number) => n + 1);
           setShowWelcome(true);

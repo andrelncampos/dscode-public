@@ -254,9 +254,16 @@ function escapeXml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const _toolDocsCache = new Map<string, string>();
+
 function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): string {
+  const cacheKey = extensionRoot + "|" + String(isMultimodalModel(options.model ?? ""));
+  const cached = _toolDocsCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
   const toolsDir = path.join(extensionRoot, "templates", "tools");
   if (!fs.existsSync(toolsDir)) {
+    _toolDocsCache.set(cacheKey, "");
     return "";
   }
 
@@ -279,7 +286,9 @@ function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): s
     })
     .filter((content) => content.length > 0);
 
-  return docs.join("\n\n");
+  const result = docs.join("\n\n");
+  _toolDocsCache.set(cacheKey, result);
+  return result;
 }
 
 function getCurrentDateAndModelPrompt(model?: string): string {

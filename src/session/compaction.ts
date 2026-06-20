@@ -94,12 +94,12 @@ export function getCompactionCandidateRange(
 }
 
 export function findStablePrefixEndIndex(sessionMessages: SessionMessage[], stablePrefixHash: string): number {
-  let runningContent = "";
+  const sha256 = crypto.createHash("sha256");
   for (let i = 0; i < sessionMessages.length; i += 1) {
     const msg = sessionMessages[i];
     if (!msg || msg.role !== "system") continue;
-    runningContent += msg.content ?? "";
-    const hash = crypto.createHash("sha256").update(runningContent).digest("hex");
+    sha256.update(msg.content ?? "");
+    const hash = sha256.copy().digest("hex");
     if (hash === stablePrefixHash) return i + 1;
   }
   // Fallback: first non-system message index (existing behavior)
