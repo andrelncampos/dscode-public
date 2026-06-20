@@ -1,37 +1,40 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import ignore from "ignore";
-import { minimatch } from "minimatch";
+import * as readline from "node:readline";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import { getErrorMessage } from "../common/error-utils.js";
 
 const MAX_RESULTS = 500;
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MB
 const MATCH_LINE_CONTEXT_CHARS = 200;
+const CONCURRENCY = 16;
 
-const DEFAULT_IGNORE = [
-  "node_modules/",
-  ".git/",
-  "dist/",
-  "build/",
-  "out/",
-  ".next/",
-  ".nuxt/",
-  ".venv/",
-  "venv/",
-  "__pycache__/",
+// Safety net in case .gitignore is missing or incomplete.
+// fs.globSync respects .gitignore by default; these only apply when there is no
+// .gitignore or when it doesn't cover them.
+const EXCLUDE_PATTERNS = [
+  "node_modules/**",
+  ".git/**",
+  "dist/**",
+  "build/**",
+  "out/**",
+  ".next/**",
+  ".nuxt/**",
+  ".venv/**",
+  "venv/**",
+  "__pycache__/**",
+  ".pytest_cache/**",
+  ".mypy_cache/**",
+  ".ruff_cache/**",
+  ".gradle/**",
+  ".idea/**",
+  ".vscode/**",
+  "target/**",
   "*.pyc",
   "*.pyo",
-  ".pytest_cache/",
-  ".mypy_cache/",
-  ".ruff_cache/",
-  ".gradle/",
-  ".idea/",
-  ".vscode/",
   "*.class",
   "*.jar",
   "*.war",
-  "target/",
 ];
 
 type GrepMatch = {
@@ -62,6 +65,7 @@ export async function handleGrepTool(
     };
   }
 
+  // Validate regex eagerly so errors surface before any I/O.
   let regex: RegExp;
   try {
     regex = new RegExp(pattern, "g");
@@ -99,58 +103,62 @@ export async function handleGrepTool(
     };
   }
 
-  const matcher = loadGitignoreMatcher(context.projectRoot);
-  const matches: GrepMatch[] = [];
+  // ── Single-file path ──────────────────────────────────────────────
+  if (searchStat.isFile()) {
+    const relPath = path.relative(context.projectRoot, searchPath).replace(/\\/g, "/");
+    const { matches } = await searchFileStreaming(searchPath, relPath, pattern, MAX_RESULTS);
+    const truncated = matches.length > MAX_RESULTS;
+    const result: GrepResult = {
+      pattern,
+      matches: truncated ? matches.slice(0, MAX_RESULTS) : matches,
+      truncated,
+      files_searched: 1,
+    };
+    return { ok: true, name: "grep", output: JSON.stringify(result, null, 2) };
+  }
+
+  // ── Directory: discover files with native glob ─────────────────────
+  const effectiveGlob = globFilter ? (/[/\\]/.test(globFilter) ? globFilter : `**/${globFilter}`) : "**/*";
+
+  let fileRelPaths: string[];
+  try {
+    const raw = fs.globSync(effectiveGlob, {
+      cwd: searchPath,
+      exclude: EXCLUDE_PATTERNS,
+    });
+    fileRelPaths = raw.map((p) => p.replace(/\\/g, "/"));
+  } catch {
+    return {
+      ok: false,
+      name: "grep",
+      error: `Invalid glob pattern: ${globFilter}`,
+    };
+  }
+
+  // ── Search files in parallel batches ──────────────────────────────
+  const allMatches: GrepMatch[] = [];
   let filesSearched = 0;
 
-  if (searchStat.isFile()) {
-    // Search a single file
-    const relPath = path.relative(context.projectRoot, searchPath).replace(/\\/g, "/");
-    searchFile(searchPath, relPath, regex, matches, false);
-    filesSearched = 1;
-  } else {
-    // Walk directory recursively
-    const queue: string[] = [searchPath];
-    while (queue.length > 0 && matches.length < MAX_RESULTS + 1) {
-      const current = queue.pop();
-      if (!current) continue;
+  for (let i = 0; i < fileRelPaths.length && allMatches.length <= MAX_RESULTS; i += CONCURRENCY) {
+    const batch = fileRelPaths.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((relPath) => {
+        const fullPath = path.resolve(searchPath, relPath);
+        return searchFileStreaming(fullPath, relPath, pattern, MAX_RESULTS - allMatches.length);
+      })
+    );
 
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(current, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-
-      for (const entry of entries) {
-        if (matches.length > MAX_RESULTS) break;
-
-        const fullPath = path.join(current, entry.name);
-        const relPath = path.relative(context.projectRoot, fullPath).replace(/\\/g, "/");
-
-        if (matcher(relPath, entry.isDirectory())) {
-          continue;
-        }
-
-        if (entry.isDirectory()) {
-          queue.push(fullPath);
-        } else if (entry.isFile()) {
-          if (globFilter && !minimatch(relPath, globFilter, { matchBase: true })) {
-            continue;
-          }
-          searchFile(fullPath, relPath, regex, matches, matches.length >= MAX_RESULTS);
-          if (matches.length <= MAX_RESULTS) {
-            filesSearched++;
-          }
-        }
-      }
+    for (const { matches, searched } of results) {
+      if (searched) filesSearched++;
+      allMatches.push(...matches);
+      if (allMatches.length > MAX_RESULTS) break;
     }
   }
 
-  const truncated = matches.length > MAX_RESULTS;
+  const truncated = allMatches.length > MAX_RESULTS;
   const result: GrepResult = {
     pattern,
-    matches: truncated ? matches.slice(0, MAX_RESULTS) : matches,
+    matches: truncated ? allMatches.slice(0, MAX_RESULTS) : allMatches,
     truncated,
     files_searched: filesSearched,
   };
@@ -162,91 +170,90 @@ export async function handleGrepTool(
   };
 }
 
-function searchFile(fullPath: string, relPath: string, regex: RegExp, matches: GrepMatch[], skip: boolean): void {
-  if (skip) return;
+// ── Streaming async file search ──────────────────────────────────────
+
+interface FileSearchResult {
+  matches: GrepMatch[];
+  searched: boolean;
+}
+
+async function searchFileStreaming(
+  fullPath: string,
+  relPath: string,
+  pattern: string,
+  maxResults: number
+): Promise<FileSearchResult> {
+  if (maxResults <= 0) return { matches: [], searched: false };
 
   let stat: fs.Stats;
   try {
-    stat = fs.statSync(fullPath);
+    stat = await fs.promises.stat(fullPath);
   } catch {
-    return;
+    return { matches: [], searched: false };
   }
 
-  if (stat.size > MAX_FILE_SIZE_BYTES) return;
+  if (stat.size > MAX_FILE_SIZE_BYTES) return { matches: [], searched: false };
 
-  let content: string;
+  // Read first 4KB to detect binary files.
+  let headBuf: Buffer;
   try {
-    content = fs.readFileSync(fullPath, "utf8");
+    const fd = await fs.promises.open(fullPath, "r");
+    headBuf = Buffer.alloc(4096);
+    const { bytesRead } = await fd.read(headBuf, 0, 4096, 0);
+    await fd.close();
+    headBuf = headBuf.subarray(0, bytesRead);
   } catch {
-    return;
+    return { matches: [], searched: false };
   }
 
-  // Skip binary files (check first 4096 bytes for null bytes)
-  if (isBinary(content.slice(0, 4096))) return;
+  if (isBinary(headBuf)) return { matches: [], searched: false };
 
-  const lines = content.split("\n");
-  for (let i = 0; i < lines.length && matches.length <= MAX_RESULTS; i++) {
-    const line = lines[i];
-    regex.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(line)) !== null && matches.length <= MAX_RESULTS) {
-      const column = match.index + 1; // 1-indexed
-      const matchedText = match[0];
-      const lineContent = truncateLineContent(line, MATCH_LINE_CONTEXT_CHARS);
-      matches.push({
-        file: relPath,
-        line: i + 1, // 1-indexed
-        column,
-        match: matchedText,
-        line_content: lineContent,
-      });
-      // Prevent infinite loop on zero-length matches
-      if (matchedText.length === 0) {
-        regex.lastIndex += 1;
+  // Stream line-by-line with early termination.
+  const matches: GrepMatch[] = [];
+  const regex = new RegExp(pattern, "g");
+  let lineNum = 0;
+
+  const stream = fs.createReadStream(fullPath, { encoding: "utf8" });
+  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+  try {
+    for await (const line of rl) {
+      lineNum++;
+      regex.lastIndex = 0;
+
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(line)) !== null && matches.length < maxResults) {
+        matches.push({
+          file: relPath,
+          line: lineNum,
+          column: match.index + 1,
+          match: match[0],
+          line_content: truncateLineContent(line, MATCH_LINE_CONTEXT_CHARS),
+        });
+        // Prevent infinite loop on zero-length matches
+        if (match[0].length === 0) regex.lastIndex += 1;
+      }
+
+      if (matches.length >= maxResults) {
+        break;
       }
     }
+  } catch {
+    // Stream errors (e.g., file deleted mid-read) → return partial matches.
+  } finally {
+    rl.close();
   }
+
+  return { matches, searched: true };
 }
 
-function isBinary(chunk: string): boolean {
-  if (!chunk) return false;
-  // Check for null bytes which indicate binary content
-  return chunk.indexOf("\0") !== -1;
+// ── Helpers ──────────────────────────────────────────────────────────
+
+function isBinary(buf: Buffer): boolean {
+  return buf.indexOf(0) !== -1;
 }
 
 function truncateLineContent(line: string, maxChars: number): string {
   if (line.length <= maxChars) return line;
   return line.slice(0, maxChars) + "…";
-}
-
-function loadGitignoreMatcher(projectRoot: string): (relPath: string, isDir: boolean) => boolean {
-  const gitignorePath = path.join(projectRoot, ".gitignore");
-  const ig = ignore();
-  ig.add(DEFAULT_IGNORE);
-
-  if (!fs.existsSync(gitignorePath)) {
-    return (relPath: string, isDir: boolean) => {
-      if (!relPath) return false;
-      const candidate = isDir ? `${relPath}/` : relPath;
-      return ig.ignores(candidate);
-    };
-  }
-
-  let content: string;
-  try {
-    content = fs.readFileSync(gitignorePath, "utf8");
-  } catch {
-    return (relPath: string, isDir: boolean) => {
-      if (!relPath) return false;
-      const candidate = isDir ? `${relPath}/` : relPath;
-      return ig.ignores(candidate);
-    };
-  }
-
-  ig.add(content);
-  return (relPath: string, isDir: boolean) => {
-    if (!relPath) return false;
-    const candidate = isDir ? `${relPath}/` : relPath;
-    return ig.ignores(candidate);
-  };
 }
