@@ -241,6 +241,7 @@ async function searchFileStreaming(
     // Stream errors (e.g., file deleted mid-read) → return partial matches.
   } finally {
     rl.close();
+    stream.destroy();
   }
 
   return { matches, searched: true };
