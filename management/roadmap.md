@@ -62,6 +62,9 @@
 | 390 | spec-traceability | audited | V36 |
 | 400 | github-auto-update | audited | V37 |
 | 410 | multi-spec-pipeline | audited | V38 |
+| 420 | session-io-optimization | planned | V40 |
+| 430 | startup-performance | planned | V40 |
+| 440 | compaction-and-memory-perf | planned | V40 |
 
 ---
 
@@ -193,6 +196,19 @@ Spec 400 (github-auto-update)
 
 Spec 410 (multi-spec-pipeline)
   (standalone — extends /spec-pipe to accept comma-separated spec numbers; wraps existing runSpecPipeline in a loop)
+
+Spec 420 (session-io-optimization)
+  (standalone — incremental message append, sessions index cache, ensureProjectDir guard,
+   string += → push+join in streaming loops; all in session.ts)
+
+Spec 430 (startup-performance)
+  (standalone — parallel skill loading via Promise.all + fs/promises,
+   immutable template cache in prompt.ts)
+
+Spec 440 (compaction-and-memory-perf)
+  (standalone — incremental SHA-256 hash in findStablePrefixEndIndex,
+   parallel turn decompression in readRecentTurns,
+   async copyFile in backupSpecFile)
 ```
 
 ---

@@ -727,3 +727,75 @@ O `/spec-pipe` atual executa o ciclo SDD completo (new → verify → implement 
 - O formato de report é Markdown para consumo tanto pelo LLM (durante `/spec-audit`) quanto pelo usuário.
 
 **Delivered by:** Spec 410 (multi-spec-pipeline).
+
+---
+
+### V39: Node.js Runtime Evolution
+
+DsCode acompanha a evolução do Node.js, adotando APIs nativas modernas e comunicando
+antecipadamente mudanças de requisito de runtime aos usuários.
+
+- **Node 24 como baseline:** Todas as APIs nativas do Node 24 são usadas quando
+  simplificam o código, reduzem dependências ou melhoram robustez (`fs.globSync`,
+  `zlib.zstdCompress`, `structuredClone`, `Error.isError`). Não há polyfills
+  nem fallback para versões anteriores.
+- **Remoção de dependências obsoletas:** Pacotes npm que duplicam APIs nativas
+  do Node 24 são removidos (`glob`, `minimatch`, `@mongodb-js/zstd`).
+- **Aviso de depreciação antecipado:** O welcome screen exibe um aviso destacado
+  (ícone ⚠️, borda laranja) sobre o próximo requisito mínimo de Node.js com 4+
+  meses de antecedência. Ex: "A partir de Outubro/2026, o DsCode passará a exigir
+  Node.js 26."
+- **Verificação de migração completa:** Ferramentas de varredura confirmam zero
+  referências a versões antigas em `package.json`, `tsconfig.json`, CI workflows,
+  build scripts, e código fonte.
+- **CI alinhado com runtime real:** A matriz de CI usa a mesma versão do Node
+  exigida em `engines.node` — sem defasagem entre o que é testado e o que é exigido.
+
+**Status:** Deprecation notice implementado (commit `2b165877`). Migração Node 22→24
+verificada completa em 2026-06-20.
+
+---
+
+### V40: Performance-First Execution
+
+Otimizações de I/O, CPU e memória que reduzem a latência percebida pelo usuário
+em operações cotidianas — inicialização da sessão, salvamento de mensagens,
+streaming de respostas, e leitura de histórico.
+
+**Oportunidades identificadas (análise de 2026-06-20):**
+
+- **Session I/O bottlenecks:**
+  - `saveSessionMessages()` reescreve o arquivo inteiro de mensagens para cada
+    nova mensagem — usar `appendFileSync` incremental.
+  - `loadSessionsIndex()` é chamado 6× por turno sem cache em memória — cada
+    chamada faz `readFileSync` + `JSON.parse` do disco.
+  - `ensureProjectDir()` executa `mkdirSync` em toda operação de I/O — bastaria
+    um booleano `dirEnsured`.
+  - Concatenação de strings com `+=` nos loops de streaming (`content += event.text`)
+    aloca novas strings a cada chunk — usar array `push` + `join` ao final.
+
+- **Startup latency:**
+  - Skills são carregadas com `readFileSync` + `statSync` sequencialmente —
+    paralelizar com `Promise.all` + `fs/promises`.
+  - Templates de prompt (`templates/tools/*.md`, `templates/skills/*.md`) são
+    relidos do disco a cada turno — cache em memória (conteúdo imutável do pacote).
+
+- **Compaction & storage performance:**
+  - `findStablePrefixEndIndex()` recalcula hash SHA-256 do conteúdo acumulado
+    para cada mensagem system (O(N²) em bytes processados) — usar uma única
+    instância de hash incremental.
+  - `readRecentTurns()` lê e descomprime arquivos de turn sequencialmente —
+    paralelizar com `Promise.all` + early termination.
+  - `backupSpecFile()` usa `copyFileSync` bloqueante — substituir por versão
+    assíncrona com `fs/promises.copyFile`.
+
+**Itens já otimizados (antes desta análise):**
+- `glob-handler.ts` → `fs.globSync` nativo (-51 linhas, commit `79c4e25`)
+- `grep-handler.ts` → paralelismo assíncrono, streaming, `fs.globSync` nativo
+  (-143 linhas, -1 dependência, commit `c2087aa`)
+- `turn-compressor.ts` → zstd nativo do Node 24 via `promisify`
+
+**Delivered by:**
+- Spec 420 (session-io-optimization)
+- Spec 430 (startup-performance)
+- Spec 440 (compaction-and-memory-perf)
