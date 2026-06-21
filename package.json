@@ -1,6 +1,6 @@
 {
   "name": "@andrelncampos/dscode",
-  "version": "1.0.44",
+  "version": "1.0.45",
   "description": "dscode CLI - AI coding assistant optimized for DeepSeek V4 in your terminal",
   "license": "MIT",
   "type": "module",
@@ -68,6 +68,8 @@
     "ink": "^7.0.4",
     "ink-gradient": "^4.0.1",
     "openai": "^6.35.0",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
     "react": "^19.2.5",
     "tesseract.js": "^7.0.0",
     "undici": "^8.4.1",
