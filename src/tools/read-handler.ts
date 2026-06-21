@@ -165,7 +165,7 @@ export async function handleReadTool(
       const pageCount = countPdfPages(buffer);
       const pageRange = pagesParam ? parsePageRange(pagesParam) : null;
 
-      if (!pageRange && pageCount !== null && pageCount > PDF_LARGE_PAGE_THRESHOLD) {
+      if (!pageRange && (pageCount === null || pageCount > PDF_LARGE_PAGE_THRESHOLD)) {
         return {
           ok: false,
           name: "read",
@@ -515,7 +515,7 @@ function countPdfPages(buffer: Buffer): number | null {
   try {
     const content = buffer.toString("latin1");
     const matches = content.match(/\/Type\s*\/Page\b(?!s)/g);
-    return matches ? matches.length : 0;
+    return matches && matches.length > 0 ? matches.length : null;
   } catch {
     return null;
   }
