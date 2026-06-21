@@ -66,6 +66,7 @@
 | 430 | startup-performance | audited | V40 |
 | 440 | compaction-and-memory-perf | audited | V40 |
 | 450 | v40-performance-hardening | audited | V40 |
+| 460 | pdf-read-tool-fix | audited | V41 |
 
 ---
 
@@ -216,6 +217,10 @@ Spec 450 (v40-performance-hardening)
    mtime-based cache invalidation for sessions index,
    ENOENT recovery for project dir guard,
    ESLint no-floating-promises rule)
+
+Spec 460 (pdf-read-tool-fix)
+  (standalone — fixes PDF handler to use followUpMessages instead of embedding
+   base64 in output; makes pages parameter functional)
 ```
 
 ---

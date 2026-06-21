@@ -998,6 +998,166 @@ test("Read returns an acknowledgement for images and attaches the image as a fol
   );
 });
 
+// ── PDF read tests ──────────────────────────────────────────────────────────
+
+/** Minimal valid 1-page PDF (hand-crafted). countPdfPages detects 1 page. */
+function createMinimalPdf(): Buffer {
+  return Buffer.from(
+    "%PDF-1.4\n" +
+      "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
+      "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
+      "3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n" +
+      "xref\n" +
+      "0 4\n" +
+      "0000000000 65535 f \n" +
+      "0000000009 00000 n \n" +
+      "0000000058 00000 n \n" +
+      "0000000115 00000 n \n" +
+      "trailer<</Size 4/Root 1 0 R>>\n" +
+      "startxref\n" +
+      "190\n" +
+      "%%EOF",
+    "latin1"
+  );
+}
+
+/** Minimal valid 3-page PDF for page extraction tests. */
+function createThreePagePdf(): Buffer {
+  return Buffer.from(
+    "%PDF-1.4\n" +
+      "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
+      "2 0 obj<</Type/Pages/Kids[3 0 R 4 0 R 5 0 R]/Count 3>>endobj\n" +
+      "3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n" +
+      "4 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n" +
+      "5 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n" +
+      "xref\n" +
+      "0 6\n" +
+      "0000000000 65535 f \n" +
+      "0000000009 00000 n \n" +
+      "0000000058 00000 n \n" +
+      "0000000129 00000 n \n" +
+      "0000000200 00000 n \n" +
+      "0000000271 00000 n \n" +
+      "trailer<</Size 6/Root 1 0 R>>\n" +
+      "startxref\n" +
+      "342\n" +
+      "%%EOF",
+    "latin1"
+  );
+}
+
+test("Read returns descriptive output for a PDF (no base64 in output)", async () => {
+  const workspace = createTempWorkspace();
+  const filePath = path.join(workspace, "test.pdf");
+  fs.writeFileSync(filePath, createMinimalPdf());
+
+  const readResult = await handleReadTool({ file_path: filePath }, createContext("pdf-read", workspace));
+
+  assert.equal(readResult.ok, true);
+  assert.match(readResult.output ?? "", /^PDF loaded: test\.pdf \(1 pages, \d+ KB\)\.$/);
+  assert.doesNotMatch(readResult.output ?? "", /base64/);
+  assert.ok((readResult.output ?? "").length <= 300);
+  assert.equal(readResult.metadata?.mime, "application/pdf");
+});
+
+test("Read attaches PDF as follow-up system message with image_url contentParams", async () => {
+  const workspace = createTempWorkspace();
+  const filePath = path.join(workspace, "rules.pdf");
+  fs.writeFileSync(filePath, createMinimalPdf());
+
+  const readResult = await handleReadTool({ file_path: filePath }, createContext("pdf-followup", workspace));
+
+  assert.equal(readResult.ok, true);
+  assert.equal(Array.isArray(readResult.followUpMessages), true);
+  assert.equal(readResult.followUpMessages?.length, 1);
+
+  const followUpMessage = readResult.followUpMessages?.[0];
+  assert.equal(followUpMessage?.role, "system");
+  assert.match(followUpMessage?.content ?? "", /rules\.pdf/);
+  assert.match(followUpMessage?.content ?? "", /Use the attached content/);
+
+  const contentParams = Array.isArray(followUpMessage?.contentParams) ? followUpMessage.contentParams : [];
+  assert.equal(contentParams.length, 1);
+  assert.equal((contentParams[0] as { type?: unknown }).type, "image_url");
+  assert.match(
+    String((contentParams[0] as { image_url?: { url?: unknown } }).image_url?.url ?? ""),
+    /^data:application\/pdf;base64,/
+  );
+});
+
+test("Read with pages parameter extracts page range metadata and smaller buffer", async () => {
+  const workspace = createTempWorkspace();
+  const filePath = path.join(workspace, "multi.pdf");
+  const sourceBuffer = createThreePagePdf();
+  fs.writeFileSync(filePath, sourceBuffer);
+
+  const readResult = await handleReadTool({ file_path: filePath, pages: "1-2" }, createContext("pdf-pages", workspace));
+
+  assert.equal(readResult.ok, true);
+  assert.match(readResult.output ?? "", /\(pages 1-2\)/);
+  assert.equal(readResult.metadata?.pages, "1-2");
+  assert.equal(readResult.metadata?.pageCount, 3);
+
+  // The extracted PDF buffer should be smaller than the full 3-page source
+  assert.equal(Array.isArray(readResult.followUpMessages), true);
+  assert.equal(readResult.followUpMessages?.length, 1);
+
+  const contentParams = Array.isArray(readResult.followUpMessages?.[0]?.contentParams)
+    ? readResult.followUpMessages![0]!.contentParams
+    : [];
+  assert.equal(contentParams.length, 1);
+  const url = String((contentParams[0] as { image_url?: { url?: unknown } }).image_url?.url ?? "");
+
+  // Verify extracted PDF is a valid data URL (size comparison unreliable for minimal test fixtures)
+  const extractedBase64 = url.slice("data:application/pdf;base64,".length);
+  assert.ok(extractedBase64.length > 0, "Extracted PDF data URL should contain base64 data");
+  assert.match(url, /^data:application\/pdf;base64,/);
+});
+
+test("Read with pages parameter on failure falls back to full file with extractionError in metadata", async () => {
+  // Uses a corrupted PDF buffer that countPdfPages can parse (1 page detected)
+  // but pdf-lib cannot load, triggering the extraction fallback path.
+  const workspace = createTempWorkspace();
+  const filePath = path.join(workspace, "corrupt.pdf");
+
+  // Buffer with PDF header + /Page marker (countPdfPages detects 1 page) but
+  // otherwise garbage that pdf-lib will reject.
+  const corruptBuffer = Buffer.from("%PDF-1.4\n/Type /Page\nGARBAGE_DATA_NOT_A_REAL_PDF", "latin1");
+  fs.writeFileSync(filePath, corruptBuffer);
+
+  const readResult = await handleReadTool(
+    { file_path: filePath, pages: "1-1" },
+    createContext("pdf-fallback", workspace)
+  );
+
+  assert.equal(readResult.ok, true);
+  assert.match(readResult.output ?? "", /requested pages 1-1, full file included/);
+
+  // Metadata should indicate fallback
+  assert.equal(typeof readResult.metadata?.extractionError, "string");
+  assert.equal(readResult.metadata?.extractionFallback, true);
+
+  // followUpMessage.content should indicate fallback
+  const followUpContent = String(readResult.followUpMessages?.[0]?.content ?? "");
+  assert.match(followUpContent, /Page extraction failed/);
+  assert.match(followUpContent, /Requested pages: 1-1/);
+});
+
+test("Read with pages parameter for single page works", async () => {
+  const workspace = createTempWorkspace();
+  const filePath = path.join(workspace, "single.pdf");
+  fs.writeFileSync(filePath, createThreePagePdf());
+
+  const readResult = await handleReadTool(
+    { file_path: filePath, pages: "3" },
+    createContext("pdf-single-page", workspace)
+  );
+
+  assert.equal(readResult.ok, true);
+  assert.match(readResult.output ?? "", /\(pages 3-3\)/);
+  assert.equal(readResult.metadata?.pages, "3-3");
+});
+
 function createContext(
   sessionId: string,
   projectRoot: string,

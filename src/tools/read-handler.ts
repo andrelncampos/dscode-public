@@ -189,23 +189,56 @@ export async function handleReadTool(
         };
       }
 
-      const base64 = buffer.toString("base64");
+      // Extract pages if range specified (FR-003)
+      let pdfBuffer: Buffer = buffer as Buffer;
+      let extractionError: string | undefined;
+      let extractionFallback = false;
+      if (pageRange) {
+        const result = await extractPdfPages(buffer, pageRange, pageCount);
+        pdfBuffer = result.buffer as Buffer;
+        if (!result.extracted) {
+          extractionError = result.error;
+          extractionFallback = true;
+        }
+      }
+
+      // Build descriptive output (FR-001)
+      const fileName = path.basename(filePath);
+      const sizeKB = Math.round(buffer.length / 1024);
+      let output = `PDF loaded: ${fileName} (${pageCount ?? "?"} pages, ${sizeKB} KB)`;
+      if (pageRange && extractionFallback) {
+        output += ` (requested pages ${pageRange.start}-${pageRange.end}, full file included)`;
+      } else if (pageRange) {
+        output += ` (pages ${pageRange.start}-${pageRange.end})`;
+      }
+      output += ".";
+
+      // Build metadata
+      const metadata: Record<string, unknown> = {
+        mime: "application/pdf",
+        bytes: buffer.length,
+        pageCount,
+        pages: pageRange ? `${pageRange.start}-${pageRange.end}` : null,
+      };
+      if (extractionError) {
+        metadata.extractionError = extractionError;
+        metadata.extractionFallback = true;
+      }
+
       markFileRead(context.sessionId, filePath, {
         content: "",
         timestamp: Math.floor(stat.mtimeMs),
         isPartialView: true,
       });
+
       return {
         ok: true,
         name: "read",
-        output: `data:application/pdf;base64,${base64}`,
-        metadata: {
-          mime: "application/pdf",
-          encoding: "base64",
-          bytes: buffer.length,
-          pageCount,
-          pages: pageRange ? `${pageRange.start}-${pageRange.end}` : null,
-        },
+        output,
+        metadata,
+        followUpMessages: [
+          buildPdfFollowUpMessage(filePath, pdfBuffer, pageCount, pageRange ?? undefined, extractionFallback),
+        ],
       };
     }
 
@@ -494,6 +527,50 @@ function getImageMimeType(ext: string): string {
   }
 }
 
+function buildPdfFollowUpMessage(
+  filePath: string,
+  buffer: Buffer,
+  pageCount: number | null,
+  pageRange?: { start: number; end: number; count: number },
+  extractionFallback?: boolean
+): ToolExecutionFollowUpMessage {
+  const fileName = path.basename(filePath);
+  const sizeKB = Math.round(buffer.length / 1024);
+  const pageInfo = pageCount != null ? `${pageCount} pages` : "? pages";
+
+  let content: string;
+  if (pageRange && !extractionFallback) {
+    // Extraction succeeded — show page range details
+    content =
+      `The read tool has loaded \`${fileName}\` (pages ${pageRange.start}-${pageRange.end} of ${pageCount ?? "?"} total, ${sizeKB} KB). ` +
+      "Use the attached content to answer the original request.";
+  } else if (pageRange && extractionFallback) {
+    // Extraction failed — indicate fallback
+    content =
+      `The read tool has loaded \`${fileName}\` (${pageInfo}, ${sizeKB} KB). ` +
+      `Page extraction failed — full file included. Requested pages: ${pageRange.start}-${pageRange.end}. ` +
+      "Use the attached content to answer the original request.";
+  } else {
+    // No page range — standard message
+    content =
+      `The read tool has loaded \`${fileName}\` (${pageInfo}, ${sizeKB} KB). ` +
+      "Use the attached content to answer the original request.";
+  }
+
+  return {
+    role: "system",
+    content,
+    contentParams: [
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:application/pdf;base64,${buffer.toString("base64")}`,
+        },
+      },
+    ],
+  };
+}
+
 function buildImageFollowUpMessage(filePath: string, mime: string, buffer: Buffer): ToolExecutionFollowUpMessage {
   const fileName = path.basename(filePath);
   return {
@@ -558,6 +635,44 @@ function parsePositiveInt(value: string, label: string): number {
     throw new Error(`${label} must be >= 1.`);
   }
   return integer;
+}
+
+async function extractPdfPages(
+  sourceBuffer: Buffer,
+  pageRange: { start: number; end: number; count: number },
+  _pageCount: number | null
+): Promise<{ buffer: Buffer; extracted: boolean; error?: string }> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  let pdfLib: typeof import("pdf-lib");
+  try {
+    pdfLib = await import("pdf-lib");
+  } catch {
+    return { buffer: sourceBuffer, extracted: false, error: "pdf-lib not installed" };
+  }
+
+  try {
+    const srcDoc = await pdfLib.PDFDocument.load(sourceBuffer);
+    const totalPages = srcDoc.getPageCount();
+    const start = Math.max(1, pageRange.start);
+    const end = Math.min(totalPages, pageRange.end);
+
+    if (start > totalPages || end < 1) {
+      return { buffer: sourceBuffer, extracted: false, error: "Page range outside document bounds" };
+    }
+
+    const destDoc = await pdfLib.PDFDocument.create();
+    const pageIndexes = Array.from({ length: end - start + 1 }, (_, i) => start - 1 + i);
+    const copiedPages = await destDoc.copyPages(srcDoc, pageIndexes);
+    for (const page of copiedPages) {
+      destDoc.addPage(page);
+    }
+
+    const extractedBuffer = Buffer.from(await destDoc.save());
+    return { buffer: extractedBuffer, extracted: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { buffer: sourceBuffer, extracted: false, error: message };
+  }
 }
 
 function readNotebook(filePath: string): string {

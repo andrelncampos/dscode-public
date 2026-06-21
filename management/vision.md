@@ -829,3 +829,51 @@ que não são regressões críticas, mas merecem hardening:
 
 **Delivered by:**
 - Spec 450 (v40-performance-hardening)
+
+---
+
+### V41: Context Budget Enforcement
+
+Mecanismos de proteção que impedem que o conteúdo de ferramentas (tool outputs) exceda
+a janela de contexto do LLM, causando erros 400 e interrompendo a sessão.
+
+**Problema identificado (análise de 2026-06-20):**
+
+O Read tool handler para PDFs (`read-handler.ts:162-210`) embute o arquivo inteiro como
+base64 no campo `output`:
+
+```
+output: `data:application/pdf;base64,${base64}`  // 6.7 MB para 17 páginas
+```
+
+Esse output é serializado via `formatToolResult()` → vira `content` da tool message →
+enviado ao LLM como texto puro. Para um PDF de 17 páginas (~5 MB), o base64 tem ~6.7 MB
+de texto, o que equivale a ~1.7M tokens — acima do context window de 1M tokens do
+DeepSeek V4.
+
+Além disso, o parâmetro `pages` (ex.: `"1-10"`) é usado apenas para validação — o arquivo
+inteiro é sempre codificado, nunca há extração de páginas específicas.
+
+**Contraste com imagens (que funciona corretamente):**
+
+| | Imagens | PDFs (quebrado) |
+|---|---|---|
+| `output` | `"File loaded."` (12 chars) | Base64 do arquivo inteiro (6.7M chars) |
+| Conteúdo real | `followUpMessages` com `contentParams: [{type: "image_url"}]` | ❌ Nenhum — tudo no `output` |
+| Multimodal filtering | ✅ Filtrado por `isMultimodalModel()` no converter | ❌ Vai como texto puro |
+| Tamanho no contexto | < 100 tokens | ~1.7M tokens |
+
+**Correções:**
+
+- **PDF handler usa `followUpMessages`:** O output textual deve ser curto e descritivo
+  (ex.: `"PDF loaded: rules.pdf (17 pages, 3.2 MB). Use pages parameter to view."`).
+  O conteúdo real (páginas) deve ir em `followUpMessages` com `contentParams` no formato
+  `image_url`, igual ao handler de imagens.
+- **Parâmetro `pages` funcional:** O parâmetro `pages` deve limitar quais páginas são
+  extraídas e codificadas, não apenas validar o range.
+- **Safety net global:** Cap no tamanho do output de ferramenta antes de virar conteúdo
+  de mensagem (ex.: truncar outputs > 100KB). Previne que qualquer tool futura cause
+  overflow de contexto. (Deferido para spec futuro.)
+
+**Delivered by:**
+- Spec 460 (pdf-read-tool-fix)
