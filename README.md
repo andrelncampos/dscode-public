@@ -318,6 +318,8 @@ Você verá uma tela de boas-vindas com um campo de texto. O assistente está pr
 
 **Dica:** Digite `@` para buscar e mencionar arquivos do projeto — a IA pode ler e editar os arquivos que você referenciar.
 
+**Novo no DsCode?** Digite `/quickstart` para um tour interativo de 5 minutos pelo pipeline SDD. Ou execute `dscode --quickstart` para começar direto.
+
 ### Passo 5: Pergunte algo simples
 
 Digite no campo de prompt:
@@ -418,6 +420,7 @@ Digite `/` no prompt para abrir o menu. São **37 comandos built-in** + skills d
 | `/spec-pipe <n>` | Atalho: executar o pipeline SDD completo para um ou mais specs (números separados por vírgula): new → verify → implement → audit |
 | `/spec-list` | Listar todos os specs com status do roadmap |
 | `/spec-status [n]` | Mostrar status detalhado de um spec específico ou de todos |
+| `/quickstart` | Tour interativo pelo pipeline SDD — aprenda vendo um projeto de demonstração rodar o ciclo completo |
 
 ### Ferramentas externas
 

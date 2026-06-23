@@ -257,6 +257,8 @@ dscode
 
 **टिप:** प्रोजेक्ट फ़ाइलों को खोजने और उल्लेख करने के लिए `@` टाइप करें — AI आपके द्वारा संदर्भित फ़ाइलों को पढ़ और संपादित कर सकता है।
 
+**DsCode पर नए हैं?** 5 मिनट के इंटरैक्टिव टूर के लिए `/quickstart` टाइप करें। या सीधे शुरू करने के लिए `dscode --quickstart` लॉन्च करें।
+
 ### चरण 5: कुछ सरल पूछें
 
 प्रॉम्प्ट फ़ील्ड में टाइप करें:
@@ -357,6 +359,7 @@ Type `/` in the prompt to open the menu. There are **37 built-in commands** + dy
 | `/spec-pipe <n>` | Shortcut: run the full SDD pipeline for one or more specs (comma-separated numbers): new → verify → implement → audit |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
+| `/quickstart` | SDD पाइपलाइन का इंटरैक्टिव टूर — डेमो प्रोजेक्ट को पूरा चक्र चलते देखकर सीखें |
 
 ### External tools
 

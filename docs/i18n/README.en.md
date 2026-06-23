@@ -247,6 +247,8 @@ You'll see a welcome screen with a text input field. The assistant is ready.
 
 **Tip:** Type `@` to search and mention project files — the AI can read and edit the files you reference.
 
+**New to DsCode?** Type `/quickstart` for a 5-minute interactive tour of the SDD pipeline. Or launch with `dscode --quickstart` to jump straight in.
+
 ### Step 5: Ask something simple
 
 Type in the prompt field:
@@ -347,6 +349,7 @@ Type `/` in the prompt to open the menu. There are **37 built-in commands** + dy
 | `/spec-pipe <n>` | Shortcut: run the full SDD pipeline for one or more specs (comma-separated numbers): new → verify → implement → audit |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
+| `/quickstart` | Interactive tour of the SDD pipeline — learn by watching a demo project run through the full cycle |
 
 ### External tools
 

@@ -257,6 +257,8 @@ dscode
 
 **提示：** 输入 `@` 来搜索和提及项目文件——AI 可以读取和编辑你引用的文件。
 
+**新用户？** 输入 `/quickstart` 参加 5 分钟的 SDD 流水线互动教程。或使用 `dscode --quickstart` 直接开始。
+
 ### 第 5 步：问一些简单的问题
 
 在提示框中输入：
@@ -357,6 +359,7 @@ Type `/` in the prompt to open the menu. There are **37 built-in commands** + dy
 | `/spec-pipe <n>` | Shortcut: run the full SDD pipeline for one or more specs (comma-separated numbers): new → verify → implement → audit |
 | `/spec-list` | List all specs with roadmap statuses |
 | `/spec-status [n]` | Show detailed status of a specific spec or all |
+| `/quickstart` | SDD 流水线互动教程 — 通过观看演示项目运行完整周期来学习 |
 
 ### External tools
 
