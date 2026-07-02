@@ -139,10 +139,11 @@ Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai
 | `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit |
 | `/init` | Criar `AGENTS.md` com instruções para a IA |
 | `/steering-add` | Adicionar regra que a IA segue em todas as sessões |
+| `/budget` | Ver custo acumulado do projeto por modelo e timezone |
 | `/context` | Ver tokens, custo e cache da sessão |
 | `/help` | Lista completa de comandos e atalhos |
 
-> 📋 [Lista completa dos 37 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluindo gestão de modelos, notas, MCP e skills.
+> 📋 [Lista completa dos 51 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluindo gestão de modelos, notas, MCP e skills.
 
 ---
 

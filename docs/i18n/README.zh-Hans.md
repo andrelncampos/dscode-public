@@ -139,10 +139,11 @@ dscode
 | `/spec-pipe <n>` | 完整流水线：new → verify → implement → audit |
 | `/init` | 创建 `AGENTS.md` 为 AI 提供指令 |
 | `/steering-add` | 添加 AI 在每个会话中遵循的规则 |
+| `/budget` | 按模型和时区查看项目成本 |
 | `/context` | 查看会话的 tokens、成本和缓存 |
 | `/help` | 完整的命令和键盘快捷键列表 |
 
-> 📋 [37 个命令的完整列表](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — 包括模型管理、笔记、MCP 和技能。
+> 📋 [51 个命令的完整列表](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — 包括模型管理、笔记、MCP 和技能。
 
 ---
 
