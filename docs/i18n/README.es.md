@@ -137,13 +137,14 @@ Escribe `/` en el prompt para ver el menú completo. Estos son los que más usar
 | `/quickstart` | Tour interactivo de 5 minutos por el pipeline SDD |
 | `/spec-plan` | Planificar nuevas funcionalidades con specs |
 | `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit |
+| [`/spec-test`](../spec-test_en.md) | Ejecutar las pruebas canónicas del proyecto para Node/TypeScript, Go, Java y Rust |
 | `/init` | Crear `AGENTS.md` con instrucciones para la IA |
 | `/steering-add` | Añadir regla que la IA sigue en todas las sesiones |
 | `/budget` | Ver costo del proyecto por modelo y zona horaria |
 | `/context` | Ver tokens, costo y caché de la sesión |
 | `/help` | Lista completa de comandos y atajos |
 
-> 📋 [Lista completa de 51 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluyendo gestión de modelos, notas, MCP y skills.
+> 📋 [Lista completa de 52 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluyendo gestión de modelos, notas, MCP y skills.
 
 ---
 

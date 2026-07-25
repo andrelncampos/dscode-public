@@ -137,13 +137,14 @@ dscode
 | `/quickstart` | 5 मिनट का इंटरैक्टिव SDD पाइपलाइन टूर |
 | `/spec-plan` | स्पेक्स के साथ नई सुविधाओं की योजना बनाएं |
 | `/spec-pipe <n>` | पूर्ण पाइपलाइन: new → verify → implement → audit |
+| [`/spec-test`](../spec-test_en.md) | Node/TypeScript, Go, Java और Rust के लिए परियोजना के मानक टेस्ट चलाएं |
 | `/init` | AI के लिए निर्देशों के साथ `AGENTS.md` बनाएं |
 | `/steering-add` | एक नियम जोड़ें जिसका AI हर सत्र में पालन करे |
 | `/budget` | मॉडल और समय क्षेत्र के अनुसार परियोजना लागत देखें |
 | `/context` | सत्र के टोकन, लागत और कैश देखें |
 | `/help` | कमांड और कीबोर्ड शॉर्टकट की पूरी सूची |
 
-> 📋 [51 कमांड की पूरी सूची](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — मॉडल प्रबंधन, नोट्स, MCP और स्किल्स सहित।
+> 📋 [52 कमांड की पूरी सूची](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — मॉडल प्रबंधन, नोट्स, MCP और स्किल्स सहित।
 
 ---
 
