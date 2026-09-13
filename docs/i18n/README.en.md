@@ -136,7 +136,7 @@ Type `/` in the prompt to see the full menu. Here are the ones you'll use most:
 | `/model` | Switch between 16 models across 4 providers |
 | `/quickstart` | 5-minute interactive SDD pipeline tour |
 | `/spec-plan` | Plan new features with specs |
-| `/spec-pipe <n>` | Full pipeline: new → verify → implement → audit |
+| `/spec-pipe <n>` | Full pipeline: new → verify → implement → audit → test |
 | [`/spec-test`](../spec-test_en.md) | Run the project's canonical tests for Node/TypeScript, Go, Java, and Rust |
 | `/init` | Create `AGENTS.md` with instructions for the AI |
 | `/steering-add` | Add a rule the AI follows in every session |
@@ -185,9 +185,19 @@ tools: [Read, Grep, Glob, Bash]
 
 ## License and origin
 
-**DsCode is free for individual and professional use.** The source code is source-available — redistribution is allowed only from official binaries.
+**DsCode is distributed under the MIT License.** The binaries and other public artifacts may be used, copied, redistributed, modified, sublicensed, and sold without royalties — for personal, academic, professional, or commercial use.
 
-This project derives from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originally licensed under MIT. The original copyright notice is preserved in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+DsCode is closed-source software with executable distributions made available under the MIT License. The source code of DsCode's specific modifications is not part of the public distribution. For this reason, DsCode is not presented as open source software.
+
+**MIT permissions (distributed binaries):**
+- ✅ Personal, academic, professional, and commercial use
+- ✅ Redistribution and mirroring
+- ✅ Sublicensing and resale
+- ✅ Inclusion in products and scientific artifacts
+- ✅ Benchmarking and publication of results
+- ✅ Modification of distributed artifact, where technically possible
+
+This project derives from [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originally licensed under MIT. The original copyright notice is preserved in [LICENSE](LICENSE) and [NOTICE](NOTICE). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full list of components and licenses.
 
 ---
 

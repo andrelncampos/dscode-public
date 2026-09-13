@@ -22,9 +22,9 @@
 <br/>
 </div>
 
-O **DsCode** é um assistente de programação que roda no terminal. Você conversa com **16 modelos entre DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude e Google Gemini** — e ele analisa, sugere, revisa e escreve código no seu projeto.
+O **DsCode** é um assistente de programação que roda no terminal. Você conversa com **44 modelos entre DeepSeek V4, OpenAI GPT, Anthropic Claude, Google Gemini, Z.AI GLM, Meta Muse Spark e modelos locais (Ollama/vLLM)** — e ele analisa, sugere, revisa e escreve código no seu projeto.
 
-A diferença: o DsCode é o **único** assistente com um pipeline completo de desenvolvimento orientado a especificações (SDD). Ele não só escreve código — ele **planeja** o que construir, **verifica** a qualidade, **implementa** as tarefas e **audita** o resultado. Tudo com correção automática em cada etapa.
+A diferença: o DsCode é o **único** assistente com um pipeline completo de desenvolvimento orientado a especificações (SDD). Ele não só escreve código — ele **planeja** o que construir, **verifica** a qualidade, **implementa** as tarefas e **audita** o resultado. Cada etapa roda isolada, com um único recibo verificável (handoff) entre elas — e a IA nunca decide sozinha se uma etapa passou: isso é verificação determinística, não opinião do modelo. Funciona com **qualquer stack** (TypeScript, .NET, Python e mais) porque a validação atravessa o mesmo caminho confiável independente da linguagem.
 
 ---
 
@@ -33,18 +33,20 @@ A diferença: o DsCode é o **único** assistente com um pipeline completo de de
 ```mermaid
 flowchart LR
     P["/spec-plan<br/>Planeja"] --> N["/spec-new<br/>Cria specs"]
-    N --> V["/spec-verify<br/>Verifica 🔄"]
+    N --> V["/spec-review<br/>Verifica 🔄"]
     V -->|"Auto-corrige"| V
     V --> I["/spec-implement<br/>Implementa"]
     I --> A["/spec-audit<br/>Audita 🔄"]
     A -->|"Auto-corrige"| A
-    A --> D[✅ Feature pronta]
+    A --> T["/spec-test<br/>Testa"]
+    T --> D[✅ Feature pronta]
 ```
 
 | Capacidade | O que faz | Por que nenhum outro tem |
 |---|---|---|
-| **Pipeline SDD** | Ciclo completo: planejar → criar → verificar → implementar → auditar | Auto-correção em 2 checkpoints — verify e audit corrigem falhas sozinhos |
-| **Multi-provedor** | DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini | Troque de provedor sem alterar uma linha de configuração |
+| **Pipeline SDD** | Ciclo completo: planejar → criar → verificar → implementar → auditar → testar | Auto-correção em 2 checkpoints + gates determinísticos (máx. 6, 1 por etapa) — a IA redige, o código verifica |
+| **Multi-provedor** | DeepSeek V4, OpenAI GPT, Anthropic Claude, Google Gemini, Z.AI GLM, Muse Spark, Ollama/vLLM local | Troque de provedor sem alterar uma linha de configuração; chaves por projeto, migração automática |
+| **Stack-agnostic** | TypeScript, .NET, Python e mais pelo mesmo caminho de validação | O gate não julga sua linguagem — valida o documento e roda seus testes |
 | **Skills como agentes** | Subagentes isolados com modelo, tools e thinking próprios | Cada skill roda em sandbox — não polui o contexto principal |
 | **MCP nativo** | Conecte bancos, navegadores e APIs externas | Integrado nas 3 camadas: skills, specs e TUI |
 | **Steering** | Regras persistentes que a IA segue em todas as sessões | Controle granular: adicione, liste, altere e remova regras por posição |
@@ -133,15 +135,17 @@ Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai
 | Comando | Descrição |
 |---|---|
 | `/new` | Nova conversa — zera o contexto |
-| `/model` | Trocar entre 16 modelos de 4 provedores |
+| `/model` | Trocar entre 44 modelos (DeepSeek, OpenAI, Anthropic, Gemini, GLM, Muse Spark, locais) |
 | `/quickstart` | Tour interativo de 5 minutos pelo pipeline SDD |
 | `/spec-plan` | Planejar novas funcionalidades com specs |
-| `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit |
+| `/spec-pipe <n>` | Pipeline completo: new → review → implement → audit → test |
 | [`/spec-test`](docs/spec-test.md) | Executar testes canônicos do projeto para Node/TypeScript, Go, Java e Rust |
 | `/init` | Criar `AGENTS.md` com instruções para a IA |
 | `/steering-add` | Adicionar regra que a IA segue em todas as sessões |
 | `/budget` | Ver custo acumulado do projeto por modelo e timezone |
 | `/context` | Ver tokens, custo e cache da sessão |
+| `/docs` | Consultar documentação técnica atualizada (Exa/Google) |
+| `/sdd` | Configurar o pipeline SDD (depth, cascade) sem editar JSON |
 | `/help` | Lista completa de comandos e atalhos |
 
 > 📋 [Lista completa dos 52 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluindo gestão de modelos, notas, MCP e skills.
@@ -185,9 +189,19 @@ tools: [Read, Grep, Glob, Bash]
 
 ## Licença e origem
 
-**DsCode é gratuito para uso individual e profissional.** O código-fonte é source-available — redistribuição permitida apenas dos binários oficiais.
+**DsCode é distribuído sob a licença MIT.** Os binários e demais artefatos públicos podem ser usados, copiados, redistribuídos, modificados, sublicenciados e vendidos sem cobrança de royalties — para uso pessoal, acadêmico, profissional ou comercial.
 
-Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado sob MIT. O aviso de copyright original é preservado em [LICENSE](LICENSE) e [NOTICE](NOTICE).
+DsCode é um software de código-fonte fechado com distribuições executáveis disponibilizadas sob a licença MIT. O código-fonte das modificações específicas do DsCode não integra a distribuição pública. Por esse motivo, o DsCode não é apresentado como software de código aberto.
+
+**Permissões da MIT (binários distribuídos):**
+- ✅ Uso pessoal, acadêmico, profissional e comercial
+- ✅ Redistribuição e espelhamento
+- ✅ Sublicenciamento e venda
+- ✅ Inclusão em produtos e artefatos científicos
+- ✅ Benchmarking e publicação de resultados
+- ✅ Modificação do artefato distribuído, quando tecnicamente possível
+
+Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente licenciado sob MIT. O aviso de copyright original é preservado em [LICENSE](LICENSE) e [NOTICE](NOTICE). Consulte [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para a relação completa de componentes e licenças.
 
 ---
 

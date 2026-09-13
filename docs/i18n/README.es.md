@@ -136,7 +136,7 @@ Escribe `/` en el prompt para ver el menú completo. Estos son los que más usar
 | `/model` | Cambiar entre 16 modelos de 4 proveedores |
 | `/quickstart` | Tour interactivo de 5 minutos por el pipeline SDD |
 | `/spec-plan` | Planificar nuevas funcionalidades con specs |
-| `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit |
+| `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit → test |
 | [`/spec-test`](../spec-test_en.md) | Ejecutar las pruebas canónicas del proyecto para Node/TypeScript, Go, Java y Rust |
 | `/init` | Crear `AGENTS.md` con instrucciones para la IA |
 | `/steering-add` | Añadir regla que la IA sigue en todas las sesiones |
@@ -185,9 +185,19 @@ tools: [Read, Grep, Glob, Bash]
 
 ## Licencia y origen
 
-**DsCode es gratuito para uso individual y profesional.** El código fuente es source-available — la redistribución está permitida solo desde los binarios oficiales.
+**DsCode se distribuye bajo la licencia MIT.** Los binarios y demás artefactos públicos pueden usarse, copiarse, redistribuirse, modificarse, sublicenciarse y venderse sin royalties — para uso personal, académico, profesional o comercial.
 
-Este proyecto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente bajo licencia MIT. El aviso de copyright original se preserva en [LICENSE](LICENSE) y [NOTICE](NOTICE).
+DsCode es software de código fuente cerrado con distribuciones ejecutables disponibles bajo la licencia MIT. El código fuente de las modificaciones específicas de DsCode no forma parte de la distribución pública. Por este motivo, DsCode no se presenta como software de código abierto.
+
+**Permisos MIT (binarios distribuidos):**
+- ✅ Uso personal, académico, profesional y comercial
+- ✅ Redistribución y creación de espejos
+- ✅ Sublicenciamiento y reventa
+- ✅ Inclusión en productos y artefactos científicos
+- ✅ Benchmarking y publicación de resultados
+- ✅ Modificación del artefacto distribuido, cuando sea técnicamente posible
+
+Este proyecto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli), originalmente bajo licencia MIT. El aviso de copyright original se preserva en [LICENSE](LICENSE) y [NOTICE](NOTICE). Consulte [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para la lista completa de componentes y licencias.
 
 ---
 

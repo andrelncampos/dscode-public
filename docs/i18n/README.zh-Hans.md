@@ -136,7 +136,7 @@ dscode
 | `/model` | 在 4 个供应商的 16 个模型之间切换 |
 | `/quickstart` | 5 分钟 SDD 流水线互动教程 |
 | `/spec-plan` | 使用规范规划新功能 |
-| `/spec-pipe <n>` | 完整流水线：new → verify → implement → audit |
+| `/spec-pipe <n>` | 完整流水线：new → verify → implement → audit → test |
 | [`/spec-test`](../spec-test_en.md) | 运行项目针对 Node/TypeScript、Go、Java 和 Rust 的规范测试 |
 | `/init` | 创建 `AGENTS.md` 为 AI 提供指令 |
 | `/steering-add` | 添加 AI 在每个会话中遵循的规则 |
@@ -185,9 +185,11 @@ tools: [Read, Grep, Glob, Bash]
 
 ## 许可证和起源
 
-**DsCode 对个人和专业使用免费。** 源代码为 source-available — 仅允许从官方二进制文件重新分发。
+**DsCode 在 MIT 许可证下分发。** 二进制文件和其他公共制品可以免版税地使用、复制、重新分发、修改、再许可和出售——适用于个人、学术、专业或商业用途。
 
-本项目源自 [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli)，最初基于 MIT 许可。原始版权声明保留在 [LICENSE](LICENSE) 和 [NOTICE](NOTICE) 中。
+DsCode 是闭源软件，其可执行发行版在 MIT 许可证下提供。DsCode 特定修改的源代码不包含在公共发行版中。因此，DsCode 不作为开源软件呈现。
+
+本项目源自 [DeepCode (lessweb/deepcode-cli)](https://github.com/lessweb/deepcode-cli)，最初基于 MIT 许可。原始版权声明保留在 [LICENSE](LICENSE) 和 [NOTICE](NOTICE) 中。完整组件和许可证列表请参阅 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ---
 
