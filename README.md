@@ -98,6 +98,8 @@ Crie `~/.dscode/settings.json` com sua chave de API:
 }
 ```
 
+Sem modelo configurado, o DsCode abre normalmente e mostra um aviso persistente guiando para `/model-add`.
+
 ### 2. Abra seu projeto e inicie
 
 ```bash
@@ -136,6 +138,7 @@ Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai
 |---|---|
 | `/new` | Nova conversa — zera o contexto |
 | `/model` | Trocar entre 44 modelos (DeepSeek, OpenAI, Anthropic, Gemini, GLM, Muse Spark, locais) |
+| `/model-add` | Cadastrar modelo pelo wizard unificado (testa antes de salvar) |
 | `/quickstart` | Tour interativo de 5 minutos pelo pipeline SDD |
 | `/spec-plan` | Planejar novas funcionalidades com specs |
 | `/spec-pipe <n>` | Pipeline completo: new → review → implement → audit → test |
