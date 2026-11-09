@@ -277,6 +277,15 @@ Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/less
 
 ⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões de sites de terceiros.
 
+### Publicação (mantenedor)
+
+```bash
+node scripts/release-prepare.mjs X.Y.Z   # versão + notas
+npm run release:publish                  # valida o recibo local e publica no repositório público
+```
+
+O comando exige árvore limpa, `gh` autenticado e recibo PASS do preflight local (Windows x64 + WSL, Node 24). Se o recibo não existir para o SHA de `origin/main`, ele roda o preflight uma vez; depois publica os quatro assets e devolve o link. Detalhes em [docs/RELEASE_GUIDE.md](docs/RELEASE_GUIDE.md).
+
 ---
 
 <!-- LINK GROUP -->
