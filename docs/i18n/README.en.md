@@ -40,13 +40,13 @@ flowchart LR
     T -. "Findings feed the next /spec-plan" .-> P
 ```
 
-| Capability | What it does | Why no other tool has it |
-|---|---|---|
-| **SDD Pipeline** | Delivery cycle: plan → create → implement, with optional explicit diagnostic audit | NONSTOP autonomy with deterministic gates — the LLM drafts, the code decides |
-| **Multi-provider** | DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini | Switch providers without changing a single line of configuration |
-| **Skills as agents** | Isolated subagents with their own model, tools, and thinking | Each skill runs sandboxed — never pollutes the main context |
-| **Native MCP** | Connect databases, browsers, and external APIs | Integrated across all 3 layers: skills, specs, and TUI |
-| **Steering** | Persistent rules the AI follows in every session | Granular control: add, list, edit, and remove rules by position |
+| Capability           | What it does                                                                       | Why no other tool has it                                                     |
+| -------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **SDD Pipeline**     | Delivery cycle: plan → create → implement, with optional explicit diagnostic audit | NONSTOP autonomy with deterministic gates — the LLM drafts, the code decides |
+| **Multi-provider**   | DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini                       | Switch providers without changing a single line of configuration             |
+| **Skills as agents** | Isolated subagents with their own model, tools, and thinking                       | Each skill runs sandboxed — never pollutes the main context                  |
+| **Native MCP**       | Connect databases, browsers, and external APIs                                     | Integrated across all 3 layers: skills, specs, and TUI                       |
+| **Steering**         | Persistent rules the AI follows in every session                                   | Granular control: add, list, edit, and remove rules by position              |
 
 ---
 
@@ -60,11 +60,11 @@ DsCode's SDD exists to **deliver software**, not to collect formalities. It plan
 
 **Three terminal results** for `/spec-pipe`:
 
-| Result | Meaning |
-|---|---|
-| `COMPLETED` | Every task implemented and persisted, nothing pending |
-| `COMPLETED_WITH_WARNINGS` | Work delivered, with pendings, omitted checks or unfinished tasks clearly listed |
-| `BLOCKED` | Mandatory impediment — security, integrity, permission, cancellation or an unusable runtime |
+| Result                    | Meaning                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `COMPLETED`               | Every task implemented and persisted, nothing pending                                       |
+| `COMPLETED_WITH_WARNINGS` | Work delivered, with pendings, omitted checks or unfinished tasks clearly listed            |
+| `BLOCKED`                 | Mandatory impediment — security, integrity, permission, cancellation or an unusable runtime |
 
 None of the three depends on `audited`: the result describes the **implementation**. `/spec-pipe` runs `spec-new → spec-implement` and **delivers**; it never runs `/spec-test` automatically. Run `/spec-test <n>` for the independent audit: it is the only authority that grants `audited`, only with proven conformity; when it finds problems, it preserves `implemented` and writes a report `/spec-plan` can consume.
 
@@ -80,13 +80,13 @@ Normative detail: [sdd-base.txt](../../sdd-contrato/sdd-base.txt) and [sdd-fluxo
 
 ## Quick comparison
 
-|  | DsCode | GitHub Copilot | Cursor | Claude Code | Amazon Kiro |
-|---|---|---|---|---|---|
-| **Terminal-native** | ✅ Native TUI | ❌ IDE only | ❌ IDE only | ✅ CLI | ⚠️ IDE + CLI |
-| **Multi-provider** | ✅ 4 providers | ❌ GitHub only | ⚠️ Limited | ❌ Anthropic only | ❌ Bedrock only |
-| **SDD Pipeline** | ✅ Complete + auto-correct | ❌ | ❌ | ❌ | ✅ IDE-based |
-| **Skills/Agents** | ✅ Isolated subagents | ❌ | ⚠️ Rules | ⚠️ Hooks | ✅ Powers |
-| **Free** | ✅ No cost | ⚠️ Limited | ⚠️ Limited | ⚠️ Credits | ❌ Bedrock cost |
+|                     | DsCode                     | GitHub Copilot | Cursor      | Claude Code       | Amazon Kiro     |
+| ------------------- | -------------------------- | -------------- | ----------- | ----------------- | --------------- |
+| **Terminal-native** | ✅ Native TUI              | ❌ IDE only    | ❌ IDE only | ✅ CLI            | ⚠️ IDE + CLI    |
+| **Multi-provider**  | ✅ 4 providers             | ❌ GitHub only | ⚠️ Limited  | ❌ Anthropic only | ❌ Bedrock only |
+| **SDD Pipeline**    | ✅ Complete + auto-correct | ❌             | ❌          | ❌                | ✅ IDE-based    |
+| **Skills/Agents**   | ✅ Isolated subagents      | ❌             | ⚠️ Rules    | ⚠️ Hooks          | ✅ Powers       |
+| **Free**            | ✅ No cost                 | ⚠️ Limited     | ⚠️ Limited  | ⚠️ Credits        | ❌ Bedrock cost |
 
 > **Amazon Kiro** is the closest competitor — both have SDD, Steering, and Skills. The difference: DsCode is **terminal-native, multi-provider, and free**; Kiro is **locked to Amazon Bedrock and charges for model usage**.
 
@@ -96,11 +96,10 @@ Normative detail: [sdd-base.txt](../../sdd-contrato/sdd-base.txt) and [sdd-fluxo
 
 Download the binary from the **[releases page](https://github.com/andrelncampos/dscode-public/releases)**. Requires **[Node.js 24+](https://nodejs.org)**.
 
-| System | File |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+| System        | File                             |
+| ------------- | -------------------------------- |
+| Windows (x64) | `dscode-vX.Y.Z-windows-x64.zip`  |
+| Linux (x64)   | `dscode-vX.Y.Z-linux-x64.tar.gz` |
 
 Extract and run `./dscode`. DsCode checks for updates automatically on startup.
 
@@ -140,16 +139,16 @@ Or run `dscode --quickstart` to jump straight into the tour.
 
 ## What you can do
 
-| Task | Type in the prompt |
-|---|---|
-| **Understand a project** | "Explain this project's architecture in 3 sentences." |
-| **Review code** | "Review the last commit's changes before I push." |
-| **Implement a feature** | "Add email validation to the form in `src/form.ts`." |
-| **Refactor** | "Simplify the `processData()` function without changing behavior." |
-| **Investigate a bug** | "Analyze this stack trace and find the root cause." |
-| **Create tests** | "Write unit tests for `validateUser()` in `src/validators.ts`." |
-| **Plan features** | `/spec-plan` — describe what you want and the AI creates full specs. |
-| **Create rules** | `/steering-add always use TypeScript strict mode` |
+| Task                     | Type in the prompt                                                   |
+| ------------------------ | -------------------------------------------------------------------- |
+| **Understand a project** | "Explain this project's architecture in 3 sentences."                |
+| **Review code**          | "Review the last commit's changes before I push."                    |
+| **Implement a feature**  | "Add email validation to the form in `src/form.ts`."                 |
+| **Refactor**             | "Simplify the `processData()` function without changing behavior."   |
+| **Investigate a bug**    | "Analyze this stack trace and find the root cause."                  |
+| **Create tests**         | "Write unit tests for `validateUser()` in `src/validators.ts`."      |
+| **Plan features**        | `/spec-plan` — describe what you want and the AI creates full specs. |
+| **Create rules**         | `/steering-add always use TypeScript strict mode`                    |
 
 ---
 
@@ -157,20 +156,20 @@ Or run `dscode --quickstart` to jump straight into the tour.
 
 Type `/` in the prompt to see the full menu. Here are the ones you'll use most:
 
-| Command | Description |
-|---|---|
-| `/new` | New conversation — resets context |
-| `/model` | Switch between 16 models across 4 providers |
-| `/quickstart` | 5-minute interactive SDD pipeline tour |
-| `/spec-plan` | Plan new features with specs |
-| `/spec-pipe <n>` | SDD delivery: new → implement (no automatic certification) |
-| [`/spec-test`](../spec-test_en.md) | Independent diagnostic audit of a spec; grants `audited` only on proven conformity |
+| Command                                      | Description                                                                                                 |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `/new`                                       | New conversation — resets context                                                                           |
+| `/model`                                     | Switch between 16 models across 4 providers                                                                 |
+| `/quickstart`                                | 5-minute interactive SDD pipeline tour                                                                      |
+| `/spec-plan`                                 | Plan new features with specs                                                                                |
+| `/spec-pipe <n>`                             | SDD delivery: new → implement (no automatic certification)                                                  |
+| [`/spec-test`](../spec-test_en.md)           | Independent diagnostic audit of a spec; grants `audited` only on proven conformity                          |
 | [`/spec-stabilize`](../spec-stabilize_en.md) | Reviews the delivered implementation, fixes real defects and re-evaluates until stable; **never certifies** |
-| `/init` | Create `AGENTS.md` with instructions for the AI |
-| `/steering-add` | Add a rule the AI follows in every session |
-| `/budget` | View project cost by model and timezone |
-| `/context` | View session tokens, cost, and cache |
-| `/help` | Full list of commands and keyboard shortcuts |
+| `/init`                                      | Create `AGENTS.md` with instructions for the AI                                                             |
+| `/steering-add`                              | Add a rule the AI follows in every session                                                                  |
+| `/budget`                                    | View project cost by model and timezone                                                                     |
+| `/context`                                   | View session tokens, cost, and cache                                                                        |
+| `/help`                                      | Full list of commands and keyboard shortcuts                                                                |
 
 > 📋 [Full list of 52 commands](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — including model management, notes, MCP, and skills.
 
@@ -180,11 +179,11 @@ Type `/` in the prompt to see the full menu. Here are the ones you'll use most:
 
 Skills are Markdown guides that teach the AI to work in a specific way. DsCode loads skills from 3 sources:
 
-| Location | Usage |
-|---|---|
-| `templates/skills/` (built-in) | 6 built-in skills — 3 always loaded (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); the rest on demand |
-| `./.dscode/skills/<name>/SKILL.md` | Project skills (highest precedence) |
-| `./.agents/skills/<name>/SKILL.md` | Project skills (compatibility) |
+| Location                           | Usage                                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `templates/skills/` (built-in)     | 6 built-in skills — 3 always loaded (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); the rest on demand |
+| `./.dscode/skills/<name>/SKILL.md` | Project skills (highest precedence)                                                                                  |
+| `./.agents/skills/<name>/SKILL.md` | Project skills (compatibility)                                                                                       |
 
 Skills can run as **autonomous agents** (`mode: agent`) — each with its own model, tools, and thinking, executing in a sandbox without polluting the main context.
 
@@ -201,13 +200,13 @@ tools: [read, grep, glob, bash]
 
 ## Security
 
-| Practice | Why |
-|---|---|
-| **Review commands before allowing** | The AI may suggest `rm`, `sudo`, or network access |
-| **Commit before large tasks** | `git reset --hard` undoes everything if something goes wrong |
-| **Review diffs** | DsCode shows every change — the AI can make mistakes |
-| **Never commit `settings.json`** | It contains your API key (`.gitignore` already excludes it) |
-| **Use a separate branch for experiments** | `git checkout -b ai-experiment` before risky changes |
+| Practice                                  | Why                                                          |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| **Review commands before allowing**       | The AI may suggest `rm`, `sudo`, or network access           |
+| **Commit before large tasks**             | `git reset --hard` undoes everything if something goes wrong |
+| **Review diffs**                          | DsCode shows every change — the AI can make mistakes         |
+| **Never commit `settings.json`**          | It contains your API key (`.gitignore` already excludes it)  |
+| **Use a separate branch for experiments** | `git checkout -b ai-experiment` before risky changes         |
 
 ---
 
@@ -218,6 +217,7 @@ tools: [read, grep, glob, bash]
 DsCode is closed-source software with executable distributions made available under the MIT License. The source code of DsCode's specific modifications is not part of the public distribution. For this reason, DsCode is not presented as open source software.
 
 **MIT permissions (distributed binaries):**
+
 - ✅ Personal, academic, professional, and commercial use
 - ✅ Redistribution and mirroring
 - ✅ Sublicensing and resale
@@ -231,11 +231,11 @@ This project derives from [DeepCode (lessweb/deepcode-cli)](https://github.com/l
 
 ## Official channels
 
-| Channel | Link |
-|---|---|
-| **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
+| Channel      | Link                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| **GitHub**   | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public)                                 |
 | **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
+| **Issues**   | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues)                   |
 
 ⚠️ Install DsCode **only** from the official channels above. Do not trust versions from third-party sites.
 

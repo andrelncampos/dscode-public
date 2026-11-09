@@ -44,15 +44,14 @@ flowchart LR
 
 **Política de qualidade:** continuar implementação e correção quando houver trabalho seguro; pausar somente quando recursos ou segurança exigirem; declarar `audited` apenas com aceitação verificada. Falhas reais não são ocultadas.
 
-
-| Capacidade | O que faz | Por que nenhum outro tem |
-|---|---|---|
-| **Pipeline SDD** | Planejar → especificar → implementar; auditar sob solicitação | Entrega primeiro: um ciclo de implementação e correção, com auditoria baseada em provas quando solicitada |
-| **Multi-provedor** | DeepSeek V4/V4.1, OpenAI GPT, Anthropic Claude, Google Gemini, Z.AI GLM, Muse Spark, Ollama/vLLM local | Troque de provedor sem alterar uma linha de configuração; chaves por projeto, migração automática |
-| **Stack-agnostic** | TypeScript, .NET, Python e mais pelo mesmo caminho de validação | O gate não julga sua linguagem — valida o documento e roda seus testes |
-| **Skills como agentes** | Subagentes isolados com modelo, tools e thinking próprios | Cada skill roda em sandbox — não polui o contexto principal |
-| **MCP nativo** | Conecte bancos, navegadores e APIs externas | Integrado nas 3 camadas: skills, specs e TUI |
-| **Steering** | Regras persistentes que a IA segue em todas as sessões | Controle granular: adicione, liste, altere e remova regras por posição |
+| Capacidade              | O que faz                                                                                              | Por que nenhum outro tem                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Pipeline SDD**        | Planejar → especificar → implementar; auditar sob solicitação                                          | Entrega primeiro: um ciclo de implementação e correção, com auditoria baseada em provas quando solicitada |
+| **Multi-provedor**      | DeepSeek V4/V4.1, OpenAI GPT, Anthropic Claude, Google Gemini, Z.AI GLM, Muse Spark, Ollama/vLLM local | Troque de provedor sem alterar uma linha de configuração; chaves por projeto, migração automática         |
+| **Stack-agnostic**      | TypeScript, .NET, Python e mais pelo mesmo caminho de validação                                        | O gate não julga sua linguagem — valida o documento e roda seus testes                                    |
+| **Skills como agentes** | Subagentes isolados com modelo, tools e thinking próprios                                              | Cada skill roda em sandbox — não polui o contexto principal                                               |
+| **MCP nativo**          | Conecte bancos, navegadores e APIs externas                                                            | Integrado nas 3 camadas: skills, specs e TUI                                                              |
+| **Steering**            | Regras persistentes que a IA segue em todas as sessões                                                 | Controle granular: adicione, liste, altere e remova regras por posição                                    |
 
 ---
 
@@ -66,11 +65,11 @@ O SDD do DsCode existe para **entregar software**, não para colecionar formalid
 
 **Três resultados terminais** para `/spec-pipe`:
 
-| Resultado | O que significa |
-|---|---|
-| `COMPLETED` | Todas as tarefas implementadas e persistidas, sem pendência registrada |
+| Resultado                 | O que significa                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `COMPLETED`               | Todas as tarefas implementadas e persistidas, sem pendência registrada                            |
 | `COMPLETED_WITH_WARNINGS` | Trabalho entregue, com pendências, verificações omitidas ou tarefas pendentes claramente listadas |
-| `BLOCKED` | Impedimento obrigatório — segurança, integridade, permissão, cancelamento ou runtime inutilizável |
+| `BLOCKED`                 | Impedimento obrigatório — segurança, integridade, permissão, cancelamento ou runtime inutilizável |
 
 Nenhum dos três depende de `audited`: o resultado descreve a **implementação**. O `/spec-pipe` executa `spec-new → spec-implement` e **entrega**; ele não roda `/spec-test` automaticamente. Quando quiser a auditoria rigorosa, rode `/spec-test <n>`: ele é a única autoridade que concede `audited`, e só com conformidade comprovada; quando encontra problemas, preserva `implemented` e grava um relatório que o `/spec-plan` pode consumir.
 
@@ -88,11 +87,10 @@ Nenhum dos três depende de `audited`: o resultado descreve a **implementação*
 
 Baixe o binário na **[página de releases](https://github.com/andrelncampos/dscode-public/releases)**. O `package.json` do snapshot examinado declara **[Node.js 24+](https://nodejs.org)**. A homologação-alvo da reforma é **Node.js 26**, mas a alteração do requisito mínimo depende de decisão e validação separadas.
 
-| Sistema | Arquivo |
-|---|---|
-| Windows (x64) | `dscode-windows-x64.zip` |
-| Linux (x64) | `dscode-linux-x64.tar.gz` |
-| macOS (Apple Silicon) | `dscode-macos-arm64.tar.gz` |
+| Sistema       | Arquivo                          |
+| ------------- | -------------------------------- |
+| Windows (x64) | `dscode-vX.Y.Z-windows-x64.zip`  |
+| Linux (x64)   | `dscode-vX.Y.Z-linux-x64.tar.gz` |
 
 Extraia e execute `./dscode`. O DsCode verifica atualizações automaticamente ao iniciar.
 
@@ -144,24 +142,24 @@ Ou execute `dscode --quickstart` para pular direto para o tour.
 
 O `settings.json` é **esparso**: só o que você declarar existe; todo o resto usa o default. Ele fica em `.dscode/settings.json`, é ignorado pelo Git e não pode ser alterado por um turno da IA.
 
-| Chave | Para que serve | Exemplo |
-|---|---|---|
-| `model` / `modelInstance` | Modelo ativo e instância fixada | `"deepseek-flash"` |
-| `modelInstances` | Credenciais cifradas, provider e prioridade de failover | veja acima |
-| `maxTokens` | Teto de tokens de saída | `128000` |
-| `reasoningEffort` | Profundidade de raciocínio | `"max"` |
-| `permissions` | `allow` / `deny` / `ask` / `defaultMode` por escopo | `{"deny":["mutate-git-log"]}` |
-| `trust.tools` | Aprovação persistente de uma ferramenta | `{"bash":{"approved":true}}` |
-| `trustedReadRoots` | Diretórios externos somente leitura | `["/srv/docs"]` |
-| `mcpServers` | Servidores MCP | veja [docs/mcp.md](docs/mcp.md) |
-| `memory` | Retenção e limites do histórico | `{"recentTurns":10}` |
-| `budget` | Alerta de custo diário/mensal (não bloqueia) | `{"dailyLimit":5}` |
-| `sdd.profile` | Perfil de rotas técnicas do SDD (sem critério de preço) | `"economic"` |
-| `sdd.validationExecution` | Autoriza validação no host | `{"allowTrustedLocalExecution":true}` |
-| `sdd.autonomousCorrection` | Correção autônoma no `/spec-pipe` | `true` |
-| `cacheMode` | Consciência de cache de prefixo | `"strict"` |
-| `terminalTitleTemplate` | Título do terminal | `"{{cwd}}"` |
-| `locale` | Idioma da interface | `"pt"` |
+| Chave                      | Para que serve                                          | Exemplo                               |
+| -------------------------- | ------------------------------------------------------- | ------------------------------------- |
+| `model` / `modelInstance`  | Modelo ativo e instância fixada                         | `"deepseek-flash"`                    |
+| `modelInstances`           | Credenciais cifradas, provider e prioridade de failover | veja acima                            |
+| `maxTokens`                | Teto de tokens de saída                                 | `128000`                              |
+| `reasoningEffort`          | Profundidade de raciocínio                              | `"max"`                               |
+| `permissions`              | `allow` / `deny` / `ask` / `defaultMode` por escopo     | `{"deny":["mutate-git-log"]}`         |
+| `trust.tools`              | Aprovação persistente de uma ferramenta                 | `{"bash":{"approved":true}}`          |
+| `trustedReadRoots`         | Diretórios externos somente leitura                     | `["/srv/docs"]`                       |
+| `mcpServers`               | Servidores MCP                                          | veja [docs/mcp.md](docs/mcp.md)       |
+| `memory`                   | Retenção e limites do histórico                         | `{"recentTurns":10}`                  |
+| `budget`                   | Alerta de custo diário/mensal (não bloqueia)            | `{"dailyLimit":5}`                    |
+| `sdd.profile`              | Perfil de rotas técnicas do SDD (sem critério de preço) | `"economic"`                          |
+| `sdd.validationExecution`  | Autoriza validação no host                              | `{"allowTrustedLocalExecution":true}` |
+| `sdd.autonomousCorrection` | Correção autônoma no `/spec-pipe`                       | `true`                                |
+| `cacheMode`                | Consciência de cache de prefixo                         | `"strict"`                            |
+| `terminalTitleTemplate`    | Título do terminal                                      | `"{{cwd}}"`                           |
+| `locale`                   | Idioma da interface                                     | `"pt"`                                |
 
 ### Política de execução
 
@@ -176,16 +174,16 @@ Veja [docs/execution-policy.md](docs/execution-policy.md).
 
 ## Exemplos do que você pode fazer
 
-| Tarefa | Digite no prompt |
-|---|---|
-| **Entender um projeto** | "Explique a arquitetura deste projeto em 3 frases." |
-| **Revisar código** | "Revise as alterações do último commit antes de eu fazer push." |
-| **Implementar feature** | "Adicione validação de email ao formulário em `src/form.ts`." |
-| **Refatorar** | "Simplifique a função `processData()` sem mudar o comportamento." |
-| **Investigar bug** | "Analise este stack trace e encontre a causa." |
-| **Criar testes** | "Crie testes unitários para `validateUser()` em `src/validators.ts`." |
-| **Planejar features** | `/spec-plan` — descreva o que quer e a IA cria specs completas. |
-| **Criar regras** | `/steering-add sempre use português para responder` |
+| Tarefa                  | Digite no prompt                                                      |
+| ----------------------- | --------------------------------------------------------------------- |
+| **Entender um projeto** | "Explique a arquitetura deste projeto em 3 frases."                   |
+| **Revisar código**      | "Revise as alterações do último commit antes de eu fazer push."       |
+| **Implementar feature** | "Adicione validação de email ao formulário em `src/form.ts`."         |
+| **Refatorar**           | "Simplifique a função `processData()` sem mudar o comportamento."     |
+| **Investigar bug**      | "Analise este stack trace e encontre a causa."                        |
+| **Criar testes**        | "Crie testes unitários para `validateUser()` em `src/validators.ts`." |
+| **Planejar features**   | `/spec-plan` — descreva o que quer e a IA cria specs completas.       |
+| **Criar regras**        | `/steering-add sempre use português para responder`                   |
 
 ---
 
@@ -193,23 +191,23 @@ Veja [docs/execution-policy.md](docs/execution-policy.md).
 
 Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai usar:
 
-| Comando | Descrição |
-|---|---|
-| `/new` | Nova conversa — zera o contexto |
-| `/model` | Trocar entre 44 modelos (DeepSeek, OpenAI, Anthropic, Gemini, GLM, Muse Spark, locais) |
-| `/model-add` | Cadastrar modelo pelo wizard unificado (testa antes de salvar) |
-| `/quickstart` | Tour interativo de 5 minutos pelo pipeline SDD |
-| `/spec-plan` | Planejar novas funcionalidades com specs |
-| `/spec-pipe <n>` | Entrega SDD: new → implement (sem certificação automática) |
-| [`/spec-test`](docs/spec-test.md) | Auditoria diagnóstica independente de uma spec; concede `audited` só com conformidade comprovada |
+| Comando                                     | Descrição                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `/new`                                      | Nova conversa — zera o contexto                                                                         |
+| `/model`                                    | Trocar entre 44 modelos (DeepSeek, OpenAI, Anthropic, Gemini, GLM, Muse Spark, locais)                  |
+| `/model-add`                                | Cadastrar modelo pelo wizard unificado (testa antes de salvar)                                          |
+| `/quickstart`                               | Tour interativo de 5 minutos pelo pipeline SDD                                                          |
+| `/spec-plan`                                | Planejar novas funcionalidades com specs                                                                |
+| `/spec-pipe <n>`                            | Entrega SDD: new → implement (sem certificação automática)                                              |
+| [`/spec-test`](docs/spec-test.md)           | Auditoria diagnóstica independente de uma spec; concede `audited` só com conformidade comprovada        |
 | [`/spec-stabilize`](docs/spec-stabilize.md) | Revisa a implementação entregue, corrige defeitos reais e reavalia até estabilizar; **nunca certifica** |
-| `/init` | Criar `AGENTS.md` com instruções para a IA |
-| `/steering-add` | Adicionar regra que a IA segue em todas as sessões |
-| `/budget` | Ver custo acumulado do projeto por modelo e timezone |
-| `/context` | Ver tokens, custo e cache da sessão |
-| `/docs` | Consultar documentação técnica atualizada (Exa/Google) |
-| `/sdd` | Configurar o pipeline SDD (depth, cascade) sem editar JSON |
-| `/help` | Lista completa de comandos e atalhos |
+| `/init`                                     | Criar `AGENTS.md` com instruções para a IA                                                              |
+| `/steering-add`                             | Adicionar regra que a IA segue em todas as sessões                                                      |
+| `/budget`                                   | Ver custo acumulado do projeto por modelo e timezone                                                    |
+| `/context`                                  | Ver tokens, custo e cache da sessão                                                                     |
+| `/docs`                                     | Consultar documentação técnica atualizada (Exa/Google)                                                  |
+| `/sdd`                                      | Configurar o pipeline SDD (depth, cascade) sem editar JSON                                              |
+| `/help`                                     | Lista completa de comandos e atalhos                                                                    |
 
 > 📋 [Lista completa dos 52 comandos](https://github.com/andrelncampos/dscode-public#todos-os-comandos-slash) — incluindo gestão de modelos, notas, MCP e skills.
 
@@ -219,11 +217,11 @@ Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai
 
 Skills são guias em Markdown que ensinam a IA a trabalhar de um jeito específico. O DsCode carrega skills de 3 fontes:
 
-| Local | Uso |
-|---|---|
-| `templates/skills/` (built-in) | 6 skills embutidas — 3 carregadas sempre (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); as demais sob demanda |
-| `./.dscode/skills/<nome>/SKILL.md` | Skills do projeto (maior precedência) |
-| `./.agents/skills/<nome>/SKILL.md` | Skills do projeto (compatibilidade) |
+| Local                              | Uso                                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `templates/skills/` (built-in)     | 6 skills embutidas — 3 carregadas sempre (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); as demais sob demanda |
+| `./.dscode/skills/<nome>/SKILL.md` | Skills do projeto (maior precedência)                                                                                        |
+| `./.agents/skills/<nome>/SKILL.md` | Skills do projeto (compatibilidade)                                                                                          |
 
 Skills podem rodar como **agentes autônomos** (`mode: agent`) — cada um com seu próprio modelo, ferramentas e thinking, executando em sandbox sem poluir o contexto principal.
 
@@ -240,12 +238,12 @@ tools: [read, grep, glob, bash]
 
 ## Segurança
 
-| Prática | Por quê |
-|---|---|
-| **Revise comandos antes de permitir** | A IA pode sugerir `rm`, `sudo` ou acesso à rede |
-| **Faça commit antes de tarefas grandes** | `git reset --hard` desfaz tudo se algo der errado |
-| **Revise os diffs** | O DsCode mostra cada alteração — a IA pode errar |
-| **Nunca comite `settings.json`** | Contém sua chave de API (o `.gitignore` já exclui) |
+| Prática                                   | Por quê                                                       |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| **Revise comandos antes de permitir**     | A IA pode sugerir `rm`, `sudo` ou acesso à rede               |
+| **Faça commit antes de tarefas grandes**  | `git reset --hard` desfaz tudo se algo der errado             |
+| **Revise os diffs**                       | O DsCode mostra cada alteração — a IA pode errar              |
+| **Nunca comite `settings.json`**          | Contém sua chave de API (o `.gitignore` já exclui)            |
 | **Use branch separada para experimentos** | `git checkout -b experimento-ia` antes de mudanças arriscadas |
 
 ---
@@ -257,6 +255,7 @@ tools: [read, grep, glob, bash]
 DsCode é um software de código-fonte fechado com distribuições executáveis disponibilizadas sob a licença MIT. O código-fonte das modificações específicas do DsCode não integra a distribuição pública. Por esse motivo, o DsCode não é apresentado como software de código aberto.
 
 **Permissões da MIT (binários distribuídos):**
+
 - ✅ Uso pessoal, acadêmico, profissional e comercial
 - ✅ Redistribuição e espelhamento
 - ✅ Sublicenciamento e venda
@@ -270,11 +269,11 @@ Este projeto deriva de [DeepCode (lessweb/deepcode-cli)](https://github.com/less
 
 ## Canais oficiais
 
-| Canal | Link |
-|---|---|
-| **GitHub** | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public) |
+| Canal        | Link                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| **GitHub**   | [github.com/andrelncampos/dscode-public](https://github.com/andrelncampos/dscode-public)                                 |
 | **Releases** | [github.com/andrelncampos/dscode-public/releases](https://github.com/andrelncampos/dscode-public/releases) |
-| **Issues** | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues) |
+| **Issues**   | [github.com/andrelncampos/dscode-public/issues](https://github.com/andrelncampos/dscode-public/issues)                   |
 
 ⚠️ Instale o DsCode **apenas** pelos canais oficiais acima. Não confie em versões de sites de terceiros.
 
