@@ -33,21 +33,48 @@
 ```mermaid
 flowchart LR
     P["/spec-plan<br/>规划"] --> N["/spec-new<br/>创建规范"]
-    N --> V["/spec-verify<br/>验证 🔄"]
-    V -->|"自动修正"| V
-    V --> I["/spec-implement<br/>实现"]
-    I --> A["/spec-audit<br/>审计 🔄"]
-    A -->|"自动修正"| A
-    A --> D[✅ 功能就绪]
+    N --> I["/spec-implement<br/>实现"]
+    I --> D[✅ 已交付]
+    I -. "可选，按请求" .-> T["/spec-test<br/>审计"]
+    T -- "符合性已证明" --> A[🔒 Audited]
+    T -. "发现作为下一次 /spec-plan 的输入" .-> P
 ```
 
 | 能力 | 功能 | 为什么没有其他工具拥有 |
 |---|---|---|
-| **SDD 流水线** | 完整周期：规划 → 创建 → 验证 → 实现 → 审计 | 2 个检查点自动修正 — verify 和 audit 自行修复问题 |
+| **SDD 流水线** | 交付周期：规划 → 创建 → 实现，可选显式诊断审计 | NONSTOP 自主与确定性质量门 — LLM 起草，代码决定 |
 | **多供应商** | DeepSeek V4、OpenAI GPT-5.x、Anthropic Claude、Google Gemini | 无需更改任何配置即可切换供应商 |
 | **技能作为代理** | 拥有独立模型、工具和 thinking 的隔离子代理 | 每个技能在沙箱中运行 — 不污染主上下文 |
 | **原生 MCP** | 连接数据库、浏览器和外部 API | 跨 3 层集成：技能、规范和 TUI |
 | **Steering** | AI 在每个会话中遵循的持久规则 | 细粒度控制：按位置添加、列出、编辑和移除规则 |
+
+---
+
+## DsCode 的 SDD 如何工作
+
+DsCode 的 SDD 旨在**交付软件**，而不是堆积形式。它只规划必要的部分，实施、按比例验证，并以明确的结果结束——即使仍有未完成项。
+
+**NONSTOP 是默认行为。** 一个失败的测试、一个未找到的文本判据，或与实现不一致的文档，本身不会中断工作：它们会产生诊断，在可操作时进行一次有界修正，然后继续。停止只保留给真正的阻碍：安全、权限、完整性、用户显式取消，或无法安全执行。
+
+**按比例验证。** 实施过程中，代理执行局部检查和与改动相关的测试。技术栈的 quality gates 和最终测试在收尾时**只执行一次**，针对最终状态。最终验证集绝不省略——也绝不在每个任务后重复。
+
+`/spec-pipe` 的**三种终态结果**：
+
+| 结果 | 含义 |
+|---|---|
+| `COMPLETED` | 所有任务已实现并持久化，无待办 |
+| `COMPLETED_WITH_WARNINGS` | 已交付工作，并清楚列明未完成项、已跳过的检查或未完成任务 |
+| `BLOCKED` | 强制阻碍——安全、完整性、权限、取消或运行环境不可用 |
+
+三者都不依赖 `audited`：结果描述的是**实现**。`/spec-pipe` 执行 `spec-new → spec-implement` 并**交付**；它不会自动运行 `/spec-test`。需要独立审计时请运行 `/spec-test <n>`：它是唯一能授予 `audited` 的权威，且仅在符合性得到证明时授予；发现问题时，它保留 `implemented` 并写出 `/spec-plan` 可消费的报告。
+
+**流水线不会浪费时间自我认证。** `/spec-pipe` 既不运行质量包，也不运行定向测试套件，也不运行任务声明的 `validationCommands`：没有延后，因此收尾时不恢复任何内容，记录的事实是 `not-applicable`。文本判据、未证明的义务和文档漂移会作为具名待办进入报告：它们不会否决交付，也不会重开已完成的任务。`/spec-test` 保留严格审计；它不修复代码，也不重开任务；未运行它绝不被表述为批准。
+
+**策略随调用而定。** `/spec-pipe` 负责交付。`/spec-implement` 与 `/spec-test` 等直接命令保留严格语义，不会继承该策略——同一执行器、同一封存权威、同一持久状态。
+
+**技术栈无关。** Prettier、ESLint、TypeScript 和 npm 不是通用要求：验证器依据实际检测到的技术栈选择。.NET、Java、Python、Go、Rust、Delphi 等走同一路径。
+
+规范细节：[sdd-base.txt](../../sdd-contrato/sdd-base.txt) 与 [sdd-fluxo.md](../../sdd-contrato/sdd-fluxo.md)。
 
 ---
 
@@ -136,8 +163,8 @@ dscode
 | `/model` | 在 4 个供应商的 16 个模型之间切换 |
 | `/quickstart` | 5 分钟 SDD 流水线互动教程 |
 | `/spec-plan` | 使用规范规划新功能 |
-| `/spec-pipe <n>` | 完整流水线：new → verify → implement → audit → test |
-| [`/spec-test`](../spec-test_en.md) | 运行项目针对 Node/TypeScript、Go、Java 和 Rust 的规范测试 |
+| `/spec-pipe <n>` | SDD 交付：new → implement（不自动认证） |
+| [`/spec-test`](../spec-test_en.md) | 对规格进行独立诊断审计；仅在符合性得到证明时授予 `audited` |
 | `/init` | 创建 `AGENTS.md` 为 AI 提供指令 |
 | `/steering-add` | 添加 AI 在每个会话中遵循的规则 |
 | `/budget` | 按模型和时区查看项目成本 |
@@ -154,9 +181,9 @@ dscode
 
 | 位置 | 用途 |
 |---|---|
-| `templates/skills/`（内置） | 5 个始终可用的技能 |
-| `~/.agents/skills/<名称>/SKILL.md` | 个人技能 |
-| `./.agents/skills/<名称>/SKILL.md` | 项目技能 |
+| `templates/skills/`（内置） | 6 个内置技能 — 3 个始终加载（`karpathy-guidelines`、`project-structure`、`sdd-workflow`），其余按需加载 |
+| `./.dscode/skills/<名称>/SKILL.md` | 项目技能（优先级最高） |
+| `./.agents/skills/<名称>/SKILL.md` | 项目技能（兼容） |
 
 技能可以作为**自主代理**（`mode: agent`）运行 — 每个代理拥有自己的模型、工具和 thinking，在沙箱中执行而不污染主上下文。
 
@@ -166,7 +193,7 @@ name: reviewer
 description: 审查代码中的错误和改进点
 mode: agent
 model: deepseek-flash
-tools: [Read, Grep, Glob, Bash]
+tools: [read, grep, glob, bash]
 ```
 
 ---

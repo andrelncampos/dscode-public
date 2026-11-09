@@ -34,17 +34,47 @@ The difference: DsCode is the **only** assistant with a complete Spec-Driven Dev
 flowchart LR
     P["/spec-plan<br/>Plans"] --> N["/spec-new<br/>Creates specs"]
     N --> I["/spec-implement<br/>Implements"]
-    I --> T["/spec-test<br/>Certifies 🔄"]
-    T --> D[✅ Feature ready]
+    I --> D[✅ Delivered]
+    I -. "optional, on request" .-> T["/spec-test<br/>Audits"]
+    T -- "Conformity proven" --> A[🔒 Audited]
+    T -. "Findings feed the next /spec-plan" .-> P
 ```
 
 | Capability | What it does | Why no other tool has it |
 |---|---|---|
-| **SDD Pipeline** | Full cycle: plan → create → implement → certify | NONSTOP autonomy with deterministic gates — the LLM drafts, the code decides |
+| **SDD Pipeline** | Delivery cycle: plan → create → implement, with optional explicit diagnostic audit | NONSTOP autonomy with deterministic gates — the LLM drafts, the code decides |
 | **Multi-provider** | DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini | Switch providers without changing a single line of configuration |
 | **Skills as agents** | Isolated subagents with their own model, tools, and thinking | Each skill runs sandboxed — never pollutes the main context |
 | **Native MCP** | Connect databases, browsers, and external APIs | Integrated across all 3 layers: skills, specs, and TUI |
 | **Steering** | Persistent rules the AI follows in every session | Granular control: add, list, edit, and remove rules by position |
+
+---
+
+## How DsCode's SDD works
+
+DsCode's SDD exists to **deliver software**, not to collect formalities. It plans what is needed, implements, validates proportionally and ends with a clear result — even when pendings remain.
+
+**NONSTOP is the normal behaviour.** A failing test, an unfound textual criterion or a document that diverged from the implementation does not, by itself, stop the work: it produces a diagnosis, one bounded correction when actionable, and the flow continues. Stopping is reserved for real impediments — security, permission, integrity, explicit user cancellation or an inability to run safely.
+
+**Proportional validation.** While implementing, the agent runs focused checks and the tests tied to the change. No implementation invocation — `/spec-pipe` or a direct `/spec-implement` — runs the quality bundle, the directed suite or the task's declared commands as a closing step: the recorded fact is `not-applicable`, nothing is postponed and nothing is recovered at the end (ADR-032/ADR-039). Those commands remain available as explicit developer action (CI, pre-push hook) and inside `/spec-test`. To review and repair what was already delivered, use `/spec-stabilize`: it looks for real defects, fixes them and re-evaluates, and never certifies.
+
+**Three terminal results** for `/spec-pipe`:
+
+| Result | Meaning |
+|---|---|
+| `COMPLETED` | Every task implemented and persisted, nothing pending |
+| `COMPLETED_WITH_WARNINGS` | Work delivered, with pendings, omitted checks or unfinished tasks clearly listed |
+| `BLOCKED` | Mandatory impediment — security, integrity, permission, cancellation or an unusable runtime |
+
+None of the three depends on `audited`: the result describes the **implementation**. `/spec-pipe` runs `spec-new → spec-implement` and **delivers**; it never runs `/spec-test` automatically. Run `/spec-test <n>` for the independent audit: it is the only authority that grants `audited`, only with proven conformity; when it finds problems, it preserves `implemented` and writes a report `/spec-plan` can consume.
+
+**The pipe does not spend time certifying itself.** `/spec-pipe` runs neither the quality bundle, the directed suite nor the `validationCommands` a task declares: nothing is postponed, so nothing is recovered at the close, and the recorded fact is `not-applicable`. Textual criteria, unproven obligations and documentary contract drift are named pending items in the report: they never veto the delivery nor reopen a completed task. `/spec-test` keeps the rigorous audit; it never repairs code or reopens tasks, and not running it is never reported as an approval.
+
+**One implementation policy.** `/spec-pipe` and a direct `/spec-implement` deliver under the same policy: no functional veto, no automatic certification, no quality bundle as a condition to advance. The invocation chooses orchestration (the pipe also runs `spec-new`), never rigor — same executor, same sealing authority, same durable state. Rigor belongs to `/spec-test`, the exclusive authority for `audited`, which runs only on explicit request.
+
+**Stack agnostic.** Prettier, ESLint, TypeScript and npm are not universal requirements: validators follow the stack actually detected. .NET, Java, Python, Go, Rust, Delphi and others take the same path.
+
+Normative detail: [sdd-base.txt](../../sdd-contrato/sdd-base.txt) and [sdd-fluxo.md](../../sdd-contrato/sdd-fluxo.md).
 
 ---
 
@@ -133,8 +163,9 @@ Type `/` in the prompt to see the full menu. Here are the ones you'll use most:
 | `/model` | Switch between 16 models across 4 providers |
 | `/quickstart` | 5-minute interactive SDD pipeline tour |
 | `/spec-plan` | Plan new features with specs |
-| `/spec-pipe <n>` | Full pipeline: new → implement → test |
-| [`/spec-test`](../spec-test_en.md) | Run the project's canonical tests for Node/TypeScript, Go, Java, and Rust |
+| `/spec-pipe <n>` | SDD delivery: new → implement (no automatic certification) |
+| [`/spec-test`](../spec-test_en.md) | Independent diagnostic audit of a spec; grants `audited` only on proven conformity |
+| [`/spec-stabilize`](../spec-stabilize_en.md) | Reviews the delivered implementation, fixes real defects and re-evaluates until stable; **never certifies** |
 | `/init` | Create `AGENTS.md` with instructions for the AI |
 | `/steering-add` | Add a rule the AI follows in every session |
 | `/budget` | View project cost by model and timezone |
@@ -151,9 +182,9 @@ Skills are Markdown guides that teach the AI to work in a specific way. DsCode l
 
 | Location | Usage |
 |---|---|
-| `templates/skills/` (built-in) | 5 always-available skills |
-| `~/.agents/skills/<name>/SKILL.md` | Personal skills |
-| `./.agents/skills/<name>/SKILL.md` | Project skills |
+| `templates/skills/` (built-in) | 6 built-in skills — 3 always loaded (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); the rest on demand |
+| `./.dscode/skills/<name>/SKILL.md` | Project skills (highest precedence) |
+| `./.agents/skills/<name>/SKILL.md` | Project skills (compatibility) |
 
 Skills can run as **autonomous agents** (`mode: agent`) — each with its own model, tools, and thinking, executing in a sandbox without polluting the main context.
 
@@ -163,7 +194,7 @@ name: reviewer
 description: Reviews code for bugs and improvements
 mode: agent
 model: deepseek-flash
-tools: [Read, Grep, Glob, Bash]
+tools: [read, grep, glob, bash]
 ```
 
 ---

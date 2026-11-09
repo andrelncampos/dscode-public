@@ -33,21 +33,48 @@ La diferencia: DsCode es el **único** asistente con un pipeline completo de Des
 ```mermaid
 flowchart LR
     P["/spec-plan<br/>Planifica"] --> N["/spec-new<br/>Crea specs"]
-    N --> V["/spec-verify<br/>Verifica 🔄"]
-    V -->|"Auto-corrige"| V
-    V --> I["/spec-implement<br/>Implementa"]
-    I --> A["/spec-audit<br/>Audita 🔄"]
-    A -->|"Auto-corrige"| A
-    A --> D[✅ Feature lista]
+    N --> I["/spec-implement<br/>Implementa"]
+    I --> D[✅ Entregado]
+    I -. "opcional, a pedido" .-> T["/spec-test<br/>Audita"]
+    T -- "Conformidad comprobada" --> A[🔒 Audited]
+    T -. "Hallazgos: insumo del próximo /spec-plan" .-> P
 ```
 
 | Capacidad | Qué hace | Por qué ningún otro lo tiene |
 |---|---|---|
-| **Pipeline SDD** | Ciclo completo: planificar → crear → verificar → implementar → auditar | Auto-corrección en 2 checkpoints — verify y audit corrigen fallos solos |
+| **Pipeline SDD** | Ciclo de entrega: planificar → crear → implementar, con auditoría diagnóstica explícita opcional | Autonomía NONSTOP con gates deterministas — el LLM redacta, el código decide |
 | **Multi-proveedor** | DeepSeek V4, OpenAI GPT-5.x, Anthropic Claude, Google Gemini | Cambia de proveedor sin tocar una línea de configuración |
 | **Skills como agentes** | Subagentes aislados con su propio modelo, tools y thinking | Cada skill se ejecuta en sandbox — no contamina el contexto principal |
 | **MCP nativo** | Conecta bases de datos, navegadores y APIs externas | Integrado en las 3 capas: skills, specs y TUI |
 | **Steering** | Reglas persistentes que la IA sigue en todas las sesiones | Control granular: añade, lista, edita y elimina reglas por posición |
+
+---
+
+## Cómo funciona el SDD de DsCode
+
+El SDD de DsCode existe para **entregar software**, no para acumular formalidades. Planifica lo necesario, implementa, valida de forma proporcional y termina con un resultado claro — incluso cuando quedan pendientes.
+
+**NONSTOP es el comportamiento normal.** Una prueba fallida, un criterio textual no encontrado o un documento que diverge de la implementación no detienen el trabajo por sí solos: generan diagnóstico, una corrección acotada cuando es accionable, y el flujo continúa. Detenerse queda reservado a impedimentos reales: seguridad, permisos, integridad, cancelación explícita del usuario o imposibilidad de ejecutar con seguridad.
+
+**Validación proporcional.** Durante la implementación el agente ejecuta comprobaciones locales y las pruebas ligadas al cambio. En un `/spec-implement` **directo**, los quality gates de la stack y las pruebas finales se ejecutan **una vez**, al cierre, sobre el estado definitivo; el conjunto final nunca se omite y nunca se repite tras cada tarea. En `/spec-pipe` el cierre no forma parte de la invocación: el pipe implementa y persiste, y el costo de esas verificaciones sale del camino estándar (ADR-032).
+
+**Tres resultados terminales** para `/spec-pipe`:
+
+| Resultado | Significado |
+|---|---|
+| `COMPLETED` | Todas las tareas implementadas y persistidas, sin pendientes |
+| `COMPLETED_WITH_WARNINGS` | Trabajo entregado, con pendientes, verificaciones omitidas o tareas pendientes claramente listadas |
+| `BLOCKED` | Impedimento obligatorio — seguridad, integridad, permisos, cancelación o runtime inutilizable |
+
+Ninguno de los tres depende de `audited`: el resultado describe la **implementación**. `/spec-pipe` ejecuta `spec-new → spec-implement` y **entrega**; nunca ejecuta `/spec-test` automáticamente. Ejecuta `/spec-test <n>` para la auditoría independiente: es la única autoridad que concede `audited`, solo con conformidad comprobada; cuando encuentra problemas, preserva `implemented` y graba un informe que `/spec-plan` puede consumir.
+
+**El pipe no pierde tiempo intentando certificarse.** `/spec-pipe` no ejecuta el bundle de calidad, la suite dirigida ni los comandos de validación declarados por tarea: nada se aplaza, nada se recupera al cierre, y el hecho registrado es `not-applicable`. Los criterios textuales, las obligaciones no comprobadas y la divergencia documental entran en el informe como pendientes nombradas: nunca vetan la entrega ni reabren una tarea concluida. `/spec-test` mantiene la auditoría rigurosa; no corrige código ni reabre tareas, y no ejecutarlo nunca se presenta como aprobación.
+
+**Política por invocación.** `/spec-pipe` entrega. Los comandos directos como `/spec-implement` y `/spec-test` conservan su semántica rigurosa y no lo heredan — mismo ejecutor, misma autoridad de sellado y mismo estado duradero.
+
+**Agnóstico de stack.** Prettier, ESLint, TypeScript y npm no son requisitos universales: los validadores siguen la stack realmente detectada. .NET, Java, Python, Go, Rust, Delphi y otros recorren el mismo camino.
+
+Detalle normativo: [sdd-base.txt](../../sdd-contrato/sdd-base.txt) y [sdd-fluxo.md](../../sdd-contrato/sdd-fluxo.md).
 
 ---
 
@@ -136,8 +163,8 @@ Escribe `/` en el prompt para ver el menú completo. Estos son los que más usar
 | `/model` | Cambiar entre 16 modelos de 4 proveedores |
 | `/quickstart` | Tour interactivo de 5 minutos por el pipeline SDD |
 | `/spec-plan` | Planificar nuevas funcionalidades con specs |
-| `/spec-pipe <n>` | Pipeline completo: new → verify → implement → audit → test |
-| [`/spec-test`](../spec-test_en.md) | Ejecutar las pruebas canónicas del proyecto para Node/TypeScript, Go, Java y Rust |
+| `/spec-pipe <n>` | Entrega SDD: new → implement (sin certificación automática) |
+| [`/spec-test`](../spec-test_en.md) | Auditoría diagnóstica independiente de una spec; concede `audited` solo con conformidad comprobada |
 | `/init` | Crear `AGENTS.md` con instrucciones para la IA |
 | `/steering-add` | Añadir regla que la IA sigue en todas las sesiones |
 | `/budget` | Ver costo del proyecto por modelo y zona horaria |
@@ -154,9 +181,9 @@ Las skills son guías en Markdown que enseñan a la IA a trabajar de una forma e
 
 | Ubicación | Uso |
 |---|---|
-| `templates/skills/` (built-in) | 5 skills siempre disponibles |
-| `~/.agents/skills/<nombre>/SKILL.md` | Skills personales |
-| `./.agents/skills/<nombre>/SKILL.md` | Skills del proyecto |
+| `templates/skills/` (built-in) | 6 skills integradas — 3 cargadas siempre (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); las demás bajo demanda |
+| `./.dscode/skills/<nombre>/SKILL.md` | Skills del proyecto (mayor precedencia) |
+| `./.agents/skills/<nombre>/SKILL.md` | Skills del proyecto (compatibilidad) |
 
 Las skills pueden ejecutarse como **agentes autónomos** (`mode: agent`) — cada uno con su propio modelo, herramientas y thinking, ejecutándose en sandbox sin contaminar el contexto principal.
 
@@ -166,7 +193,7 @@ name: reviewer
 description: Revisa código en busca de bugs y mejoras
 mode: agent
 model: deepseek-flash
-tools: [Read, Grep, Glob, Bash]
+tools: [read, grep, glob, bash]
 ```
 
 ---

@@ -24,7 +24,7 @@
 
 O **DsCode** é um assistente de programação que roda no terminal. Ele integra modelos de diferentes provedores — como DeepSeek, OpenAI, Anthropic, Gemini, GLM, Muse Spark e modelos locais — para analisar, revisar e escrever código no projeto. Os modelos disponíveis dependem da configuração e da versão instalada.
 
-O DsCode oferece ferramentas de planejamento orientado a especificações (SDD), implementação, validação e auditoria. A arquitetura SDD v21 integra essas capacidades em **um ciclo único de engenharia**, no qual erros de compilação e testes retornam ao mesmo executor até a correção, dentro de limites seguros. A certificação permanece determinística e depende de evidências reais; o agente não aprova suas próprias alterações. O motor v21 está ativo; a homologação de ponta a ponta em um `/spec-pipe` real segue pendente.
+O DsCode oferece ferramentas de planejamento orientado a especificações (SDD), implementação, validação e auditoria. A arquitetura SDD v21 integra essas capacidades em **um ciclo único de engenharia**, no qual erros de compilação e testes retornam ao mesmo executor até a correção, dentro de limites seguros. A certificação permanece determinística e depende de evidências reais; o agente não aprova suas próprias alterações. O motor v21 está ativo; a homologação operacional de ponta a ponta em `/spec-pipe` real foi executada em 04/11/2026 com as specs 3900 e 3910, ambas encerradas em `implemented`. A certificação `audited` não foi executada nessas specs: ela continua sendo um ato explícito de auditoria.
 
 ---
 
@@ -34,19 +34,20 @@ O DsCode oferece ferramentas de planejamento orientado a especificações (SDD),
 flowchart LR
     P["/spec-plan<br/>Planeja"] --> N["/spec-new<br/>Especifica"]
     N --> I["/spec-implement<br/>Implementa, valida e corrige"]
-    I --> T["/spec-test<br/>Certifica"]
-    T -- "Falha reparável" --> I
-    T -- "Provas suficientes" --> D["Audited"]
+    I --> D["Entrega<br/>COMPLETED"]
+    I -. "opcional, sob solicitação" .-> T["/spec-test<br/>Audita"]
+    T -- "Conformidade comprovada" --> A["Audited"]
+    T -. "Achados: insumo do próximo /spec-plan" .-> P
 ```
 
-> **Estado de implantação:** o ciclo com retorno automático do `spec-test` à implementação está implementado e coberto por testes determinísticos. A homologação de ponta a ponta em um `/spec-pipe` real permanece pendente; até lá, a execução pode terminar com trabalho parcial preservado e certificação pendente. Consulte [o contrato v21](sdd-contrato/sdd-fluxo.md). Não confunda código escrito com spec certificada.
+> **Delivery-first:** o `/spec-pipe` executa `spec-new → spec-implement` e entrega o trabalho efetivo. Ele **não** roda `/spec-test` automaticamente e **não** exige `audited` para concluir. A auditoria é um ato explícito do usuário, rigoroso e independente: ela diagnostica a implementação e só concede `audited` com conformidade comprovada. Consulte [o contrato v21](sdd-contrato/sdd-fluxo.md). Não confunda código escrito com spec certificada.
 
-**Política de qualidade prevista:** continuar implementação e correção quando houver trabalho seguro; pausar quando recursos ou segurança exigirem; declarar `audited` apenas com aceitação verificada. Falhas reais não são ocultadas.
+**Política de qualidade:** continuar implementação e correção quando houver trabalho seguro; pausar somente quando recursos ou segurança exigirem; declarar `audited` apenas com aceitação verificada. Falhas reais não são ocultadas.
 
 
 | Capacidade | O que faz | Por que nenhum outro tem |
 |---|---|---|
-| **Pipeline SDD** | Planejar → especificar → implementar → testar | v21: um ciclo de implementação e correção com certificação baseada em provas |
+| **Pipeline SDD** | Planejar → especificar → implementar; auditar sob solicitação | Entrega primeiro: um ciclo de implementação e correção, com auditoria baseada em provas quando solicitada |
 | **Multi-provedor** | DeepSeek V4/V4.1, OpenAI GPT, Anthropic Claude, Google Gemini, Z.AI GLM, Muse Spark, Ollama/vLLM local | Troque de provedor sem alterar uma linha de configuração; chaves por projeto, migração automática |
 | **Stack-agnostic** | TypeScript, .NET, Python e mais pelo mesmo caminho de validação | O gate não julga sua linguagem — valida o documento e roda seus testes |
 | **Skills como agentes** | Subagentes isolados com modelo, tools e thinking próprios | Cada skill roda em sandbox — não polui o contexto principal |
@@ -55,9 +56,31 @@ flowchart LR
 
 ---
 
-## Estado da reforma SDD
+## Como o SDD do DsCode trabalha
 
-Descrição e estado: a v21 substitui a lógica de etapas rígidas por um ciclo único capaz de detectar erros reais, transmitir diagnósticos completos (stdout e stderr) e corrigir o software dentro da mesma execução. O motor v21 está ativo e homologado nos gates determinísticos (`check`, `build` e suíte afetada) e em cenários de ponta a ponta isolados — inclusive quando `spec-test` reprova depois de todas as tarefas originais estarem concluídas: o mesmo executor recebe uma unidade de correção, corrige e a certificação é reexecutada com gates reais. Specs reais não foram reexecutadas nem mutadas. Contrato v20 parseável continua suportado; o contrato v21 ativo é declarado em modo `v21-guidance`.
+O SDD do DsCode existe para **entregar software**, não para colecionar formalidades. Ele planeja o necessário, implementa, valida o que é proporcional e encerra com um resultado claro — mesmo quando sobram pendências.
+
+**NONSTOP é o comportamento normal.** Um teste que falhou, um critério textual que não foi encontrado ou um documento que divergiu da implementação não interrompem o trabalho por si só: geram diagnóstico, uma correção limitada quando é acionável, e continuam. Parar é reservado a impedimentos reais — segurança, permissão, integridade, cancelamento explícito do usuário ou impossibilidade de executar com segurança.
+
+**Validação proporcional.** Durante a implementação o agente faz checagens locais e roda os testes ligados à mudança. Nenhuma invocação de implementação — `/spec-pipe` ou `/spec-implement` direto — executa o bundle de qualidade, a suíte direcionada ou os comandos declarados por tarefa como fechamento: o fato registrado é `not-applicable`, nada é adiado e nada é recuperado ao encerrar (ADR-032/ADR-039). Esses comandos continuam disponíveis como ação explícita do desenvolvedor (CI, hook de push) e dentro do `/spec-test`. Para revisar e corrigir o que já foi entregue existe `/spec-stabilize`: ele procura defeitos reais, corrige e reavalia, e nunca certifica.
+
+**Três resultados terminais** para `/spec-pipe`:
+
+| Resultado | O que significa |
+|---|---|
+| `COMPLETED` | Todas as tarefas implementadas e persistidas, sem pendência registrada |
+| `COMPLETED_WITH_WARNINGS` | Trabalho entregue, com pendências, verificações omitidas ou tarefas pendentes claramente listadas |
+| `BLOCKED` | Impedimento obrigatório — segurança, integridade, permissão, cancelamento ou runtime inutilizável |
+
+Nenhum dos três depende de `audited`: o resultado descreve a **implementação**. O `/spec-pipe` executa `spec-new → spec-implement` e **entrega**; ele não roda `/spec-test` automaticamente. Quando quiser a auditoria rigorosa, rode `/spec-test <n>`: ele é a única autoridade que concede `audited`, e só com conformidade comprovada; quando encontra problemas, preserva `implemented` e grava um relatório que o `/spec-plan` pode consumir.
+
+**O pipe não gasta tempo tentando se certificar.** `/spec-pipe` não executa o bundle de qualidade, a suíte direcionada nem os comandos de validação declarados por tarefa: nada é adiado, nada precisa ser recuperado ao encerrar, e o fato registrado é `not-applicable`. Critérios textuais, obrigações não comprovadas e divergência documental entram no relatório como pendências nomeadas e não vetam a entrega nem reabrem tarefa concluída. `/spec-test` mantém a auditoria rigorosa; ele não corrige código nem reabre tarefas, e não executá-lo nunca é apresentado como aprovação.
+
+**Política única de implementação.** `/spec-pipe` e `/spec-implement` direto entregam sob a mesma política: sem veto funcional, sem certificação automática, sem bundle de qualidade como condição de avanço. A invocação escolhe orquestração (o pipe roda também o `spec-new`), nunca rigor — mesmos executor, mesma autoridade de selagem e mesmo estado durável. O rigor pertence ao `/spec-test`, que é a autoridade exclusiva de `audited` e roda apenas quando solicitado.
+
+**Agnóstico de stack.** Prettier, ESLint, TypeScript e npm não são requisitos universais: os validadores são escolhidos pela stack realmente detectada. Projetos .NET, Java, Python, Go, Rust, Delphi e outros seguem o mesmo caminho.
+
+**Estado de implantação.** O motor está ativo e homologado nos gates determinísticos (`check`, `build` e suíte afetada). A homologação operacional em `/spec-pipe` real foi executada em 04/11/2026 com as specs 3900 e 3910, ambas encerradas em `implemented`; a entrega não concede `audited`, e a certificação permanece uma auditoria explícita (`/spec-test`), não executada nessas specs. Contrato v20 parseável continua suportado; o contrato v21 ativo é declarado em modo `v21-guidance`. Detalhe normativo em [sdd-base.txt](sdd-contrato/sdd-base.txt) e [sdd-fluxo.md](sdd-contrato/sdd-fluxo.md).
 
 ---
 
@@ -133,12 +156,19 @@ O `settings.json` é **esparso**: só o que você declarar existe; todo o resto 
 | `mcpServers` | Servidores MCP | veja [docs/mcp.md](docs/mcp.md) |
 | `memory` | Retenção e limites do histórico | `{"recentTurns":10}` |
 | `budget` | Alerta de custo diário/mensal (não bloqueia) | `{"dailyLimit":5}` |
-| `sdd.profile` | Perfil de roteamento do SDD | `"economic"` |
+| `sdd.profile` | Perfil de rotas técnicas do SDD (sem critério de preço) | `"economic"` |
 | `sdd.validationExecution` | Autoriza validação no host | `{"allowTrustedLocalExecution":true}` |
 | `sdd.autonomousCorrection` | Correção autônoma no `/spec-pipe` | `true` |
 | `cacheMode` | Consciência de cache de prefixo | `"strict"` |
 | `terminalTitleTemplate` | Título do terminal | `"{{cwd}}"` |
 | `locale` | Idioma da interface | `"pt"` |
+
+### Política de execução
+
+O DsCode é **AI-first, capability-first, cache-first e financeiramente
+independente**: preços, tarifas e orçamentos são informação para o humano e
+nunca selecionam, limitam, degradam, reordenam ou interrompem uma execução.
+Veja [docs/execution-policy.md](docs/execution-policy.md).
 
 **Referência completa:** [docs/configuration.md](docs/configuration.md) — tipo, default e efeito das 77 chaves, os sub-schemas (`modelInstances`, `modelPricing`, `mcpServers`, `engineEscalation`, `sdd.validationExecution`), precedência e receitas. As chaves menos usadas no dia a dia (flags `openai*`, governança SDD, custo, memória detalhada, MCP) ficam lá, não aqui.
 
@@ -170,8 +200,9 @@ Digite `/` no prompt para ver o menu completo. Aqui estão os que você mais vai
 | `/model-add` | Cadastrar modelo pelo wizard unificado (testa antes de salvar) |
 | `/quickstart` | Tour interativo de 5 minutos pelo pipeline SDD |
 | `/spec-plan` | Planejar novas funcionalidades com specs |
-| `/spec-pipe <n>` | Pipeline completo: new → implement → test |
-| [`/spec-test`](docs/spec-test.md) | Executar testes canônicos do projeto para Node/TypeScript, Go, Java e Rust |
+| `/spec-pipe <n>` | Entrega SDD: new → implement (sem certificação automática) |
+| [`/spec-test`](docs/spec-test.md) | Auditoria diagnóstica independente de uma spec; concede `audited` só com conformidade comprovada |
+| [`/spec-stabilize`](docs/spec-stabilize.md) | Revisa a implementação entregue, corrige defeitos reais e reavalia até estabilizar; **nunca certifica** |
 | `/init` | Criar `AGENTS.md` com instruções para a IA |
 | `/steering-add` | Adicionar regra que a IA segue em todas as sessões |
 | `/budget` | Ver custo acumulado do projeto por modelo e timezone |
@@ -190,9 +221,9 @@ Skills são guias em Markdown que ensinam a IA a trabalhar de um jeito específi
 
 | Local | Uso |
 |---|---|
-| `templates/skills/` (built-in) | 5 skills sempre disponíveis |
-| `~/.agents/skills/<nome>/SKILL.md` | Skills pessoais |
-| `./.agents/skills/<nome>/SKILL.md` | Skills do projeto |
+| `templates/skills/` (built-in) | 6 skills embutidas — 3 carregadas sempre (`karpathy-guidelines`, `project-structure`, `sdd-workflow`); as demais sob demanda |
+| `./.dscode/skills/<nome>/SKILL.md` | Skills do projeto (maior precedência) |
+| `./.agents/skills/<nome>/SKILL.md` | Skills do projeto (compatibilidade) |
 
 Skills podem rodar como **agentes autônomos** (`mode: agent`) — cada um com seu próprio modelo, ferramentas e thinking, executando em sandbox sem poluir o contexto principal.
 
@@ -202,7 +233,7 @@ name: reviewer
 description: Revisa código em busca de bugs
 mode: agent
 model: deepseek-flash
-tools: [Read, Grep, Glob, Bash]
+tools: [read, grep, glob, bash]
 ```
 
 ---
