@@ -162,7 +162,7 @@ Type `/` in the prompt to see the full menu. Here are the ones you'll use most:
 | `/model`                                     | Switch between 16 models across 4 providers                                                                 |
 | `/quickstart`                                | 5-minute interactive SDD pipeline tour                                                                      |
 | `/spec-plan`                                 | Plan new features with specs                                                                                |
-| `/spec-pipe <n>`                             | SDD delivery: new → implement (no automatic certification)                                                  |
+| | `/spec-pipe <n>[,<n>...] / <first>..<last>` | SDD delivery: new → implement, one spec at a time in roadmap order (no automatic certification) |
 | [`/spec-test`](../spec-test_en.md)           | Independent diagnostic audit of a spec; grants `audited` only on proven conformity                          |
 | [`/spec-stabilize`](../spec-stabilize_en.md) | Reviews the delivered implementation, fixes real defects and re-evaluates until stable; **never certifies** |
 | `/init`                                      | Create `AGENTS.md` with instructions for the AI                                                             |

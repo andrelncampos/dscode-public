@@ -65,6 +65,8 @@ O SDD do DsCode existe para **entregar software**, não para colecionar formalid
 
 **Três resultados terminais** para `/spec-pipe`:
 
+**Uma ou várias specs.** `/spec-pipe` aceita `4210`, `4210,4220,4230` ou `4210..4270` (intervalo interpretado na ordem canônica do roadmap). A seleção é validada contra o roadmap **antes** de qualquer etapa rodar. Com mais de uma spec, a invocação executa uma por vez e encerra com **um único resultado terminal** derivado da seleção; specs que falharam, que foram bloqueadas por impedimento obrigatório ou que nunca chegaram a rodar são nomeadas no relatório. Um cancelamento (Esc) ou um impedimento obrigatório interrompe o lote; uma falha funcional não interrompe.
+
 | Resultado                 | O que significa                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------- |
 | `COMPLETED`               | Todas as tarefas implementadas e persistidas, sem pendência registrada                            |

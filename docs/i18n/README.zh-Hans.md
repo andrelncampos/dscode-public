@@ -162,7 +162,7 @@ dscode
 | `/model`                           | 在 4 个供应商的 16 个模型之间切换                          |
 | `/quickstart`                      | 5 分钟 SDD 流水线互动教程                                  |
 | `/spec-plan`                       | 使用规范规划新功能                                         |
-| `/spec-pipe <n>`                   | SDD 交付：new → implement（不自动认证）                    |
+| | `/spec-pipe <n>[,<n>...] / <first>..<last>` | SDD 交付：new → implement，按 roadmap 顺序逐个执行（不自动认证） |
 | [`/spec-test`](../spec-test_en.md) | 对规格进行独立诊断审计；仅在符合性得到证明时授予 `audited` |
 | `/init`                            | 创建 `AGENTS.md` 为 AI 提供指令                            |
 | `/steering-add`                    | 添加 AI 在每个会话中遵循的规则                             |

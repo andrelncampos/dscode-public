@@ -162,7 +162,7 @@ Escribe `/` en el prompt para ver el menú completo. Estos son los que más usar
 | `/model`                           | Cambiar entre 16 modelos de 4 proveedores                                                          |
 | `/quickstart`                      | Tour interactivo de 5 minutos por el pipeline SDD                                                  |
 | `/spec-plan`                       | Planificar nuevas funcionalidades con specs                                                        |
-| `/spec-pipe <n>`                   | Entrega SDD: new → implement (sin certificación automática)                                        |
+| | `/spec-pipe <n>[,<n>...] / <first>..<last>` | Entrega SDD: new → implement, una spec por vez en el orden del roadmap (sin certificación automática) |
 | [`/spec-test`](../spec-test_en.md) | Auditoría diagnóstica independiente de una spec; concede `audited` solo con conformidad comprobada |
 | `/init`                            | Crear `AGENTS.md` con instrucciones para la IA                                                     |
 | `/steering-add`                    | Añadir regla que la IA sigue en todas las sesiones                                                 |
